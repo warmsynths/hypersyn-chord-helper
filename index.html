@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hypersyn Chord Helper</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background-color: #282a36; /* Dracula background */
+      color: #f8f8f2; /* Dracula foreground */
+      font-family: monospace;
+      font-size: 1.25rem;
+    }
+  .content-box {
+    .synthwave-header {
+      font-family: 'Share Tech Mono', monospace;
+      letter-spacing: 2px;
+      text-shadow: 0 2px 8px #ff79c6, 0 0px 32px #8be9fd;
+    }
+      background-color: #1e1f29;
+      border: 1px solid #44475a;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      width: 80%; /* consistent width */
+      max-width: 800px;
+    }
+    textarea {
+      width: 100%;
+      height: 120px;
+      background-color: #1e1f29;
+      color: #bd93f9; /* Dracula purple for input text */
+      border: none;
+      resize: vertical;
+      font-size: 1.25rem;
+    }
+    .chord-name {
+      color: #ff79c6; /* pink */
+      font-weight: bold;
+    }
+    .root-baked-label {
+      color: #50fa7b; /* green */
+      font-weight: bold;
+    }
+    .root-baked-value {
+      color: #f1fa8c; /* yellow */
+    }
+    .interval-label {
+      color: #8be9fd; /* cyan */
+      font-weight: bold;
+    }
+    .interval-value {
+      color: #ffb86c; /* Dracula orange */
+    }
+  </style>
+</head>
+<body class="flex flex-col items-center p-8 space-y-6">
+
+  <h1 class="synthwave-header text-2xl text-pink-400" style="font-family: 'Share Tech Mono', monospace !important;">Hypersyn Chord Helper</h1>
+
+  <!-- Input Box with Example Progression -->
+  <div class="content-box">
+    <textarea id="chordsInput" placeholder="Paste your chord progression here...">Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea>
+    <button onclick="convertChords()" class="mt-2 px-4 py-2 bg-pink-600 text-white rounded">Convert</button>
+  </div>
+
+  <!-- Output Box -->
+  <div id="output" class="content-box" style="font-size:1.25rem;"></div>
+
+  <!-- Info Box -->
+  <div class="content-box">
+    <p><span class="root-baked-label">Root-baked hex codes</span> include the chord’s root — ready to drop straight into Hypersyn.</p>
+    <p><span class="interval-label">Interval-only codes</span> are just the chord shape — you choose the root yourself in the phrase view.</p>
+  </div>
+
+
+  <script type="text/javascript" src="src/core.js"></script>
+  <script>
+    function convertChords() {
+      if (typeof window.convertChords !== "function") {
+        document.getElementById("output").innerHTML = '<span style="color:red">Chord logic not loaded.</span>';
+        return;
+      }
+
+      // Use the logic from core.js
+      const input = document.getElementById("chordsInput").value;
+      const chordNames = input.split(/[\s,]+/).filter(s => s.length > 0);
+      const parsed = chordNames.map(window.parseChordName).filter(c => c !== null);
+      const output = window.getUniqueChordTypes(parsed);
+
+      let outputHTML = "";
+      output.forEach(chord => {
+        outputHTML += `
+          <div class="mb-4">
+            <span class="chord-name">${chord.chordName} (${chord.type})</span><br>
+            <span class="root-baked-label">Root-baked:</span> 
+            <span class="root-baked-value">${chord.rootBaked.join(" ")}</span><br>
+            <span class="interval-label">Interval-only:</span> 
+            <span class="interval-value">${chord.intervalOnly.join(" ")}</span>
+          </div>
+        `;
+      });
+      document.getElementById("output").innerHTML = outputHTML;
+    }
+
+    // auto-run once on load for the example progression
+    window.onload = convertChords;
+  </script>
+
+</body>
+</html>
