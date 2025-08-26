@@ -63,11 +63,43 @@
   </head>
   <body class="flex flex-col items-center p-8 space-y-6">
     <!-- Synthwave video background -->
-    <div id="video-bg" style="position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:-2; overflow:hidden;">
-  <video autoplay loop muted playsinline style="width:100vw; height:100vh; object-fit:cover; filter: blur(8px) brightness(0.7) saturate(1.1);">
+    <div
+      id="video-bg"
+      style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: -2;
+        overflow: hidden;
+      "
+    >
+      <video
+        autoplay
+        loop
+        muted
+        playsinline
+        style="
+          width: 100vw;
+          height: 100vh;
+          object-fit: cover;
+          filter: blur(8px) brightness(0.7) saturate(1.1);
+        "
+      >
         <source src="src/assets/synthwave.mp4" type="video/mp4" />
       </video>
-  <div style="position:absolute; top:0; left:0; width:100vw; height:100vh; background:rgba(40,42,54,0.5); mix-blend-mode:soft-light;"></div>
+      <div
+        style="
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background: rgba(40, 42, 54, 0.5);
+          mix-blend-mode: soft-light;
+        "
+      ></div>
     </div>
     <h1
       class="synthwave-header text-5xl font-extrabold text-pink-400"
@@ -101,7 +133,7 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea
         id="stopBtn"
         onclick="handleStop()"
         class="mt-2 ml-2 px-4 py-2 text-white rounded transition-all border"
-        style="background-color: #ff5555; border-color: #ff79c6;"
+        style="background-color: #ff5555; border-color: #ff79c6"
       >
         Stop
       </button>
@@ -179,14 +211,34 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea
       let isPlaying = false;
 
       function setPlayVisualState(playing) {
-        const playBtn = document.getElementById('playBtn');
-        const stopBtn = document.getElementById('stopBtn');
+        const playBtn = document.getElementById("playBtn");
+        const stopBtn = document.getElementById("stopBtn");
         if (playing) {
-          playBtn.classList.add('ring-4', 'ring-green-300', 'scale-95', 'shadow-lg');
-          stopBtn.classList.add('ring-2', 'ring-red-400', 'scale-105', 'shadow-md');
+          playBtn.classList.add(
+            "ring-4",
+            "ring-green-300",
+            "scale-95",
+            "shadow-lg"
+          );
+          stopBtn.classList.add(
+            "ring-2",
+            "ring-red-400",
+            "scale-105",
+            "shadow-md"
+          );
         } else {
-          playBtn.classList.remove('ring-4', 'ring-green-300', 'scale-95', 'shadow-lg');
-          stopBtn.classList.remove('ring-2', 'ring-red-400', 'scale-105', 'shadow-md');
+          playBtn.classList.remove(
+            "ring-4",
+            "ring-green-300",
+            "scale-95",
+            "shadow-lg"
+          );
+          stopBtn.classList.remove(
+            "ring-2",
+            "ring-red-400",
+            "scale-105",
+            "shadow-md"
+          );
         }
       }
 
@@ -197,7 +249,9 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea
           window.playChordProgression();
           // Estimate total duration and reset state after
           const input = document.getElementById("chordsInput").value;
-          const chordCount = input.split(/\s|,/).filter(s => s.length > 0).length;
+          const chordCount = input
+            .split(/\s|,/)
+            .filter((s) => s.length > 0).length;
           const chordDuration = 2.5;
           setTimeout(() => {
             isPlaying = false;
@@ -308,6 +362,18 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea
         document.getElementById("uniqueChordTypes").innerHTML = uniqueHTML;
       }
 
+      function toggleVideoBg() {
+        const videoBg = document.getElementById("video-bg");
+        const btn = document.getElementById("toggleVideoBtn");
+        if (videoBg.style.display === "none") {
+          videoBg.style.display = "";
+          btn.textContent = "Hide Video";
+        } else {
+          videoBg.style.display = "none";
+          btn.textContent = "Show Video";
+        }
+      }
+
       // Collapse unique and converted chord boxes on page load
       window.onload = function () {
         document.getElementById("uniqueBox").style.display = "none";
@@ -315,8 +381,11 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea
       };
     </script>
   </body>
-  <!-- Video credit -->
-  <div style="position:fixed; bottom:12px; right:18px; z-index:10; font-size:1rem; color:#8be9fd; background:rgba(40,42,54,0.7); padding:6px 14px; border-radius:8px; font-family: 'Share Tech Mono', monospace; box-shadow:0 2px 8px #000;">
-    Video by <a href="https://www.reddit.com/user/visualdon/" target="_blank" style="color:#ff79c6; text-decoration:underline;">visualdon</a> on Reddit
+  <!-- Video credit as page content -->
+  <div id="video-credit" style="margin: 2.5rem auto 0 auto; font-size: 0.95rem; color: #8be9fd; background: rgba(40,42,54,0.7); padding: 6px 14px; border-radius: 8px; font-family: 'Share Tech Mono', monospace; box-shadow: 0 2px 8px #000; text-align: center; display: inline-flex; align-items: center;">
+    <span style="display:inline;">
+      Video by <a href="https://www.reddit.com/user/visualdon/" target="_blank" style="color: #ff79c6; text-decoration: underline">visualdon</a> on Reddit
+    </span>
+    <button id="toggleVideoBtn" onclick="toggleVideoBg()" style="background: #282a36; color: #f8f8f2; border: none; border-radius: 5px; padding: 2px 10px; font-size: 0.95em; cursor: pointer; margin-left: 0.7em; display:inline;">Hide Video</button>
   </div>
 </html>
