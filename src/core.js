@@ -1,4 +1,89 @@
 /**
+ * Stops all currently playing oscillators and disconnects gains.
+ */
+window.stopChordProgression = function() {
+  if (window._activeOscillators && window._activeOscillators.length) {
+    window._activeOscillators.forEach(osc => { try { osc.stop(); } catch(e) {} });
+    window._activeOscillators = [];
+  }
+  if (window._activeGains && window._activeGains.length) {
+    window._activeGains.forEach(gain => { try { gain.disconnect(); } catch(e) {} });
+    window._activeGains = [];
+  }
+};
+
+/**
+ * Plays the input chord progression as block chords using the Web Audio API.
+ * Each chord is played for 2.5 seconds, all notes together (like a soft synth pad).
+ */
+window.playChordProgression = function() {
+  const input = document.getElementById("chordsInput").value;
+  const chordNames = input.split(/\s|,/).filter(s => s.length > 0);
+  const parsed = chordNames.map(window.parseChordName).filter(c => c !== null);
+  if (parsed.length === 0) return;
+
+  // MIDI note numbers for C4 = 60
+  const ROOTS = {
+    'C': 60, 'C#': 61, 'Db': 61, 'D': 62, 'D#': 63, 'Eb': 63, 'E': 64, 'F': 65,
+    'F#': 66, 'Gb': 66, 'G': 67, 'G#': 68, 'Ab': 68, 'A': 69, 'A#': 70, 'Bb': 70, 'B': 71
+  };
+
+  // Web Audio setup
+  const ctx = window._hypersynAudioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  window._hypersynAudioCtx = ctx;
+
+  let time = ctx.currentTime;
+  const chordDuration = 2.5; // slower pad, longer chords
+
+  window.stopChordProgression(); // Stop any previous notes
+  const volume = parseInt(document.getElementById('volumeSlider').value, 10) / 100;
+  window._activeOscillators = [];
+  window._activeGains = [];
+  parsed.forEach((chord) => {
+    // Get root MIDI number
+    let rootMidi = ROOTS[chord.root] || 60;
+    if (!isFinite(rootMidi)) rootMidi = 60;
+    // Get intervals (semitones from root)
+    let intervals = Array.isArray(chord.intervalOnly)
+      ? chord.intervalOnly.filter(x => typeof x === 'number' && isFinite(x))
+      : [];
+    if (intervals.length === 0) {
+      console.warn('No intervals for chord:', chord.chordName, chord);
+    }
+    // Play all notes as block chord, skip non-numeric intervals
+    intervals.forEach((semi) => {
+      let midi = rootMidi + semi;
+      if (!isFinite(midi)) return;
+      let freq = 440 * Math.pow(2, (midi - 69) / 12);
+      if (!isFinite(freq)) return;
+      let osc = ctx.createOscillator();
+      let gain = ctx.createGain();
+      let filter = ctx.createBiquadFilter();
+      osc.type = 'triangle'; // synth pad
+      osc.frequency.value = freq;
+      osc.detune.value = Math.random() * 10 - 5; // slight detune for warmth
+      filter.type = 'lowpass';
+      filter.frequency.value = 220; // much darker pad
+      filter.Q.value = 1.4; // more resonance for warmth
+      // Envelope: slower attack/release
+      const attack = 1.0;
+      const release = 1.2;
+      gain.gain.setValueAtTime(0.0, time);
+      gain.gain.linearRampToValueAtTime(volume, time + attack);
+      gain.gain.setValueAtTime(volume, time + chordDuration - release);
+      gain.gain.linearRampToValueAtTime(0.0, time + chordDuration);
+      osc.connect(filter).connect(gain).connect(ctx.destination);
+      osc.start(time);
+      osc.stop(time + chordDuration);
+      window._activeOscillators.push(osc);
+      window._activeGains.push(gain);
+      // For debugging:
+      // console.log(`Playing: ${chord.chordName} root=${rootMidi} semi=${semi} midi=${midi} freq=${freq} vol=${volume}`);
+    });
+    time += chordDuration;
+  });
+};
+/**
  * Mapping of chord type strings to their corresponding intervals.
  * Used for chord name to hex conversion and interval calculation.
  * @type {Object.<string, number[]>}
@@ -108,14 +193,17 @@ function parseChordName(chordName) {
   // Root-baked chord: add root semitone, wrap modulo 12
   const rootBaked = intervals.map((i) => semitoneToHex(i + rootSemitone));
 
-  // Interval-only chord: just the intervals
-  const intervalOnly = intervals.map((i) => semitoneToHex(i));
+  // Interval-only hex for display
+  const intervalOnlyHex = intervals.map((i) => semitoneToHex(i));
+  // Interval-only numbers for playback
+  const intervalOnly = intervals.slice();
 
   return {
     chordName,
     root,
     type,
     rootBaked,
+    intervalOnlyHex,
     intervalOnly,
   };
 }
