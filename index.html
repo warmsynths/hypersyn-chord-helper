@@ -62,8 +62,15 @@
     </style>
   </head>
   <body class="flex flex-col items-center p-8 space-y-6">
+    <!-- Synthwave video background -->
+    <div id="video-bg" style="position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:-2; overflow:hidden;">
+  <video autoplay loop muted playsinline style="width:100vw; height:100vh; object-fit:cover; filter: blur(8px) brightness(0.7) saturate(1.1);">
+        <source src="src/assets/synthwave.mp4" type="video/mp4" />
+      </video>
+  <div style="position:absolute; top:0; left:0; width:100vw; height:100vh; background:rgba(40,42,54,0.5); mix-blend-mode:soft-light;"></div>
+    </div>
     <h1
-      class="synthwave-header text-2xl text-pink-400"
+      class="synthwave-header text-5xl font-extrabold text-pink-400"
       style="font-family: 'Share Tech Mono', monospace !important"
     >
       Hypersyn Chord Helper
@@ -84,14 +91,17 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea
         Convert
       </button>
       <button
-        onclick="playChordProgression()"
-        class="mt-2 ml-2 px-4 py-2 bg-green-600 text-white rounded"
+        id="playBtn"
+        onclick="handlePlay()"
+        class="mt-2 ml-2 px-4 py-2 bg-green-600 text-white rounded transition-all border border-green-700"
       >
         Play
       </button>
       <button
-        onclick="stopChordProgression()"
-        class="mt-2 ml-2 px-4 py-2 bg-red-600 text-white rounded"
+        id="stopBtn"
+        onclick="handleStop()"
+        class="mt-2 ml-2 px-4 py-2 text-white rounded transition-all border"
+        style="background-color: #ff5555; border-color: #ff79c6;"
       >
         Stop
       </button>
@@ -165,6 +175,46 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea
 
     <script type="text/javascript" src="src/core.js"></script>
     <script>
+      // Track play state
+      let isPlaying = false;
+
+      function setPlayVisualState(playing) {
+        const playBtn = document.getElementById('playBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        if (playing) {
+          playBtn.classList.add('ring-4', 'ring-green-300', 'scale-95', 'shadow-lg');
+          stopBtn.classList.add('ring-2', 'ring-red-400', 'scale-105', 'shadow-md');
+        } else {
+          playBtn.classList.remove('ring-4', 'ring-green-300', 'scale-95', 'shadow-lg');
+          stopBtn.classList.remove('ring-2', 'ring-red-400', 'scale-105', 'shadow-md');
+        }
+      }
+
+      function handlePlay() {
+        if (!isPlaying) {
+          isPlaying = true;
+          setPlayVisualState(true);
+          window.playChordProgression();
+          // Estimate total duration and reset state after
+          const input = document.getElementById("chordsInput").value;
+          const chordCount = input.split(/\s|,/).filter(s => s.length > 0).length;
+          const chordDuration = 2.5;
+          setTimeout(() => {
+            isPlaying = false;
+            setPlayVisualState(false);
+          }, chordCount * chordDuration * 1000 + 100);
+        }
+      }
+
+      function handleStop() {
+        if (isPlaying) {
+          isPlaying = false;
+          setPlayVisualState(false);
+          window.stopChordProgression();
+        } else {
+          window.stopChordProgression();
+        }
+      }
       // Only keep updateVolumeLabel and UI logic
       function updateVolumeLabel() {
         const slider = document.getElementById("volumeSlider");
@@ -265,4 +315,8 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea
       };
     </script>
   </body>
+  <!-- Video credit -->
+  <div style="position:fixed; bottom:12px; right:18px; z-index:10; font-size:1rem; color:#8be9fd; background:rgba(40,42,54,0.7); padding:6px 14px; border-radius:8px; font-family: 'Share Tech Mono', monospace; box-shadow:0 2px 8px #000;">
+    Video by <a href="https://www.reddit.com/user/visualdon/" target="_blank" style="color:#ff79c6; text-decoration:underline;">visualdon</a> on Reddit
+  </div>
 </html>
