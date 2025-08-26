@@ -32,6 +32,23 @@ window.playChordProgression = function() {
   const ctx = window._hypersynAudioCtx || new (window.AudioContext || window.webkitAudioContext)();
   window._hypersynAudioCtx = ctx;
 
+  // --- Simple Reverb Setup ---
+  if (!window._hypersynReverb) {
+    // Create impulse response for reverb (simple exponential decay)
+    const length = ctx.sampleRate * 2.5; // 2.5s reverb tail
+    const impulse = ctx.createBuffer(2, length, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) {
+      const channel = impulse.getChannelData(c);
+      for (let i = 0; i < length; i++) {
+        channel[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2.5);
+      }
+    }
+    const convolver = ctx.createConvolver();
+    convolver.buffer = impulse;
+    window._hypersynReverb = convolver;
+  }
+  const reverb = window._hypersynReverb;
+
   let time = ctx.currentTime;
   const chordDuration = 2.5; // slower pad, longer chords
 
@@ -72,7 +89,8 @@ window.playChordProgression = function() {
       gain.gain.linearRampToValueAtTime(volume, time + attack);
       gain.gain.setValueAtTime(volume, time + chordDuration - release);
       gain.gain.linearRampToValueAtTime(0.0, time + chordDuration);
-      osc.connect(filter).connect(gain).connect(ctx.destination);
+      // Connect: osc → filter → gain → reverb → destination
+      osc.connect(filter).connect(gain).connect(reverb).connect(ctx.destination);
       osc.start(time);
       osc.stop(time + chordDuration);
       window._activeOscillators.push(osc);
