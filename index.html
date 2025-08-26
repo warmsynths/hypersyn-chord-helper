@@ -59,30 +59,56 @@
 
   <h1 class="synthwave-header text-2xl text-pink-400" style="font-family: 'Share Tech Mono', monospace !important;">Hypersyn Chord Helper</h1>
 
+
   <!-- Input Box with Example Progression -->
   <div class="content-box">
     <textarea id="chordsInput" placeholder="Paste your chord progression here...">Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea>
     <button onclick="convertChords()" class="mt-2 px-4 py-2 bg-pink-600 text-white rounded">Convert</button>
   </div>
 
-
-  <!-- Output Box -->
-  <div id="output" class="content-box" style="font-size:1.25rem;"></div>
-
-  <!-- Unique Chord Types Box -->
-  <div id="uniqueChordTypes" class="content-box" style="font-size:1.25rem;"></div>
-
   <!-- Info Box -->
   <div class="content-box">
-    <p><span class="root-baked-label">Root-baked hex codes</span> include the chord’s root — ready to drop straight into Hypersyn.</p>
-    <p><span class="interval-label">Interval-only codes</span> are just the chord shape — you choose the root yourself in the phrase view.</p>
+  <button onclick="toggleBox('infoBox')" class="mb-2 px-2 py-1 bg-gray-700 text-white rounded">Info ▼</button>
+  <span class="ml-2 text-gray-400 text-sm">About hex codes and intervals</span>
+  <div id="infoBox" style="display:none;">
+      <p><span class="root-baked-label">Root-baked hex codes</span> include the chord’s root — ready to drop straight into Hypersyn.</p>
+      <p><span class="interval-label">Interval-only codes</span> are just the chord shape — you choose the root yourself in the phrase view.</p>
+    </div>
   </div>
+
+  <!-- Unique Chord Types Box -->
+  <div class="content-box">
+  <button onclick="toggleBox('uniqueBox')" class="mb-2 px-2 py-1 bg-gray-700 text-white rounded">Unique Chord Types ▼</button>
+  <span class="ml-2 text-gray-400 text-sm">Groups by chord type and shows intervals</span>
+  <div id="uniqueBox" style="display:none;">
+      <div id="uniqueChordTypes" style="font-size:1.25rem;"></div>
+    </div>
+  </div>
+
+  <!-- Output Box -->
+  <div class="content-box">
+  <button onclick="toggleBox('outputBox')" class="mb-2 px-2 py-1 bg-gray-700 text-white rounded">Converted Chords ▼</button>
+  <span class="ml-2 text-gray-400 text-sm">Shows all chords with hex and interval codes</span>
+  <div id="outputBox" style="display:none;">
+      <div id="output" style="font-size:1.25rem;"></div>
+    </div>
+  </div>
+
 
 
   <script type="text/javascript" src="src/core.js"></script>
   <script>
 
+    function toggleBox(boxId) {
+      const el = document.getElementById(boxId);
+      if (!el) return;
+      el.style.display = (el.style.display === "none") ? "block" : "none";
+    }
+
     function convertChords() {
+      // Show unique and converted chord boxes
+      document.getElementById('uniqueBox').style.display = 'block';
+      document.getElementById('outputBox').style.display = 'block';
       if (typeof window.convertChords !== "function") {
         document.getElementById("output").innerHTML = '<span style="color:red">Chord logic not loaded.</span>';
         return;
@@ -126,18 +152,21 @@
             return hex.length === 1 ? "0" + hex : hex;
           }).join(" ");
         }
-        uniqueHTML += `<li><span class="chord-name">Chord ${idx.toString().padStart(2, '0')} ${type}</span>: <span class="interval-value">${[...new Set(uniqueTypes[type])].join(", ")}</span>`;
-        if (intervalStr) {
-          uniqueHTML += `<br><span class="interval-label">Interval:</span> <span class="interval-value">${intervalStr}</span>`;
-        }
-        uniqueHTML += `</li>`;
+        uniqueHTML += `<li>
+          <span class="chord-name">Chord ${idx.toString().padStart(2, '0')}</span><br>
+          <span class="root-baked-label">Chords:</span> <span class="root-baked-value">${[...new Set(uniqueTypes[type])].join(", ")}</span><br>
+          <span class="interval-label">Interval:</span> <span class="interval-value">${intervalStr}</span>
+        </li>`;
       });
       uniqueHTML += '</ul>';
       document.getElementById("uniqueChordTypes").innerHTML = uniqueHTML;
     }
 
-    // auto-run once on load for the example progression
-    window.onload = convertChords;
+    // Collapse unique and converted chord boxes on page load
+    window.onload = function() {
+      document.getElementById('uniqueBox').style.display = 'none';
+      document.getElementById('outputBox').style.display = 'none';
+    };
   </script>
 
 </body>
