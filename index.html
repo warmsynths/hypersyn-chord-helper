@@ -329,44 +329,15 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea
         });
         document.getElementById("output").innerHTML = outputHTML;
 
-        // Find all unique chord types and group them
-        const uniqueTypes = {};
-        parsed.forEach((chord) => {
-          if (!uniqueTypes[chord.type]) uniqueTypes[chord.type] = [];
-          uniqueTypes[chord.type].push(chord.chordName);
-        });
-
-        let uniqueHTML =
-          '<span class="interval-label">Unique Chord Types:</span><ul style="margin-top:0.5rem;">';
-        Object.keys(uniqueTypes).forEach((type, idx) => {
-          // Get interval array for this type from core.js
-          const intervals = window.chordTypes
-            ? window.chordTypes[type]
-            : window.chordTypes === undefined &&
-              window.core &&
-              window.core.chordTypes
-            ? window.core.chordTypes[type]
-            : typeof chordTypes !== "undefined"
-            ? chordTypes[type]
-            : undefined;
-          let intervalStr = "";
-          if (intervals) {
-            intervalStr = intervals
-              .map((i) => {
-                let hex = (i % 12).toString(16).toUpperCase();
-                return hex.length === 1 ? "0" + hex : hex;
-              })
-              .join(" ");
-          }
+        // Use core.js grouping logic for unique chord types
+        const uniqueGroups = window.getUniqueChordTypes(parsed);
+        let uniqueHTML = '<span class="interval-label">Unique Chord Types:</span><ul style="margin-top:0.5rem;">';
+        uniqueGroups.forEach((group, idx) => {
           uniqueHTML += `<li>
-          <span class="chord-name">Chord ${idx
-            .toString()
-            .padStart(2, "0")}</span><br>
-          <span class="root-baked-label">Chords:</span> <span class="root-baked-value">${[
-            ...new Set(uniqueTypes[type]),
-          ].join(", ")}</span><br>
-          <span class="interval-label">Interval:</span> <span class="interval-value">${intervalStr}</span>
-        </li>`;
+            <span class="chord-name">Chord ${idx.toString().padStart(2, "0")}</span><br>
+            <span class="root-baked-label">Chords:</span> <span class="root-baked-value">${group.chords.join(", ")}</span><br>
+            <span class="interval-label">Interval:</span> <span class="interval-value">${group.intervalOnlyHex.join(" ")}</span>
+          </li>`;
         });
         uniqueHTML += "</ul>";
         document.getElementById("uniqueChordTypes").innerHTML = uniqueHTML;

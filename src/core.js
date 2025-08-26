@@ -214,12 +214,27 @@ function parseChordName(chordName) {
  * @returns {Array<object>} Array of unique chord objects.
  */
 function getUniqueChordTypes(chords) {
-  const seen = {};
-  return chords.map((chord) => {
+  // Map: intervalKey -> { typeKey, chords: [], intervalOnlyHex: [] }
+  const typeOrder = [];
+  const typeMap = {};
+  chords.forEach((chord, idx) => {
     const key = chord.intervalOnly.join("-");
-    if (!seen[key]) seen[key] = chord;
-    return chord;
+    console.log(`[getUniqueChordTypes] Chord ${idx}: ${chord.chordName}, intervalKey: ${key}`);
+    if (!typeMap[key]) {
+      typeOrder.push(key);
+      typeMap[key] = {
+        typeKey: key,
+        chords: [],
+        intervalOnlyHex: chord.intervalOnlyHex.slice(),
+      };
+      console.log(`[getUniqueChordTypes] New group for intervalKey: ${key}`);
+    }
+    typeMap[key].chords.push(chord.chordName);
+    console.log(`[getUniqueChordTypes] Added chord '${chord.chordName}' to group '${key}'. Current chords:`, typeMap[key].chords);
   });
+  const result = typeOrder.map((key) => typeMap[key]);
+  console.log('[getUniqueChordTypes] Final groups:', result);
+  return result;
 }
 
 /**
@@ -230,13 +245,16 @@ window.convertChords = function () {
   const input = document.getElementById("chordsInput").value;
   const chordNames = input.split(/[\s,]+/).filter((s) => s.length > 0);
   const parsed = chordNames.map(parseChordName).filter((c) => c !== null);
-  const output = (parsed);
 
-  let result = "";
-  output.forEach((chord) => {
-    result += `${chord.chordName} (${chord.type})\n`;
-    result += `  Root-baked:    ${chord.rootBaked.join(" ")}\n`;
-    result += `  Interval-only: ${chord.intervalOnly.join(" ")}\n\n`;
+  // Show input progression
+  let result = parsed.map(c => c.chordName).join(" ") + "\n\n";
+
+  // Group by interval shape
+  const uniqueGroups = getUniqueChordTypes(parsed);
+  uniqueGroups.forEach((group, idx) => {
+    result += `Chord ${idx.toString().padStart(2, "0")}\n`;
+    result += `Chords: ${group.chords.join(", ")}\n`;
+    result += `Interval: ${group.intervalOnlyHex.join(" ")}\n\n`;
   });
 
   document.getElementById("output").textContent = result;
