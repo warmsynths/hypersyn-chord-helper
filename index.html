@@ -65,8 +65,12 @@
     <button onclick="convertChords()" class="mt-2 px-4 py-2 bg-pink-600 text-white rounded">Convert</button>
   </div>
 
+
   <!-- Output Box -->
   <div id="output" class="content-box" style="font-size:1.25rem;"></div>
+
+  <!-- Unique Chord Types Box -->
+  <div id="uniqueChordTypes" class="content-box" style="font-size:1.25rem;"></div>
 
   <!-- Info Box -->
   <div class="content-box">
@@ -77,6 +81,7 @@
 
   <script type="text/javascript" src="src/core.js"></script>
   <script>
+
     function convertChords() {
       if (typeof window.convertChords !== "function") {
         document.getElementById("output").innerHTML = '<span style="color:red">Chord logic not loaded.</span>';
@@ -87,21 +92,48 @@
       const input = document.getElementById("chordsInput").value;
       const chordNames = input.split(/[\s,]+/).filter(s => s.length > 0);
       const parsed = chordNames.map(window.parseChordName).filter(c => c !== null);
-      const output = window.getUniqueChordTypes(parsed);
 
+      // Display all input chords as entered
       let outputHTML = "";
-      output.forEach(chord => {
+      parsed.forEach(chord => {
         outputHTML += `
           <div class="mb-4">
             <span class="chord-name">${chord.chordName} (${chord.type})</span><br>
             <span class="root-baked-label">Root-baked:</span> 
             <span class="root-baked-value">${chord.rootBaked.join(" ")}</span><br>
-            <span class="interval-label">Interval-only:</span> 
+            <span class="interval-label">Interval:</span> 
             <span class="interval-value">${chord.intervalOnly.join(" ")}</span>
           </div>
         `;
       });
       document.getElementById("output").innerHTML = outputHTML;
+
+      // Find all unique chord types and group them
+      const uniqueTypes = {};
+      parsed.forEach(chord => {
+        if (!uniqueTypes[chord.type]) uniqueTypes[chord.type] = [];
+        uniqueTypes[chord.type].push(chord.chordName);
+      });
+
+      let uniqueHTML = '<span class="interval-label">Unique Chord Types:</span><ul style="margin-top:0.5rem;">';
+      Object.keys(uniqueTypes).forEach((type, idx) => {
+        // Get interval array for this type from core.js
+        const intervals = window.chordTypes ? window.chordTypes[type] : (window.chordTypes === undefined && window.core && window.core.chordTypes ? window.core.chordTypes[type] : (typeof chordTypes !== 'undefined' ? chordTypes[type] : undefined));
+        let intervalStr = "";
+        if (intervals) {
+          intervalStr = intervals.map(i => {
+            let hex = (i % 12).toString(16).toUpperCase();
+            return hex.length === 1 ? "0" + hex : hex;
+          }).join(" ");
+        }
+        uniqueHTML += `<li><span class="chord-name">Chord ${idx.toString().padStart(2, '0')} ${type}</span>: <span class="interval-value">${[...new Set(uniqueTypes[type])].join(", ")}</span>`;
+        if (intervalStr) {
+          uniqueHTML += `<br><span class="interval-label">Interval:</span> <span class="interval-value">${intervalStr}</span>`;
+        }
+        uniqueHTML += `</li>`;
+      });
+      uniqueHTML += '</ul>';
+      document.getElementById("uniqueChordTypes").innerHTML = uniqueHTML;
     }
 
     // auto-run once on load for the example progression
