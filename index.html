@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Hypersyn Chord Helper</title>
     <link
       href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
@@ -13,7 +14,7 @@
     />
     <link rel="stylesheet" href="src/styles.css" />
   </head>
-  <body class="flex flex-col items-center p-8 space-y-6">
+  <body class="flex flex-col items-center p-8 space-y-6 sm:p-4 sm:space-y-4">
     <!-- Synthwave video background -->
     <div
       id="video-bg"
@@ -61,7 +62,7 @@
     </h1>
 
     <!-- Input Box with Example Progression -->
-    <div class="content-box">
+    <div class="content-box w-full max-w-lg">
       <textarea
         id="chordsInput"
         placeholder="Paste your chord progression here..."
@@ -70,21 +71,21 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea
       >
       <button
         onclick="convertChords()"
-        class="mt-2 px-4 py-2 bg-pink-600 text-white rounded"
+        class="mt-2 mb-2 px-4 py-2 bg-pink-600 text-white rounded w-full sm:w-auto sm:mb-0"
       >
         Convert
       </button>
       <button
         id="playBtn"
         onclick="handlePlay()"
-        class="mt-2 ml-2 px-4 py-2 bg-green-600 text-white rounded transition-all border border-green-700"
+        class="mt-2 mb-2 px-4 py-2 bg-green-600 text-white rounded transition-all border border-green-700 w-full sm:w-auto sm:ml-2 sm:mb-0"
       >
         Play
       </button>
       <button
         id="stopBtn"
         onclick="handleStop()"
-        class="mt-2 ml-2 px-4 py-2 text-white rounded transition-all border"
+        class="mt-2 mb-2 px-4 py-2 text-white rounded transition-all border w-full sm:w-auto sm:ml-2 sm:mb-0"
         style="background-color: #ff5555; border-color: #ff79c6"
       >
         Stop
@@ -96,17 +97,17 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea
         min="0"
         max="100"
         value="5"
-        style="vertical-align: middle; width: 120px"
+        class="align-middle w-32"
         oninput="updateVolumeLabel()"
       />
       <span id="volumeLabel" class="ml-2 text-yellow-300">5%</span>
     </div>
 
     <!-- Info Box -->
-    <div class="content-box">
+    <div class="content-box w-full max-w-lg">
       <button
         onclick="toggleBox('infoBox')"
-        class="mb-2 px-2 py-1 bg-gray-700 text-white rounded"
+        class="mb-2 px-2 py-1 bg-gray-700 text-white rounded w-full sm:w-auto"
         data-box="infoBox"
       >
         Info ▼
@@ -114,28 +115,65 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea
       <span class="ml-2 text-gray-400 text-sm">How to use this tool</span>
       <div id="infoBox" style="display: none">
         <div style="margin-bottom: 1rem">
-          <ul style="margin-top: 0.75rem; margin-bottom: 0.75rem; line-height: 1.8;">
-            <li style="margin-bottom: 0.7em;">
-              <strong>Paste or type a chord progression</strong> into the input field above.<br>
-              <span style="color: #bd93f9">Use plain text with a single space between each chord.</span><br>
-              <span style="color: #ff79c6">Example:</span> <span style="color: #ff79c6">Am7 Dm9 G13 Cmaj7</span>
+          <ul
+            style="
+              margin-top: 0.75rem;
+              margin-bottom: 0.75rem;
+              line-height: 1.8;
+            "
+          >
+            <li style="margin-bottom: 0.7em">
+              <strong>Paste or type a chord progression</strong> into the input
+              field above.<br />
+              <span style="color: #bd93f9"
+                >Use plain text with a single space between each chord.</span
+              ><br />
+              <span style="color: #ff79c6">Example:</span>
+              <span style="color: #ff79c6">Am7 Dm9 G13 Cmaj7</span>
             </li>
-            <li style="margin-bottom: 0.7em;">
-              <strong>Source progressions</strong> from sites like:<br>
-              <a href="https://www.onemotion.com/chord-player/" target="_blank" style="color: #8be9fd; text-decoration: underline">onemotion chord player</a>,<br>
-              <a href="https://chordseqai.com/" target="_blank" style="color: #8be9fd; text-decoration: underline">ChordSeqAI</a>,<br>
-              or generate them with <a href="https://chatgpt.com/" target="_blank" style="color: #8be9fd; text-decoration: underline">ChatGPT</a>.
+            <li style="margin-bottom: 0.7em">
+              <strong>Source progressions</strong> from sites like:<br />
+              <a
+                href="https://www.onemotion.com/chord-player/"
+                target="_blank"
+                style="color: #8be9fd; text-decoration: underline"
+                >onemotion chord player</a
+              >,<br />
+              <a
+                href="https://chordseqai.com/"
+                target="_blank"
+                style="color: #8be9fd; text-decoration: underline"
+                >ChordSeqAI</a
+              >,<br />
+              or generate them with
+              <a
+                href="https://chatgpt.com/"
+                target="_blank"
+                style="color: #8be9fd; text-decoration: underline"
+                >ChatGPT</a
+              >.
             </li>
-            <li style="margin-bottom: 0.7em;">
-              <strong>Click <span style="color: #ff79c6">Convert</span></strong> to see each chord’s hex code and interval code.<br>
-              <span style="color: #f1fa8c">These can be used directly in the Hypersyn instrument on the M8 Tracker.</span>
+            <li style="margin-bottom: 0.7em">
+              <strong>Click <span style="color: #ff79c6">Convert</span></strong>
+              to see each chord’s hex code and interval code.<br />
+              <span style="color: #f1fa8c"
+                >These can be used directly in the Hypersyn instrument on the M8
+                Tracker.</span
+              >
             </li>
-            <li style="margin-bottom: 0.7em;">
-              <strong>Click <span style="color: #50fa7b">Play</span></strong> to audition the progression as a synth pad,<br>
-              or <strong><span style="color: #ff5555">Stop</span></strong> to halt playback.
+            <li style="margin-bottom: 0.7em">
+              <strong>Click <span style="color: #50fa7b">Play</span></strong> to
+              audition the progression as a synth pad,<br />
+              or <strong><span style="color: #ff5555">Stop</span></strong> to
+              halt playback.
             </li>
-            <li style="margin-bottom: 0.7em;">
-              <strong>Explore the <span style="color: #8be9fd">Unique Chord Types</span> box</strong> to see interval structures grouped by type.
+            <li style="margin-bottom: 0.7em">
+              <strong
+                >Explore the
+                <span style="color: #8be9fd">Unique Chord Types</span>
+                box</strong
+              >
+              to see interval structures grouped by type.
             </li>
           </ul>
         </div>
@@ -151,10 +189,10 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea
     </div>
 
     <!-- Unique Chord Types Box -->
-    <div class="content-box">
+    <div class="content-box w-full max-w-lg">
       <button
         onclick="toggleBox('uniqueBox')"
-        class="mb-2 px-2 py-1 bg-gray-700 text-white rounded"
+        class="mb-2 px-2 py-1 bg-gray-700 text-white rounded w-full sm:w-auto"
         data-box="uniqueBox"
       >
         Unique Chord Types ▼
@@ -168,10 +206,10 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea
     </div>
 
     <!-- Output Box -->
-    <div class="content-box">
+    <div class="content-box w-full max-w-lg">
       <button
         onclick="toggleBox('outputBox')"
-        class="mb-2 px-2 py-1 bg-gray-700 text-white rounded"
+        class="mb-2 px-2 py-1 bg-gray-700 text-white rounded w-full sm:w-auto"
         data-box="outputBox"
       >
         Converted Chords ▼
