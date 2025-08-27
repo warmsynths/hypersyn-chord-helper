@@ -66,51 +66,105 @@
       <textarea
         id="chordsInput"
         placeholder="Paste your chord progression here..."
+        class="w-full p-2 border border-gray-300 rounded text-base sm:text-sm"
       >
-Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea
-      >
+Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea>
       <button
         onclick="convertChords()"
         class="mt-2 mb-2 px-4 py-2 bg-pink-600 text-white rounded w-full sm:w-auto sm:mb-0"
       >
         Convert
       </button>
-      <button
-        id="playBtn"
-        onclick="handlePlay()"
-        class="mt-2 mb-2 px-4 py-2 bg-green-600 text-white rounded transition-all border border-green-700 w-full sm:w-auto sm:ml-2 sm:mb-0"
-      >
-        Play
-      </button>
-      <button
-        id="stopBtn"
-        onclick="handleStop()"
-        class="mt-2 mb-2 px-4 py-2 text-white rounded transition-all border w-full sm:w-auto sm:ml-2 sm:mb-0"
-        style="background-color: #ff5555; border-color: #ff79c6"
-      >
-        Stop
-      </button>
-      <label class="ml-4 text-yellow-300">Volume:</label>
-      <input
-        id="volumeSlider"
-        type="range"
-        min="0"
-        max="100"
-        value="5"
-        class="align-middle w-32"
-        oninput="updateVolumeLabel()"
-      />
-      <span id="volumeLabel" class="ml-2 text-yellow-300">5%</span>
+      <div class="flex justify-center gap-4 mt-2">
+        <a href="#infoBoxAnchor" class="underline" style="color: #8be9fd;">Help</a>
+        <a href="#previewBoxAnchor" class="underline" style="color: #8be9fd;">Preview</a>
+      </div>
     </div>
-
-    <!-- Info Box -->
+    <!-- Preview Box (moved directly below input) -->
+    <div id="previewBoxAnchor" class="content-box w-full max-w-lg mt-6">
+      <button
+        onclick="toggleBox('previewBox')"
+        class="mb-2 px-2 py-1 bg-gray-700 text-white rounded w-full sm:w-auto"
+        data-box="previewBox"
+      >
+        Preview ▶
+      </button>
+      <span class="ml-2 text-gray-400 text-sm"
+        >Play, stop, and adjust volume for your progression</span
+      >
+      <div id="previewBox" style="display: none;">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+          <button
+            id="playBtn"
+            onclick="handlePlay()"
+            class="px-4 py-2 bg-green-600 text-white rounded transition-all border border-green-700 w-full sm:w-auto"
+          >
+            Play
+          </button>
+          <button
+            id="stopBtn"
+            onclick="handleStop()"
+            class="px-4 py-2 text-white rounded transition-all border w-full sm:w-auto"
+            style="background-color: #ff5555; border-color: #ff79c6"
+          >
+            Stop
+          </button>
+          <div class="flex flex-col sm:flex-row sm:items-center w-full sm:w-auto">
+            <label class="text-yellow-300 mb-1 sm:mb-0 sm:ml-4">Volume:</label>
+            <input
+              id="volumeSlider"
+              type="range"
+              min="0"
+              max="100"
+              value="5"
+              class="align-middle w-full sm:w-32"
+              oninput="updateVolumeLabel()"
+            />
+            <span id="volumeLabel" class="ml-2 text-yellow-300">5%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Unique Chord Types Box -->
     <div class="content-box w-full max-w-lg">
+      <button
+        onclick="toggleBox('uniqueBox')"
+        class="mb-2 px-2 py-1 bg-gray-700 text-white rounded w-full sm:w-auto"
+        data-box="uniqueBox"
+      >
+        Unique Chord Types ▼
+      </button>
+      <span class="ml-2 text-gray-400 text-sm"
+        >Groups by chord type and shows intervals</span
+      >
+      <div id="uniqueBox" class="hidden">
+        <div id="uniqueChordTypes" class="text-lg"></div>
+      </div>
+    </div>
+    <!-- Output Box -->
+    <div class="content-box w-full max-w-lg">
+      <button
+        onclick="toggleBox('outputBox')"
+        class="mb-2 px-2 py-1 bg-gray-700 text-white rounded w-full sm:w-auto"
+        data-box="outputBox"
+      >
+        Converted Chords ▼
+      </button>
+      <span class="ml-2 text-gray-400 text-sm"
+        >Shows all chords with hex and interval codes</span
+      >
+      <div id="outputBox" class="hidden">
+        <div id="output" class="text-lg"></div>
+      </div>
+    </div>
+    <!-- Info Box (moved to bottom) -->
+    <div id="infoBoxAnchor" class="content-box w-full max-w-lg mt-6">
       <button
         onclick="toggleBox('infoBox')"
         class="mb-2 px-2 py-1 bg-gray-700 text-white rounded w-full sm:w-auto"
         data-box="infoBox"
       >
-        Info ▼
+        Info ▶
       </button>
       <span class="ml-2 text-gray-400 text-sm">How to use this tool</span>
       <div id="infoBox" style="display: none">
@@ -185,40 +239,6 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea
           <span class="interval-label">Interval-only codes</span> are just the
           chord shape — you choose the root yourself in the phrase view.
         </p>
-      </div>
-    </div>
-
-    <!-- Unique Chord Types Box -->
-    <div class="content-box w-full max-w-lg">
-      <button
-        onclick="toggleBox('uniqueBox')"
-        class="mb-2 px-2 py-1 bg-gray-700 text-white rounded w-full sm:w-auto"
-        data-box="uniqueBox"
-      >
-        Unique Chord Types ▼
-      </button>
-      <span class="ml-2 text-gray-400 text-sm"
-        >Groups by chord type and shows intervals</span
-      >
-      <div id="uniqueBox" style="display: none">
-        <div id="uniqueChordTypes" style="font-size: 1.25rem"></div>
-      </div>
-    </div>
-
-    <!-- Output Box -->
-    <div class="content-box w-full max-w-lg">
-      <button
-        onclick="toggleBox('outputBox')"
-        class="mb-2 px-2 py-1 bg-gray-700 text-white rounded w-full sm:w-auto"
-        data-box="outputBox"
-      >
-        Converted Chords ▼
-      </button>
-      <span class="ml-2 text-gray-400 text-sm"
-        >Shows all chords with hex and interval codes</span
-      >
-      <div id="outputBox" style="display: none">
-        <div id="output" style="font-size: 1.25rem"></div>
       </div>
     </div>
 
