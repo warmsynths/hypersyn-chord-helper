@@ -75,6 +75,12 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea>
       >
         Convert
       </button>
+      <button
+        onclick="clearInput()"
+        class="mb-2 px-4 py-2 bg-gray-600 text-white rounded w-full sm:w-auto"
+      >
+        Clear
+      </button>
       <div class="flex justify-center gap-4 mt-2">
         <a href="#infoBoxAnchor" class="underline" style="color: #8be9fd;">Help</a>
         <a href="#previewBoxAnchor" class="underline" style="color: #8be9fd;">Preview</a>
@@ -455,6 +461,14 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea>
         } else {
           alert('Chord playback not available.');
         }
+      }
+
+      function clearInput() {
+        document.getElementById('chordsInput').value = '';
+        updateSingleChordDropdown([]);
+        document.getElementById('output').innerHTML = '';
+        document.getElementById('uniqueChordTypes').innerHTML = '';
+        highlightChord('');
       }
     </script>
   </body>
