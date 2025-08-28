@@ -66,7 +66,7 @@
       <textarea
         id="chordsInput"
         placeholder="Paste your chord progression here..."
-        class="w-full p-2 border border-gray-300 rounded text-base sm:text-sm"
+        class="w-full p-2 border border-gray-300 rounded text-3xl"
       >
 Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea>
       <button
@@ -93,7 +93,7 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea>
         >Play, stop, and adjust volume for your progression</span
       >
       <div id="previewBox" style="display: none;">
-        <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-4">
           <button
             id="playBtn"
             onclick="handlePlay()"
@@ -122,6 +122,18 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea>
             />
             <span id="volumeLabel" class="ml-2 text-yellow-300">5%</span>
           </div>
+        </div>
+        <!-- Single Chord Preview -->
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+          <select id="singleChordSelect" class="p-2 rounded border border-gray-300 w-full sm:w-auto dimmed" style="background:#282a36; color:#8be9fd;" disabled>
+            <option value="">Select a chord...</option>
+          </select>
+          <button
+            onclick="playSingleChord()"
+            class="px-4 py-2 bg-purple-600 text-white rounded w-full sm:w-auto"
+          >
+            Play Chord
+          </button>
         </div>
       </div>
     </div>
@@ -330,6 +342,26 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea>
         });
       }
 
+      function updateSingleChordDropdown(chordNames) {
+        const select = document.getElementById('singleChordSelect');
+        if (!select) return;
+        select.innerHTML = '<option value="">Select a chord...</option>';
+        chordNames.forEach((chord) => {
+          select.innerHTML += `<option value="${chord}">${chord}</option>`;
+        });
+        select.disabled = false;
+        select.classList.remove('dimmed');
+      }
+
+      // Patch convertChords to update dropdown
+      const originalConvertChords = window.convertChords;
+      window.convertChords = function() {
+        const input = document.getElementById("chordsInput").value;
+        const chordNames = input.split(/\s|,/).filter((s) => s.length > 0);
+        updateSingleChordDropdown(chordNames);
+        if (typeof originalConvertChords === 'function') originalConvertChords();
+      };
+
       function convertChords() {
         // Show unique and converted chord boxes
         document.getElementById("uniqueBox").style.display = "block";
@@ -413,40 +445,17 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea>
         }
       }
 
-      function toggleVideoBg() {
-        const videoBg = document.getElementById("video-bg");
-        const btn = document.getElementById("toggleVideoBtn");
-        if (videoBg.style.display === "none") {
-          videoBg.style.display = "";
-          btn.textContent = "Hide Video";
+      function playSingleChord() {
+        const select = document.getElementById('singleChordSelect');
+        const chordName = select.value;
+        if (!chordName || chordName === 'Select a chord...') return;
+        const chordObj = window.parseChordName(chordName);
+        if (chordObj && typeof window.playSingleChordGlobal === 'function') {
+          window.playSingleChordGlobal(chordObj);
         } else {
-          videoBg.style.display = "none";
-          btn.textContent = "Show Video";
+          alert('Chord playback not available.');
         }
       }
-
-      // Collapse unique and converted chord boxes on page load
-      window.onload = function () {
-        document.getElementById("uniqueBox").style.display = "none";
-        document.getElementById("outputBox").style.display = "none";
-        // Set all dropdown icons to ▶ on load
-        const dropdowns = ["infoBox", "uniqueBox", "outputBox"];
-        dropdowns.forEach((boxId) => {
-          const btns = document.querySelectorAll(
-            `button[onclick*="toggleBox('${boxId}'"]`
-          );
-          btns.forEach((btn) => {
-            btn.innerHTML = btn.innerHTML.replace("▼", "▶");
-          });
-        });
-        // Dim dropdown buttons on load
-        document
-          .querySelector('button[data-box="uniqueBox"]')
-          .classList.add("dimmed");
-        document
-          .querySelector('button[data-box="outputBox"]')
-          .classList.add("dimmed");
-      };
     </script>
   </body>
   <!-- Video credit as page content -->
@@ -494,4 +503,10 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea>
       Hide Video
     </button>
   </div>
+  <style>
+    .dimmed {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  </style>
 </html>

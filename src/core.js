@@ -277,3 +277,67 @@ window.convertChords = function () {
 
   document.getElementById("output").textContent = result;
 };
+/**
+ * Plays a single chord object (from parseChordName) as a block chord.
+ */
+window.playSingleChordGlobal = function(chord) {
+  if (!chord || !Array.isArray(chord.intervalOnly)) return;
+  // MIDI note numbers for C4 = 60
+  const ROOTS = {
+    'C': 60, 'C#': 61, 'Db': 61, 'D': 62, 'D#': 63, 'Eb': 63, 'E': 64, 'F': 65,
+    'F#': 66, 'Gb': 66, 'G': 67, 'G#': 68, 'Ab': 68, 'A': 69, 'A#': 70, 'Bb': 70, 'B': 71
+  };
+  const ctx = window._hypersynAudioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  window._hypersynAudioCtx = ctx;
+  // --- Simple Reverb Setup ---
+  if (!window._hypersynReverb) {
+    const length = ctx.sampleRate * 2.5;
+    const impulse = ctx.createBuffer(2, length, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) {
+      const channel = impulse.getChannelData(c);
+      for (let i = 0; i < length; i++) {
+        channel[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2.5);
+      }
+    }
+    const convolver = ctx.createConvolver();
+    convolver.buffer = impulse;
+    window._hypersynReverb = convolver;
+  }
+  const reverb = window._hypersynReverb;
+  window.stopChordProgression();
+  const volume = parseInt(document.getElementById('volumeSlider').value, 10) / 100;
+  window._activeOscillators = [];
+  window._activeGains = [];
+  let rootMidi = ROOTS[chord.root] || 60;
+  if (!isFinite(rootMidi)) rootMidi = 60;
+  let intervals = chord.intervalOnly.filter(x => typeof x === 'number' && isFinite(x));
+  intervals.forEach((semi) => {
+    let midi = rootMidi + semi;
+    if (!isFinite(midi)) return;
+    let freq = 440 * Math.pow(2, (midi - 69) / 12);
+    if (!isFinite(freq)) return;
+    let osc = ctx.createOscillator();
+    let gain = ctx.createGain();
+    let filter = ctx.createBiquadFilter();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    osc.detune.value = Math.random() * 10 - 5;
+    filter.type = 'lowpass';
+    filter.frequency.value = 220;
+    filter.Q.value = 1.4;
+    // Envelope
+    const time = ctx.currentTime;
+    const attack = 1.0;
+    const chordDuration = 2.5;
+    const release = 1.2;
+    gain.gain.setValueAtTime(0.0, time);
+    gain.gain.linearRampToValueAtTime(volume, time + attack);
+    gain.gain.setValueAtTime(volume, time + chordDuration - release);
+    gain.gain.linearRampToValueAtTime(0.0, time + chordDuration);
+    osc.connect(filter).connect(gain).connect(reverb).connect(ctx.destination);
+    osc.start(time);
+    osc.stop(time + chordDuration);
+    window._activeOscillators.push(osc);
+    window._activeGains.push(gain);
+  });
+};
