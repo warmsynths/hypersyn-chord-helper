@@ -1,35 +1,65 @@
 /**
- * Stops all currently playing oscillators and disconnects gains.
+ * Stops all currently playing oscillators and disconnects gain nodes.
+ * @function
  */
-window.stopChordProgression = function() {
+window.stopChordProgression = function () {
   if (window._activeOscillators && window._activeOscillators.length) {
-    window._activeOscillators.forEach(osc => { try { osc.stop(); } catch(e) {} });
+    window._activeOscillators.forEach((osc) => {
+      try {
+        osc.stop();
+      } catch (e) {}
+    });
     window._activeOscillators = [];
   }
   if (window._activeGains && window._activeGains.length) {
-    window._activeGains.forEach(gain => { try { gain.disconnect(); } catch(e) {} });
+    window._activeGains.forEach((gain) => {
+      try {
+        gain.disconnect();
+      } catch (e) {}
+    });
     window._activeGains = [];
   }
 };
 
 /**
  * Plays the input chord progression as block chords using the Web Audio API.
- * Each chord is played for 2.5 seconds, all notes together (like a soft synth pad).
+ * Each chord is played for 2.5 seconds as a synth pad.
+ * @function
  */
-window.playChordProgression = function() {
+window.playChordProgression = function () {
   const input = document.getElementById("chordsInput").value;
-  const chordNames = input.split(/\s|,/).filter(s => s.length > 0);
-  const parsed = chordNames.map(window.parseChordName).filter(c => c !== null);
+  const chordNames = input.split(/\s|,/).filter((s) => s.length > 0);
+  const parsed = chordNames
+    .map(window.parseChordName)
+    .filter((c) => c !== null);
   if (parsed.length === 0) return;
 
   // MIDI note numbers for C4 = 60
-  const ROOTS = {
-    'C': 60, 'C#': 61, 'Db': 61, 'D': 62, 'D#': 63, 'Eb': 63, 'E': 64, 'F': 65,
-    'F#': 66, 'Gb': 66, 'G': 67, 'G#': 68, 'Ab': 68, 'A': 69, 'A#': 70, 'Bb': 70, 'B': 71
-  };
+    // MIDI note numbers for C3 = 48 (one octave lower)
+    const ROOTS = {
+      C: 48,
+      "C#": 49,
+      Db: 49,
+      D: 50,
+      "D#": 51,
+      Eb: 51,
+      E: 52,
+      F: 53,
+      "F#": 54,
+      Gb: 54,
+      G: 55,
+      "G#": 56,
+      Ab: 56,
+      A: 57,
+      "A#": 58,
+      Bb: 58,
+      B: 59,
+    };
 
   // Web Audio setup
-  const ctx = window._hypersynAudioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  const ctx =
+    window._hypersynAudioCtx ||
+    new (window.AudioContext || window.webkitAudioContext)();
   window._hypersynAudioCtx = ctx;
 
   // --- Simple Reverb Setup ---
@@ -53,7 +83,8 @@ window.playChordProgression = function() {
   const chordDuration = 2.5; // slower pad, longer chords
 
   window.stopChordProgression(); // Stop any previous notes
-  const volume = parseInt(document.getElementById('volumeSlider').value, 10) / 100;
+  const volume =
+    parseInt(document.getElementById("volumeSlider").value, 10) / 100;
   window._activeOscillators = [];
   window._activeGains = [];
   parsed.forEach((chord) => {
@@ -62,10 +93,10 @@ window.playChordProgression = function() {
     if (!isFinite(rootMidi)) rootMidi = 60;
     // Get intervals (semitones from root)
     let intervals = Array.isArray(chord.intervalOnly)
-      ? chord.intervalOnly.filter(x => typeof x === 'number' && isFinite(x))
+      ? chord.intervalOnly.filter((x) => typeof x === "number" && isFinite(x))
       : [];
     if (intervals.length === 0) {
-      console.warn('No intervals for chord:', chord.chordName, chord);
+      console.warn("No intervals for chord:", chord.chordName, chord);
     }
     // Play all notes as block chord, skip non-numeric intervals
     intervals.forEach((semi) => {
@@ -76,10 +107,10 @@ window.playChordProgression = function() {
       let osc = ctx.createOscillator();
       let gain = ctx.createGain();
       let filter = ctx.createBiquadFilter();
-      osc.type = 'triangle'; // synth pad
+      osc.type = "triangle"; // synth pad
       osc.frequency.value = freq;
       osc.detune.value = Math.random() * 10 - 5; // slight detune for warmth
-      filter.type = 'lowpass';
+      filter.type = "lowpass";
       filter.frequency.value = 220; // much darker pad
       filter.Q.value = 1.4; // more resonance for warmth
       // Envelope: slower attack/release
@@ -90,7 +121,11 @@ window.playChordProgression = function() {
       gain.gain.setValueAtTime(volume, time + chordDuration - release);
       gain.gain.linearRampToValueAtTime(0.0, time + chordDuration);
       // Connect: osc → filter → gain → reverb → destination
-      osc.connect(filter).connect(gain).connect(reverb).connect(ctx.destination);
+      osc
+        .connect(filter)
+        .connect(gain)
+        .connect(reverb)
+        .connect(ctx.destination);
       osc.start(time);
       osc.stop(time + chordDuration);
       window._activeOscillators.push(osc);
@@ -107,45 +142,45 @@ window.playChordProgression = function() {
  * @type {Object.<string, number[]>}
  */
 const chordTypes = {
-  "maj": [0, 4, 7],
-  "min": [0, 3, 7],
-  "m": [0, 3, 7],
-  "dim": [0, 3, 6],
-  "aug": [0, 4, 8],
+  maj: [0, 4, 7],
+  min: [0, 3, 7],
+  m: [0, 3, 7],
+  dim: [0, 3, 6],
+  aug: [0, 4, 8],
   "+": [0, 4, 8],
-  "7": [0, 4, 7, 10],
-  "m7": [0, 3, 7, 10],
-  "min7": [0, 3, 7, 10],
-  "maj7": [0, 4, 7, 11],
-  "M7": [0, 4, 7, 11],
-  "sus2": [0, 2, 7],
-  "sus4": [0, 5, 7],
-  "6": [0, 4, 7, 9],
-  "m6": [0, 3, 7, 9],
-  "9": [0, 4, 7, 10, 14],
-  "m9": [0, 3, 7, 10, 14],
-  "maj9": [0, 4, 7, 11, 14],
-  "11": [0, 4, 7, 10, 14, 17],
-  "13": [0, 4, 7, 10, 14, 21],
-  "add9": [0, 4, 7, 14],
-  "add11": [0, 4, 7, 10, 14],
-  "add13": [0, 4, 7, 10, 14, 21],
-  "sus": [0, 5, 7],
-  "5": [0, 7],
-  "madd9": [0, 3, 7, 14],
-  "maj6": [0, 4, 7, 9],
-  "min9": [0, 3, 7, 10, 14],
-  "min11": [0, 3, 7, 10, 14, 17],
-  "min13": [0, 3, 7, 10, 14, 21],
+  7: [0, 4, 7, 10],
+  m7: [0, 3, 7, 10],
+  min7: [0, 3, 7, 10],
+  maj7: [0, 4, 7, 11],
+  M7: [0, 4, 7, 11],
+  sus2: [0, 2, 7],
+  sus4: [0, 5, 7],
+  6: [0, 4, 7, 9],
+  m6: [0, 3, 7, 9],
+  9: [0, 4, 7, 10, 14],
+  m9: [0, 3, 7, 10, 14],
+  maj9: [0, 4, 7, 11, 14],
+  11: [0, 4, 7, 10, 14, 17],
+  13: [0, 4, 7, 10, 14, 21],
+  add9: [0, 4, 7, 14],
+  add11: [0, 4, 7, 10, 14],
+  add13: [0, 4, 7, 10, 14, 21],
+  sus: [0, 5, 7],
+  5: [0, 7],
+  madd9: [0, 3, 7, 14],
+  maj6: [0, 4, 7, 9],
+  min9: [0, 3, 7, 10, 14],
+  min11: [0, 3, 7, 10, 14, 17],
+  min13: [0, 3, 7, 10, 14, 21],
   "7alt": [0, 4, 7, 10, 13, 15, 18, 20], // altered dominant: 1, 3, 5, b7, b9, #9, b5, #5
-  "ø7": [0, 3, 6, 10], // half-diminished seventh
-  "m7b5": [0, 3, 6, 10], // alias for half-diminished seventh
-  "dim7": [0, 3, 6, 9], // fully diminished seventh
+  ø7: [0, 3, 6, 10], // half-diminished seventh
+  m7b5: [0, 3, 6, 10], // alias for half-diminished seventh
+  dim7: [0, 3, 6, 9], // fully diminished seventh
   "maj7#5": [0, 4, 8, 11], // major seventh sharp five
-  "mMaj7": [0, 3, 7, 11], // minor major seventh
-  "add2": [0, 2, 4, 7],
-  "add4": [0, 4, 5, 7],
-  "add6": [0, 4, 7, 9],
+  mMaj7: [0, 3, 7, 11], // minor major seventh
+  add2: [0, 2, 4, 7],
+  add4: [0, 4, 5, 7],
+  add6: [0, 4, 7, 9],
   "7b9": [0, 4, 7, 10, 13],
   "7#9": [0, 4, 7, 10, 15],
   "7b5": [0, 4, 6, 10],
@@ -190,7 +225,7 @@ function semitoneToHex(semitone) {
 /**
  * Parses a chord name and returns its components and hex representations.
  * @param {string} chordName - The chord name (e.g., "Cmaj7", "Dm", "G7").
- * @returns {object|null} Object with chordName, root, type, rootBaked, intervalOnly; or null if invalid.
+ * @returns {object|null} Object with chordName, root, type, rootBaked, intervalOnlyHex, intervalOnly; or null if invalid.
  */
 function parseChordName(chordName) {
   const rootMatch = chordName.match(/^[A-G][b#]?/);
@@ -202,7 +237,7 @@ function parseChordName(chordName) {
     type = "ø7";
   } else {
     // Translate ø to dim for compatibility (for triads)
-    type = type.replace("ø", "dim");
+    type = type.replace("ø", "m7b5");
   }
   const intervals = chordTypes[type];
   if (!intervals) return null;
@@ -229,7 +264,7 @@ function parseChordName(chordName) {
 /**
  * Removes duplicate chords by their interval shape.
  * @param {Array<object>} chords - Array of parsed chord objects.
- * @returns {Array<object>} Array of unique chord objects.
+ * @returns {Array<object>} Array of unique chord group objects.
  */
 function getUniqueChordTypes(chords) {
   // Map: intervalKey -> { typeKey, chords: [], intervalOnlyHex: [] }
@@ -237,7 +272,9 @@ function getUniqueChordTypes(chords) {
   const typeMap = {};
   chords.forEach((chord, idx) => {
     const key = chord.intervalOnly.join("-");
-    console.log(`[getUniqueChordTypes] Chord ${idx}: ${chord.chordName}, intervalKey: ${key}`);
+    console.log(
+      `[getUniqueChordTypes] Chord ${idx}: ${chord.chordName}, intervalKey: ${key}`
+    );
     if (!typeMap[key]) {
       typeOrder.push(key);
       typeMap[key] = {
@@ -248,16 +285,20 @@ function getUniqueChordTypes(chords) {
       console.log(`[getUniqueChordTypes] New group for intervalKey: ${key}`);
     }
     typeMap[key].chords.push(chord.chordName);
-    console.log(`[getUniqueChordTypes] Added chord '${chord.chordName}' to group '${key}'. Current chords:`, typeMap[key].chords);
+    console.log(
+      `[getUniqueChordTypes] Added chord '${chord.chordName}' to group '${key}'. Current chords:`,
+      typeMap[key].chords
+    );
   });
   const result = typeOrder.map((key) => typeMap[key]);
-  console.log('[getUniqueChordTypes] Final groups:', result);
+  console.log("[getUniqueChordTypes] Final groups:", result);
   return result;
 }
 
 /**
- * Main function to convert input chord names to hex and display results.
+ * Converts input chord names to hex and displays results in the output element.
  * Reads from #chordsInput, parses, deduplicates, and outputs hex.
+ * @function
  */
 window.convertChords = function () {
   const input = document.getElementById("chordsInput").value;
@@ -265,7 +306,7 @@ window.convertChords = function () {
   const parsed = chordNames.map(parseChordName).filter((c) => c !== null);
 
   // Show input progression
-  let result = parsed.map(c => c.chordName).join(" ") + "\n\n";
+  let result = parsed.map((c) => c.chordName).join(" ") + "\n\n";
 
   // Group by interval shape
   const uniqueGroups = getUniqueChordTypes(parsed);
@@ -278,16 +319,36 @@ window.convertChords = function () {
   document.getElementById("output").textContent = result;
 };
 /**
- * Plays a single chord object (from parseChordName) as a block chord.
+ * Plays a single chord object (from parseChordName) as a block chord using the Web Audio API.
+ * @param {object} chord - Parsed chord object from parseChordName.
+ * @function
  */
-window.playSingleChordGlobal = function(chord) {
+window.playSingleChordGlobal = function (chord) {
   if (!chord || !Array.isArray(chord.intervalOnly)) return;
   // MIDI note numbers for C4 = 60
-  const ROOTS = {
-    'C': 60, 'C#': 61, 'Db': 61, 'D': 62, 'D#': 63, 'Eb': 63, 'E': 64, 'F': 65,
-    'F#': 66, 'Gb': 66, 'G': 67, 'G#': 68, 'Ab': 68, 'A': 69, 'A#': 70, 'Bb': 70, 'B': 71
-  };
-  const ctx = window._hypersynAudioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    // MIDI note numbers for C3 = 48 (one octave lower)
+    const ROOTS = {
+      C: 48,
+      "C#": 49,
+      Db: 49,
+      D: 50,
+      "D#": 51,
+      Eb: 51,
+      E: 52,
+      F: 53,
+      "F#": 54,
+      Gb: 54,
+      G: 55,
+      "G#": 56,
+      Ab: 56,
+      A: 57,
+      "A#": 58,
+      Bb: 58,
+      B: 59,
+    };
+  const ctx =
+    window._hypersynAudioCtx ||
+    new (window.AudioContext || window.webkitAudioContext)();
   window._hypersynAudioCtx = ctx;
   // --- Simple Reverb Setup ---
   if (!window._hypersynReverb) {
@@ -305,12 +366,15 @@ window.playSingleChordGlobal = function(chord) {
   }
   const reverb = window._hypersynReverb;
   window.stopChordProgression();
-  const volume = parseInt(document.getElementById('volumeSlider').value, 10) / 100;
+  const volume =
+    parseInt(document.getElementById("volumeSlider").value, 10) / 100;
   window._activeOscillators = [];
   window._activeGains = [];
   let rootMidi = ROOTS[chord.root] || 60;
   if (!isFinite(rootMidi)) rootMidi = 60;
-  let intervals = chord.intervalOnly.filter(x => typeof x === 'number' && isFinite(x));
+  let intervals = chord.intervalOnly.filter(
+    (x) => typeof x === "number" && isFinite(x)
+  );
   intervals.forEach((semi) => {
     let midi = rootMidi + semi;
     if (!isFinite(midi)) return;
@@ -319,10 +383,10 @@ window.playSingleChordGlobal = function(chord) {
     let osc = ctx.createOscillator();
     let gain = ctx.createGain();
     let filter = ctx.createBiquadFilter();
-    osc.type = 'triangle';
+    osc.type = "triangle";
     osc.frequency.value = freq;
     osc.detune.value = Math.random() * 10 - 5;
-    filter.type = 'lowpass';
+    filter.type = "lowpass";
     filter.frequency.value = 220;
     filter.Q.value = 1.4;
     // Envelope
