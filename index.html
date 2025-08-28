@@ -12,6 +12,10 @@
       href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap"
       rel="stylesheet"
     />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎶</text></svg>"
+    />
     <link rel="stylesheet" href="src/styles.css" />
   </head>
   <body class="flex flex-col items-center p-8 space-y-6 sm:p-4 sm:space-y-4">
@@ -68,7 +72,8 @@
         placeholder="Paste your chord progression here..."
         class="w-full p-2 border border-gray-300 rounded text-3xl"
       >
-Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea>
+Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea
+      >
       <button
         onclick="convertChords()"
         class="mt-2 mb-2 px-4 py-2 bg-pink-600 text-white rounded w-full sm:w-auto sm:mb-0"
@@ -82,8 +87,12 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea>
         Clear
       </button>
       <div class="flex justify-center gap-4 mt-2">
-        <a href="#infoBoxAnchor" class="underline" style="color: #8be9fd;">Help</a>
-        <a href="#previewBoxAnchor" class="underline" style="color: #8be9fd;">Preview</a>
+        <a href="#infoBoxAnchor" class="underline" style="color: #8be9fd"
+          >Help</a
+        >
+        <a href="#previewBoxAnchor" class="underline" style="color: #8be9fd"
+          >Preview</a
+        >
       </div>
     </div>
     <!-- Preview Box (moved directly below input) -->
@@ -98,7 +107,7 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea>
       <span class="ml-2 text-gray-400 text-sm"
         >Play, stop, and adjust volume for your progression</span
       >
-      <div id="previewBox" style="display: none;">
+      <div id="previewBox" style="display: none">
         <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-4">
           <button
             id="playBtn"
@@ -115,7 +124,9 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea>
           >
             Stop
           </button>
-          <div class="flex flex-col sm:flex-row sm:items-center w-full sm:w-auto">
+          <div
+            class="flex flex-col sm:flex-row sm:items-center w-full sm:w-auto"
+          >
             <label class="text-yellow-300 mb-1 sm:mb-0 sm:ml-4">Volume:</label>
             <input
               id="volumeSlider"
@@ -131,7 +142,12 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea>
         </div>
         <!-- Single Chord Preview -->
         <div class="flex flex-col sm:flex-row sm:items-center gap-2">
-          <select id="singleChordSelect" class="p-2 rounded border border-gray-300 w-full sm:w-auto dimmed" style="background:#282a36; color:#8be9fd;" disabled>
+          <select
+            id="singleChordSelect"
+            class="p-2 rounded border border-gray-300 w-full sm:w-auto dimmed"
+            style="background: #282a36; color: #8be9fd"
+            disabled
+          >
             <option value="">Select a chord...</option>
           </select>
           <button
@@ -349,23 +365,24 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea>
       }
 
       function updateSingleChordDropdown(chordNames) {
-        const select = document.getElementById('singleChordSelect');
+        const select = document.getElementById("singleChordSelect");
         if (!select) return;
         select.innerHTML = '<option value="">Select a chord...</option>';
         chordNames.forEach((chord) => {
           select.innerHTML += `<option value="${chord}">${chord}</option>`;
         });
         select.disabled = false;
-        select.classList.remove('dimmed');
+        select.classList.remove("dimmed");
       }
 
       // Patch convertChords to update dropdown
       const originalConvertChords = window.convertChords;
-      window.convertChords = function() {
+      window.convertChords = function () {
         const input = document.getElementById("chordsInput").value;
         const chordNames = input.split(/\s|,/).filter((s) => s.length > 0);
         updateSingleChordDropdown(chordNames);
-        if (typeof originalConvertChords === 'function') originalConvertChords();
+        if (typeof originalConvertChords === "function")
+          originalConvertChords();
       };
 
       function convertChords() {
@@ -452,23 +469,22 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bø7 E7alt Am9</textarea>
       }
 
       function playSingleChord() {
-        const select = document.getElementById('singleChordSelect');
+        const select = document.getElementById("singleChordSelect");
         const chordName = select.value;
-        if (!chordName || chordName === 'Select a chord...') return;
+        if (!chordName || chordName === "Select a chord...") return;
         const chordObj = window.parseChordName(chordName);
-        if (chordObj && typeof window.playSingleChordGlobal === 'function') {
+        if (chordObj && typeof window.playSingleChordGlobal === "function") {
           window.playSingleChordGlobal(chordObj);
         } else {
-          alert('Chord playback not available.');
+          alert("Chord playback not available.");
         }
       }
 
       function clearInput() {
-        document.getElementById('chordsInput').value = '';
+        document.getElementById("chordsInput").value = "";
         updateSingleChordDropdown([]);
-        document.getElementById('output').innerHTML = '';
-        document.getElementById('uniqueChordTypes').innerHTML = '';
-        highlightChord('');
+        document.getElementById("output").innerHTML = "";
+        document.getElementById("uniqueChordTypes").innerHTML = "";
       }
     </script>
   </body>
