@@ -210,7 +210,57 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bm7b5 E7 Am9</textarea
         <div id="output" class="text-lg"></div>
       </div>
     </div>
+
+    <!-- Save/Load Chord Sets Box -->
+    <div class="content-box w-full max-w-lg">
+      <button
+        onclick="toggleBox('saveLoadBox')"
+        class="mb-2 px-2 py-1 bg-gray-700 text-white rounded w-full sm:w-auto"
+        data-box="saveLoadBox"
+      >
+        Save/Load Chord Sets ▶
+      </button>
+      <span class="ml-2 text-gray-400 text-sm">Save and recall named chord sets</span>
+      <div id="saveLoadBox" style="display: none">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+          <input
+            id="chordSetNameInput"
+            type="text"
+            placeholder="Set name..."
+            class="mb-2 p-2 rounded border border-gray-300 w-full sm:w-auto"
+            style="background: #282a36; color: #f1fa8c"
+          />
+          <button
+            onclick="saveChordSet()"
+            class="mb-2 px-4 py-2 bg-pink-600 text-white rounded w-full sm:w-auto"
+          >
+            Save
+          </button>
+          <select
+            id="savedChordSetsSelect"
+            class="mb-2 p-2 rounded border border-gray-300 w-full sm:w-auto"
+            style="background: #282a36; color: #8be9fd"
+          >
+            <option value="">Load saved set...</option>
+          </select>
+          <button
+            onclick="loadChordSet()"
+            class="mb-2 px-4 py-2 bg-gray-600 text-white rounded w-full sm:w-auto"
+          >
+            Load
+          </button>
+          <button
+            onclick="deleteChordSet()"
+            class="mb-2 px-4 py-2 bg-gray-600 text-white rounded w-full sm:w-auto"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
     <!-- Info Box (moved to bottom) -->
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-50 flex flex-col items-center space-y-2"></div>
     <div id="infoBoxAnchor" class="content-box w-full max-w-lg mt-6">
       <button
         onclick="toggleBox('infoBox')"
@@ -298,6 +348,114 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bm7b5 E7 Am9</textarea
 
     <script type="text/javascript" src="src/core.js"></script>
     <script>
+      // Toast notification system
+      function showToast(message, type = "info") {
+        const container = document.getElementById("toastContainer");
+        if (!container) return;
+        // Remove old toasts
+        while (container.children.length > 2) container.removeChild(container.firstChild);
+        const colors = {
+          success: "bg-pink-600 text-white border-pink-400",
+          info: "bg-blue-600 text-white border-blue-400",
+          error: "bg-gray-700 text-red-200 border-red-400"
+        };
+        const toast = document.createElement("div");
+        toast.className = `px-4 py-2 rounded shadow-lg border ${colors[type] || colors.info} text-lg mb-2 animate-fadeIn`;
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => {
+          toast.classList.add("animate-fadeOut");
+          setTimeout(() => container.removeChild(toast), 600);
+        }, 2200);
+      }
+      // Toast fade animations
+      const style = document.createElement('style');
+      style.innerHTML = `
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+        .animate-fadeIn { animation: fadeIn 0.3s ease; }
+        .animate-fadeOut { animation: fadeOut 0.6s ease forwards; }
+      `;
+      document.head.appendChild(style);
+      // Delete selected chord set
+      function deleteChordSet() {
+        const select = document.getElementById("savedChordSetsSelect");
+        const idx = select.value;
+        if (!idx || isNaN(idx)) {
+          showToast("Please select a saved chord set to delete.", "error");
+          return;
+        }
+        let sets = getSavedChordSets();
+        const set = sets[parseInt(idx, 10)];
+        if (set) {
+          sets.splice(parseInt(idx, 10), 1);
+          setSavedChordSets(sets);
+          updateSavedChordSetsDropdown();
+          showToast("Chord set deleted.", "success");
+        } else {
+          showToast("Chord set not found.", "error");
+        }
+      }
+      // Save multiple named chord sets to localStorage
+      function getSavedChordSets() {
+        const sets = localStorage.getItem("hypersynChordSets");
+        try {
+          return sets ? JSON.parse(sets) : [];
+        } catch {
+          return [];
+        }
+      }
+      function setSavedChordSets(sets) {
+        localStorage.setItem("hypersynChordSets", JSON.stringify(sets));
+      }
+      function updateSavedChordSetsDropdown() {
+        const select = document.getElementById("savedChordSetsSelect");
+        if (!select) return;
+        const sets = getSavedChordSets();
+        select.innerHTML = '<option value="">Load saved set...</option>';
+        sets.forEach((set, idx) => {
+          select.innerHTML += `<option value="${idx}">${set.name}</option>`;
+        });
+      }
+      function saveChordSet() {
+        const input = document.getElementById("chordsInput").value;
+        const nameInput = document.getElementById("chordSetNameInput");
+        const name = nameInput.value.trim();
+        if (!name) {
+          showToast("Please enter a name for the chord set.", "error");
+          return;
+        }
+        let sets = getSavedChordSets();
+        // Overwrite if name exists
+        const idx = sets.findIndex((s) => s.name === name);
+        if (idx >= 0) {
+          sets[idx].chords = input;
+        } else {
+          sets.push({ name, chords: input });
+        }
+        setSavedChordSets(sets);
+        updateSavedChordSetsDropdown();
+        showToast("Chord set saved as '" + name + "'.", "success");
+      }
+      function loadChordSet() {
+        const select = document.getElementById("savedChordSetsSelect");
+        const idx = select.value;
+        if (!idx || isNaN(idx)) {
+          showToast("Please select a saved chord set to load.", "error");
+          return;
+        }
+        const sets = getSavedChordSets();
+        const set = sets[parseInt(idx, 10)];
+        if (set) {
+          document.getElementById("chordsInput").value = set.chords;
+          updateSingleChordDropdownFromInput();
+          showToast("Chord set '" + set.name + "' loaded!", "success");
+        } else {
+          showToast("Chord set not found.", "error");
+        }
+      }
+      // Update dropdown on page load
+      window.addEventListener("DOMContentLoaded", updateSavedChordSetsDropdown);
       // Track play state
       let isPlaying = false;
 
@@ -451,11 +609,12 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bm7b5 E7 Am9</textarea
           });
         } else {
           outputHTML = "No valid chords found.<br><br>";
+          showToast("No valid chords found.", "error");
         }
         document.getElementById("output").innerHTML = outputHTML;
         // Unique chord types box
         let uniqueHTML =
-          '<span class="interval-label">Unique Chord Types:</span><ul style="margin-top:0.5rem;">';
+          '<span class=\"interval-label\">Unique Chord Types:</span><ul style=\"margin-top:0.5rem;\">';
         result.uniqueGroups.forEach((group, idx) => {
           const chordSpans = group.chords
             .map((chord, i) => {
@@ -468,11 +627,11 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bm7b5 E7 Am9</textarea
             })
             .join(" ");
           uniqueHTML += `<li>
-            <span class="chord-name">Chord ${idx
+            <span class=\"chord-name\">Chord ${idx
               .toString()
               .padStart(2, "0")}</span><br>
-            <span class="root-baked-label">Chords:</span> <span class="root-baked-value">${chordSpans}</span><br>
-            <span class="interval-label">Interval:</span> <span class="interval-value">${intervalSpans}</span>
+            <span class=\"root-baked-label\">Chords:</span> <span class=\"root-baked-value\">${chordSpans}</span><br>
+            <span class=\"interval-label\">Interval:</span> <span class=\"interval-value\">${intervalSpans}</span>
           </li>`;
         });
         uniqueHTML += "</ul>";
@@ -499,7 +658,7 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bm7b5 E7 Am9</textarea
         if (chordObj && typeof window.playSingleChordGlobal === "function") {
           window.playSingleChordGlobal(chordObj);
         } else {
-          alert("Chord playback not available.");
+          showToast("Chord playback not available.", "error");
         }
       }
 
