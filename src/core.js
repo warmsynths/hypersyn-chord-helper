@@ -20,6 +20,13 @@ function applyVoicing(intervals, voicing) {
         sorted[idx] -= 12;
       }
       return sorted.slice().sort((a, b) => a - b);
+    case 'open-triad':
+      // For triads, move the middle note up an octave
+      if (sorted.length === 3) {
+        const open = [sorted[0], sorted[2], sorted[1] + 12];
+        return open.sort((a, b) => a - b);
+      }
+      return sorted;
     case 'drop3':
       if (sorted.length >= 3) {
         // Drop 3rd highest
