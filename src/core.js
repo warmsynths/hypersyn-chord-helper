@@ -1,4 +1,42 @@
 /**
+ * Transforms chord intervals according to the selected voicing.
+ * @param {number[]} intervals - Array of intervals (semitones from root).
+ * @param {string} voicing - Voicing type: 'closed', 'drop2', 'drop3', 'spread', 'octave'.
+ * @returns {number[]} Transformed intervals.
+ */
+function applyVoicing(intervals, voicing) {
+  if (!Array.isArray(intervals)) return intervals;
+  const sorted = [...intervals].sort((a, b) => a - b);
+  switch (voicing) {
+    case 'drop2':
+      if (sorted.length >= 2) {
+        // Drop 2nd highest
+        const idx = sorted.length - 2;
+        sorted[idx] -= 12;
+      }
+      return sorted.slice().sort((a, b) => a - b);
+    case 'drop3':
+      if (sorted.length >= 3) {
+        // Drop 3rd highest
+        const idx = sorted.length - 3;
+        sorted[idx] -= 12;
+      }
+      return sorted.slice().sort((a, b) => a - b);
+    case 'spread':
+      // Lift every other (2nd, 4th, ...)
+      return sorted.map((v, i) => (i % 2 === 1 ? v + 12 : v));
+    case 'octave':
+      // Double root and/or 5th for thickness
+      const doubled = [...sorted];
+      if (doubled.length > 0) doubled.push(doubled[0] + 12); // root
+      if (doubled.length > 2) doubled.push(doubled[2] + 12); // 5th
+      return doubled;
+    case 'closed':
+    default:
+      return intervals;
+  }
+}
+/**
  * Stops all currently playing oscillators and disconnects gain nodes.
  * @function
  */
@@ -87,18 +125,18 @@ window.playChordProgression = function () {
     parseInt(document.getElementById("volumeSlider").value, 10) / 100;
   window._activeOscillators = [];
   window._activeGains = [];
+  // Get voicing from UI (default to 'closed')
+  const voicing = window.getSelectedVoicing ? window.getSelectedVoicing() : 'closed';
   parsed.forEach((chord) => {
-    // Get root MIDI number
     let rootMidi = ROOTS[chord.root] || 60;
     if (!isFinite(rootMidi)) rootMidi = 60;
-    // Get intervals (semitones from root)
     let intervals = Array.isArray(chord.intervalOnly)
       ? chord.intervalOnly.filter((x) => typeof x === "number" && isFinite(x))
       : [];
+    intervals = applyVoicing(intervals, voicing);
     if (intervals.length === 0) {
       console.warn("No intervals for chord:", chord.chordName, chord);
     }
-    // Play all notes as block chord, skip non-numeric intervals
     intervals.forEach((semi) => {
       let midi = rootMidi + semi;
       if (!isFinite(midi)) return;
@@ -107,31 +145,23 @@ window.playChordProgression = function () {
       let osc = ctx.createOscillator();
       let gain = ctx.createGain();
       let filter = ctx.createBiquadFilter();
-      osc.type = "triangle"; // synth pad
+      osc.type = "triangle";
       osc.frequency.value = freq;
-      osc.detune.value = Math.random() * 10 - 5; // slight detune for warmth
+      osc.detune.value = Math.random() * 10 - 5;
       filter.type = "lowpass";
-      filter.frequency.value = 220; // much darker pad
-      filter.Q.value = 1.4; // more resonance for warmth
-      // Envelope: slower attack/release
+      filter.frequency.value = 220;
+      filter.Q.value = 1.4;
       const attack = 1.0;
       const release = 1.2;
       gain.gain.setValueAtTime(0.0, time);
       gain.gain.linearRampToValueAtTime(volume, time + attack);
       gain.gain.setValueAtTime(volume, time + chordDuration - release);
       gain.gain.linearRampToValueAtTime(0.0, time + chordDuration);
-      // Connect: osc → filter → gain → reverb → destination
-      osc
-        .connect(filter)
-        .connect(gain)
-        .connect(reverb)
-        .connect(ctx.destination);
+      osc.connect(filter).connect(gain).connect(reverb).connect(ctx.destination);
       osc.start(time);
       osc.stop(time + chordDuration);
       window._activeOscillators.push(osc);
       window._activeGains.push(gain);
-      // For debugging:
-      // console.log(`Playing: ${chord.chordName} root=${rootMidi} semi=${semi} midi=${midi} freq=${freq} vol=${volume}`);
     });
     time += chordDuration;
   });
@@ -218,7 +248,7 @@ const notes = {
  * @returns {string} The hexadecimal representation (e.g., "00", "0C").
  */
 function semitoneToHex(semitone) {
-  let hex = (semitone % 12).toString(16).toUpperCase();
+  let hex = semitone.toString(16).toUpperCase();
   return hex.length === 1 ? "0" + hex : hex;
 }
 
@@ -272,9 +302,8 @@ function getUniqueChordTypes(chords) {
   const typeMap = {};
   chords.forEach((chord, idx) => {
     const key = chord.intervalOnly.join("-");
-    console.log(
-      `[getUniqueChordTypes] Chord ${idx}: ${chord.chordName}, intervalKey: ${key}`
-    );
+    // Debug: show intervals and hex after voicing
+    console.log(`[Chord Debug] ${chord.chordName} (${chord.type}) intervals: [${chord.intervalOnly.join(", ")}] hex: [${chord.intervalOnlyHex.join(" ")}]`);
     if (!typeMap[key]) {
       typeOrder.push(key);
       typeMap[key] = {
@@ -282,16 +311,10 @@ function getUniqueChordTypes(chords) {
         chords: [],
         intervalOnlyHex: chord.intervalOnlyHex.slice(),
       };
-      console.log(`[getUniqueChordTypes] New group for intervalKey: ${key}`);
     }
     typeMap[key].chords.push(chord.chordName);
-    console.log(
-      `[getUniqueChordTypes] Added chord '${chord.chordName}' to group '${key}'. Current chords:`,
-      typeMap[key].chords
-    );
   });
   const result = typeOrder.map((key) => typeMap[key]);
-  console.log("[getUniqueChordTypes] Final groups:", result);
   return result;
 }
 
@@ -300,23 +323,46 @@ function getUniqueChordTypes(chords) {
  * Reads from #chordsInput, parses, deduplicates, and outputs hex.
  * @function
  */
-window.convertChords = function () {
-  const input = document.getElementById("chordsInput").value;
+window.convertChords = function(input, voicing) {
   const chordNames = input.split(/[\s,]+/).filter((s) => s.length > 0);
-  const parsed = chordNames.map(parseChordName).filter((c) => c !== null);
+  // Parse and apply voicing to intervals for display
+  const parsed = chordNames
+    .map(parseChordName)
+    .filter((c) => c !== null)
+    .map((chord) => {
+      // Apply voicing to intervals
+      const intervals = applyVoicing(chord.intervalOnly, voicing);
+      // Defensive: ensure intervals is array
+      const safeIntervals = Array.isArray(intervals) ? intervals : [];
+      return {
+        ...chord,
+        intervalOnly: safeIntervals,
+        intervalOnlyHex: safeIntervals.map(semitoneToHex),
+        rootBaked: safeIntervals.map((i) => semitoneToHex(i + (notes[chord.root] || 0)))
+      };
+    });
 
-  // Show input progression
-  let result = parsed.map((c) => c.chordName).join(" ") + "\n\n";
+  // Defensive: filter out chords with undefined chordName
+  const validParsed = parsed.filter((c) => typeof c.chordName === 'string');
+  let result = validParsed.length > 0 ? validParsed.map((c) => c.chordName).join(" ") + "\n\n" : "No valid chords found.\n\n";
 
-  // Group by interval shape
-  const uniqueGroups = getUniqueChordTypes(parsed);
-  uniqueGroups.forEach((group, idx) => {
-    result += `Chord ${idx.toString().padStart(2, "0")}\n`;
-    result += `Chords: ${group.chords.join(", ")}\n`;
-    result += `Interval: ${group.intervalOnlyHex.join(" ")}\n\n`;
+  // Group by interval shape (with voicing applied)
+  const uniqueGroups = getUniqueChordTypes(validParsed);
+  let details = uniqueGroups.map((group, idx) => {
+    return {
+      index: idx,
+      chords: Array.isArray(group.chords) ? group.chords : [],
+      interval: Array.isArray(group.intervalOnlyHex) ? group.intervalOnlyHex : []
+    };
   });
 
-  document.getElementById("output").textContent = result;
+  // Return structured result for UI rendering
+  return {
+    inputChordNames: validParsed.map((c) => c.chordName),
+    uniqueGroups: details,
+    voicing,
+    chords: validParsed
+  };
 };
 /**
  * Plays a single chord object (from parseChordName) as a block chord using the Web Audio API.
@@ -372,9 +418,12 @@ window.playSingleChordGlobal = function (chord) {
   window._activeGains = [];
   let rootMidi = ROOTS[chord.root] || 60;
   if (!isFinite(rootMidi)) rootMidi = 60;
+  // Get voicing from UI (default to 'closed')
+  const voicing = window.getSelectedVoicing ? window.getSelectedVoicing() : 'closed';
   let intervals = chord.intervalOnly.filter(
     (x) => typeof x === "number" && isFinite(x)
   );
+  intervals = applyVoicing(intervals, voicing);
   intervals.forEach((semi) => {
     let midi = rootMidi + semi;
     if (!isFinite(midi)) return;
@@ -389,7 +438,6 @@ window.playSingleChordGlobal = function (chord) {
     filter.type = "lowpass";
     filter.frequency.value = 220;
     filter.Q.value = 1.4;
-    // Envelope
     const time = ctx.currentTime;
     const attack = 1.0;
     const chordDuration = 2.5;

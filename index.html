@@ -73,12 +73,25 @@
         class="w-full p-2 border border-gray-300 rounded text-3xl"
       >Am7 Dm9 G13 Cmaj7 Fmaj7 Bm7b5 E7 Am9</textarea
       >
-      <button
-        onclick="convertChords()"
-        class="mt-2 mb-2 px-4 py-2 bg-pink-600 text-white rounded w-full sm:w-auto sm:mb-0"
-      >
-        Convert
-      </button>
+      <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+        <button
+          onclick="convertChordsUI()"
+          class="px-4 py-2 bg-pink-600 text-white rounded w-full sm:w-auto"
+        >
+          Convert
+        </button>
+        <select
+          id="voicingSelect"
+          class="p-2 rounded border border-gray-300 w-full sm:w-auto"
+          style="background: #282a36; color: #8be9fd"
+        >
+          <option value="closed">Closed Voicing</option>
+          <option value="drop2">Drop-2</option>
+          <option value="drop3">Drop-3</option>
+          <option value="spread">Spread</option>
+          <option value="octave">Octave Doubling</option>
+        </select>
+      </div>
       <button
         onclick="clearInput()"
         class="mb-2 px-4 py-2 bg-gray-600 text-white rounded w-full sm:w-auto"
@@ -375,87 +388,67 @@
         select.classList.remove("dimmed");
       }
 
-      // Patch convertChords to update dropdown
-      const originalConvertChords = window.convertChords;
-      window.convertChords = function () {
+      // Standalone function to update single chord dropdown
+      function updateSingleChordDropdownFromInput() {
         const input = document.getElementById("chordsInput").value;
         const chordNames = input.split(/\s|,/).filter((s) => s.length > 0);
         updateSingleChordDropdown(chordNames);
-        if (typeof originalConvertChords === "function")
-          originalConvertChords();
-      };
+      }
 
-      function convertChords() {
+      function convertChordsUI() {
         // Show unique and converted chord boxes
         document.getElementById("uniqueBox").style.display = "block";
         document.getElementById("outputBox").style.display = "block";
         // Get dropdown buttons once
-        const uniqueBtn = document.querySelector(
-          'button[data-box="uniqueBox"]'
-        );
-        const outputBtn = document.querySelector(
-          'button[data-box="outputBox"]'
-        );
+        const uniqueBtn = document.querySelector('button[data-box="uniqueBox"]');
+        const outputBtn = document.querySelector('button[data-box="outputBox"]');
         // Set dropdown icons to ▼ when content is shown
         if (uniqueBtn)
           uniqueBtn.innerHTML = uniqueBtn.innerHTML.replace("▶", "▼");
         if (outputBtn)
           outputBtn.innerHTML = outputBtn.innerHTML.replace("▶", "▼");
-        if (typeof window.convertChords !== "function") {
-          document.getElementById("output").innerHTML =
-            '<span style="color:red">Chord logic not loaded.</span>';
-          return;
-        }
 
-        // Use the logic from core.js
+        // Use the logic from core.js for conversion and display
         const input = document.getElementById("chordsInput").value;
         const chordNames = input.split(/[\s,]+/).filter((s) => s.length > 0);
-        const parsed = chordNames
-          .map(window.parseChordName)
-          .filter((c) => c !== null);
-
-        // Display all input chords as entered
-        let outputHTML = "";
-        parsed.forEach((chord) => {
-          outputHTML += `
-          <div class="mb-4">
-            <span class="chord-name">${chord.chordName} (${
-            chord.type
-          })</span><br>
-            <span class="root-baked-label">Root-baked:</span> 
-            <span class="root-baked-value">${chord.rootBaked.join(
-              " "
-            )}</span><br>
-            <span class="interval-label">Interval:</span> 
-            <span class="interval-value">${chord.intervalOnlyHex.join(
-              " "
-            )}</span>
-          </div>
-        `;
-        });
-        document.getElementById("output").innerHTML = outputHTML;
-        // Dim output dropdown button if no chords
-        if (!outputHTML.trim()) {
-          outputBtn.classList.add("dimmed");
+        updateSingleChordDropdown(chordNames);
+        const voicing = window.getSelectedVoicing ? window.getSelectedVoicing() : 'closed';
+        const result = window.convertChords(input, voicing);
+        // Build output HTML from result object
+        let outputHTML = '';
+        if (result.chords && result.chords.length > 0) {
+          result.chords.forEach((chord) => {
+            const intervalHexSpans = chord.intervalOnlyHex.map((hex, i) => {
+              return `<span${i >= 6 ? ' class="dimmed"' : ''}>${hex}</span>`;
+            }).join(" ");
+            const rootBakedSpans = chord.rootBaked.map((hex, i) => {
+              return `<span${i >= 6 ? ' class="dimmed"' : ''}>${hex}</span>`;
+            }).join(" ");
+            outputHTML += `<div class="mb-4">
+              <span class="chord-name">${chord.chordName} (${chord.type})</span><br>
+              <span class="root-baked-label">Root-baked:</span> 
+              <span class="root-baked-value">${rootBakedSpans}</span><br>
+              <span class="interval-label">Interval:</span> 
+              <span class="interval-value">${intervalHexSpans}</span>
+            </div>`;
+          });
         } else {
-          outputBtn.classList.remove("dimmed");
+          outputHTML = "No valid chords found.<br><br>";
         }
-
-        // Use core.js grouping logic for unique chord types
-        const uniqueGroups = window.getUniqueChordTypes(parsed);
-        let uniqueHTML =
-          '<span class="interval-label">Unique Chord Types:</span><ul style="margin-top:0.5rem;">';
-        uniqueGroups.forEach((group, idx) => {
+        document.getElementById("output").innerHTML = outputHTML;
+        // Unique chord types box
+        let uniqueHTML = '<span class="interval-label">Unique Chord Types:</span><ul style="margin-top:0.5rem;">';
+        result.uniqueGroups.forEach((group, idx) => {
+          const chordSpans = group.chords.map((chord, i) => {
+            return `<span${i >= 6 ? ' class="dimmed"' : ''}>${chord}</span>`;
+          }).join(", ");
+          const intervalSpans = group.interval.map((hex, i) => {
+            return `<span${i >= 6 ? ' class="dimmed"' : ''}>${hex}</span>`;
+          }).join(" ");
           uniqueHTML += `<li>
-            <span class="chord-name">Chord ${idx
-              .toString()
-              .padStart(2, "0")}</span><br>
-            <span class="root-baked-label">Chords:</span> <span class="root-baked-value">${group.chords.join(
-              ", "
-            )}</span><br>
-            <span class="interval-label">Interval:</span> <span class="interval-value">${group.intervalOnlyHex.join(
-              " "
-            )}</span>
+            <span class="chord-name">Chord ${idx.toString().padStart(2, "0")}</span><br>
+            <span class="root-baked-label">Chords:</span> <span class="root-baked-value">${chordSpans}</span><br>
+            <span class="interval-label">Interval:</span> <span class="interval-value">${intervalSpans}</span>
           </li>`;
         });
         uniqueHTML += "</ul>";
@@ -465,6 +458,12 @@
           uniqueBtn.classList.add("dimmed");
         } else {
           uniqueBtn.classList.remove("dimmed");
+        }
+        // Dim output dropdown button if no chords
+        if (!outputHTML || !outputHTML.trim()) {
+          outputBtn.classList.add("dimmed");
+        } else {
+          outputBtn.classList.remove("dimmed");
         }
       }
 
@@ -486,6 +485,12 @@
         document.getElementById("output").innerHTML = "";
         document.getElementById("uniqueChordTypes").innerHTML = "";
       }
+
+      // Returns the selected voicing type from the dropdown
+      window.getSelectedVoicing = function() {
+        const select = document.getElementById('voicingSelect');
+        return select ? select.value : 'closed';
+      };
     </script>
   </body>
   <!-- Video credit as page content -->
