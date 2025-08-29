@@ -7,6 +7,11 @@
 function applyVoicing(intervals, voicing) {
   if (!Array.isArray(intervals)) return intervals;
   const sorted = [...intervals].sort((a, b) => a - b);
+  // Helper: is dominant 7th (major 3rd, minor 7th)
+  function isDominant(intervals) {
+    // Intervals: root=0, major 3rd=4, perfect 5th=7, minor 7th=10
+    return intervals.includes(4) && intervals.includes(10);
+  }
   switch (voicing) {
     case 'drop2':
       if (sorted.length >= 2) {
@@ -31,6 +36,47 @@ function applyVoicing(intervals, voicing) {
       if (doubled.length > 0) doubled.push(doubled[0] + 12); // root
       if (doubled.length > 2) doubled.push(doubled[2] + 12); // 5th
       return doubled;
+    case 'first-inversion':
+      // Move root up an octave
+      if (sorted.length > 1) {
+        const inv = [...sorted];
+        inv[0] += 12;
+        return inv.slice(1).concat(inv[0]).sort((a, b) => a - b);
+      }
+      return sorted;
+    case 'second-inversion':
+      // Move root and 3rd up an octave
+      if (sorted.length > 2) {
+        const inv = [...sorted];
+        inv[0] += 12;
+        inv[1] += 12;
+        return inv.slice(2).concat(inv[0], inv[1]).sort((a, b) => a - b);
+      }
+      return sorted;
+    case 'third-inversion':
+      // Move root, 3rd, and 5th up an octave (for 7th chords)
+      if (sorted.length > 3) {
+        const inv = [...sorted];
+        inv[0] += 12;
+        inv[1] += 12;
+        inv[2] += 12;
+        return inv.slice(3).concat(inv[0], inv[1], inv[2]).sort((a, b) => a - b);
+      }
+      return sorted;
+    case 'shell-dominant':
+      // Only root, 3rd, 7th for dominant chords
+      if (isDominant(sorted)) {
+        return sorted.filter((v) => v === 0 || v === 4 || v === 10);
+      }
+      return sorted;
+    case 'altered-dominant':
+      // Add b9, #9, b13, #11 to dominant chords
+      if (isDominant(sorted)) {
+        const base = sorted.filter((v) => v === 0 || v === 4 || v === 10);
+        // b9=1, #9=5, #11=6, b13=8
+        return base.concat([1, 5, 6, 8]).sort((a, b) => a - b);
+      }
+      return sorted;
     case 'closed':
     default:
       return intervals;
