@@ -71,18 +71,26 @@
         id="chordsInput"
         placeholder="Paste your chord progression here..."
         class="w-full p-2 border border-gray-300 rounded text-3xl"
-      >Am7 Dm9 G13 Cmaj7 Fmaj7 Bm7b5 E7 Am9</textarea
       >
-      <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+Am7 Dm9 G13 Cmaj7 Fmaj7 Bm7b5 E7 Am9</textarea
+      >
+    <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
         <button
-          onclick="convertChordsUI()"
-          class="px-4 py-2 bg-pink-600 text-white rounded w-full sm:w-auto"
+      onclick="convertChordsUI()"
+      class="mb-2 px-4 py-2 bg-pink-600 text-white rounded w-full sm:w-auto"
         >
           Convert
         </button>
+
+        <button
+      onclick="clearInput()"
+      class="mb-2 px-4 py-2 bg-gray-600 text-white rounded w-full sm:w-auto"
+        >
+          Clear
+        </button>
         <select
           id="voicingSelect"
-          class="p-2 rounded border border-gray-300 w-full sm:w-auto"
+      class="mb-2 p-2 rounded border border-gray-300 w-full sm:w-auto"
           style="background: #282a36; color: #8be9fd"
         >
           <option value="closed">Closed Voicing</option>
@@ -92,12 +100,6 @@
           <option value="octave">Octave Doubling</option>
         </select>
       </div>
-      <button
-        onclick="clearInput()"
-        class="mb-2 px-4 py-2 bg-gray-600 text-white rounded w-full sm:w-auto"
-      >
-        Clear
-      </button>
       <div class="flex justify-center gap-4 mt-2">
         <a href="#infoBoxAnchor" class="underline" style="color: #8be9fd"
           >Help</a
@@ -124,15 +126,14 @@
           <button
             id="playBtn"
             onclick="handlePlay()"
-            class="px-4 py-2 bg-green-600 text-white rounded transition-all border border-green-700 w-full sm:w-auto"
+            class="px-4 py-2 bg-pink-600 text-white rounded transition-all border border-pink-700 w-full sm:w-auto"
           >
             Play
           </button>
           <button
             id="stopBtn"
             onclick="handleStop()"
-            class="px-4 py-2 text-white rounded transition-all border w-full sm:w-auto"
-            style="background-color: #ff5555; border-color: #ff79c6"
+            class="px-4 py-2 bg-gray-600 text-white rounded transition-all border border-gray-700 w-full sm:w-auto"
           >
             Stop
           </button>
@@ -164,7 +165,7 @@
           </select>
           <button
             onclick="playSingleChord()"
-            class="px-4 py-2 bg-purple-600 text-white rounded w-full sm:w-auto"
+            class="px-4 py-2 bg-pink-600 text-white rounded w-full sm:w-auto"
           >
             Play Chord
           </button>
@@ -400,8 +401,12 @@
         document.getElementById("uniqueBox").style.display = "block";
         document.getElementById("outputBox").style.display = "block";
         // Get dropdown buttons once
-        const uniqueBtn = document.querySelector('button[data-box="uniqueBox"]');
-        const outputBtn = document.querySelector('button[data-box="outputBox"]');
+        const uniqueBtn = document.querySelector(
+          'button[data-box="uniqueBox"]'
+        );
+        const outputBtn = document.querySelector(
+          'button[data-box="outputBox"]'
+        );
         // Set dropdown icons to ▼ when content is shown
         if (uniqueBtn)
           uniqueBtn.innerHTML = uniqueBtn.innerHTML.replace("▶", "▼");
@@ -412,18 +417,24 @@
         const input = document.getElementById("chordsInput").value;
         const chordNames = input.split(/[\s,]+/).filter((s) => s.length > 0);
         updateSingleChordDropdown(chordNames);
-        const voicing = window.getSelectedVoicing ? window.getSelectedVoicing() : 'closed';
+        const voicing = window.getSelectedVoicing
+          ? window.getSelectedVoicing()
+          : "closed";
         const result = window.convertChords(input, voicing);
         // Build output HTML from result object
-        let outputHTML = '';
+        let outputHTML = "";
         if (result.chords && result.chords.length > 0) {
           result.chords.forEach((chord) => {
-            const intervalHexSpans = chord.intervalOnlyHex.map((hex, i) => {
-              return `<span${i >= 6 ? ' class="dimmed"' : ''}>${hex}</span>`;
-            }).join(" ");
-            const rootBakedSpans = chord.rootBaked.map((hex, i) => {
-              return `<span${i >= 6 ? ' class="dimmed"' : ''}>${hex}</span>`;
-            }).join(" ");
+            const intervalHexSpans = chord.intervalOnlyHex
+              .map((hex, i) => {
+                return `<span${i >= 6 ? ' class="dimmed"' : ""}>${hex}</span>`;
+              })
+              .join(" ");
+            const rootBakedSpans = chord.rootBaked
+              .map((hex, i) => {
+                return `<span${i >= 6 ? ' class="dimmed"' : ""}>${hex}</span>`;
+              })
+              .join(" ");
             outputHTML += `<div class="mb-4">
               <span class="chord-name">${chord.chordName} (${chord.type})</span><br>
               <span class="root-baked-label">Root-baked:</span> 
@@ -437,16 +448,23 @@
         }
         document.getElementById("output").innerHTML = outputHTML;
         // Unique chord types box
-        let uniqueHTML = '<span class="interval-label">Unique Chord Types:</span><ul style="margin-top:0.5rem;">';
+        let uniqueHTML =
+          '<span class="interval-label">Unique Chord Types:</span><ul style="margin-top:0.5rem;">';
         result.uniqueGroups.forEach((group, idx) => {
-          const chordSpans = group.chords.map((chord, i) => {
-            return `<span${i >= 6 ? ' class="dimmed"' : ''}>${chord}</span>`;
-          }).join(", ");
-          const intervalSpans = group.interval.map((hex, i) => {
-            return `<span${i >= 6 ? ' class="dimmed"' : ''}>${hex}</span>`;
-          }).join(" ");
+          const chordSpans = group.chords
+            .map((chord, i) => {
+              return `<span${i >= 6 ? ' class="dimmed"' : ""}>${chord}</span>`;
+            })
+            .join(", ");
+          const intervalSpans = group.interval
+            .map((hex, i) => {
+              return `<span${i >= 6 ? ' class="dimmed"' : ""}>${hex}</span>`;
+            })
+            .join(" ");
           uniqueHTML += `<li>
-            <span class="chord-name">Chord ${idx.toString().padStart(2, "0")}</span><br>
+            <span class="chord-name">Chord ${idx
+              .toString()
+              .padStart(2, "0")}</span><br>
             <span class="root-baked-label">Chords:</span> <span class="root-baked-value">${chordSpans}</span><br>
             <span class="interval-label">Interval:</span> <span class="interval-value">${intervalSpans}</span>
           </li>`;
@@ -487,9 +505,9 @@
       }
 
       // Returns the selected voicing type from the dropdown
-      window.getSelectedVoicing = function() {
-        const select = document.getElementById('voicingSelect');
-        return select ? select.value : 'closed';
+      window.getSelectedVoicing = function () {
+        const select = document.getElementById("voicingSelect");
+        return select ? select.value : "closed";
       };
     </script>
   </body>
