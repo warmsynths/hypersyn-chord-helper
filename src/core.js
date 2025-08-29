@@ -152,6 +152,10 @@ window.playChordProgression = function () {
     window._hypersynAudioCtx ||
     new (window.AudioContext || window.webkitAudioContext)();
   window._hypersynAudioCtx = ctx;
+  // iOS fix: resume context if suspended
+  if (ctx.state === 'suspended') {
+    ctx.resume();
+  }
 
   // --- Simple Reverb Setup ---
   if (!window._hypersynReverb) {
@@ -449,6 +453,10 @@ window.playSingleChordGlobal = function (chord) {
     window._hypersynAudioCtx ||
     new (window.AudioContext || window.webkitAudioContext)();
   window._hypersynAudioCtx = ctx;
+  // iOS fix: resume context if suspended
+  if (ctx.state === 'suspended') {
+    ctx.resume();
+  }
   // --- Simple Reverb Setup ---
   if (!window._hypersynReverb) {
     const length = ctx.sampleRate * 2.5;
