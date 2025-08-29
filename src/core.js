@@ -1,4 +1,103 @@
 /**
+ * Toast notification system (Tailwind styled)
+ */
+window.showToast = function(message, type = "info") {
+  const container = document.getElementById("toastContainer");
+  if (!container) return;
+  while (container.children.length > 2) container.removeChild(container.firstChild);
+  const colors = {
+    success: "bg-pink-600 text-white border-pink-400",
+    info: "bg-blue-600 text-white border-blue-400",
+    error: "bg-gray-700 text-red-200 border-red-400"
+  };
+  const toast = document.createElement("div");
+  toast.className = `px-4 py-2 rounded shadow-lg border ${colors[type] || colors.info} text-lg mb-2 animate-fadeIn`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add("animate-fadeOut");
+    setTimeout(() => container.removeChild(toast), 600);
+  }, 2200);
+};
+
+/**
+ * Save/load/delete chord sets in localStorage
+ */
+window.getSavedChordSets = function() {
+  const sets = localStorage.getItem("hypersynChordSets");
+  try {
+    return sets ? JSON.parse(sets) : [];
+  } catch {
+    return [];
+  }
+};
+window.setSavedChordSets = function(sets) {
+  localStorage.setItem("hypersynChordSets", JSON.stringify(sets));
+};
+window.updateSavedChordSetsDropdown = function() {
+  const select = document.getElementById("savedChordSetsSelect");
+  if (!select) return;
+  const sets = window.getSavedChordSets();
+  select.innerHTML = '<option value="">Load saved set...</option>';
+  sets.forEach((set, idx) => {
+    select.innerHTML += `<option value="${idx}">${set.name}</option>`;
+  });
+};
+window.saveChordSet = function() {
+  const input = document.getElementById("chordsInput").value;
+  const nameInput = document.getElementById("chordSetNameInput");
+  const name = nameInput.value.trim();
+  if (!name) {
+    window.showToast("Please enter a name for the chord set.", "error");
+    return;
+  }
+  let sets = window.getSavedChordSets();
+  const idx = sets.findIndex((s) => s.name === name);
+  if (idx >= 0) {
+    sets[idx].chords = input;
+  } else {
+    sets.push({ name, chords: input });
+  }
+  window.setSavedChordSets(sets);
+  window.updateSavedChordSetsDropdown();
+  window.showToast(`Chord set saved as '${name}'.`, "success");
+};
+window.loadChordSet = function() {
+  const select = document.getElementById("savedChordSetsSelect");
+  const idx = select.value;
+  if (!idx || isNaN(idx)) {
+    window.showToast("Please select a saved chord set to load.", "error");
+    return;
+  }
+  const sets = window.getSavedChordSets();
+  const set = sets[parseInt(idx, 10)];
+  if (set) {
+    document.getElementById("chordsInput").value = set.chords;
+    if (window.updateSingleChordDropdownFromInput) window.updateSingleChordDropdownFromInput();
+    window.showToast(`Chord set '${set.name}' loaded!`, "success");
+  } else {
+    window.showToast("Chord set not found.", "error");
+  }
+};
+window.deleteChordSet = function() {
+  const select = document.getElementById("savedChordSetsSelect");
+  const idx = select.value;
+  if (!idx || isNaN(idx)) {
+    window.showToast("Please select a saved chord set to delete.", "error");
+    return;
+  }
+  let sets = window.getSavedChordSets();
+  const set = sets[parseInt(idx, 10)];
+  if (set) {
+    sets.splice(parseInt(idx, 10), 1);
+    window.setSavedChordSets(sets);
+    window.updateSavedChordSetsDropdown();
+    window.showToast("Chord set deleted.", "success");
+  } else {
+    window.showToast("Chord set not found.", "error");
+  }
+};
+/**
  * Transforms chord intervals according to the selected voicing.
  * @param {number[]} intervals - Array of intervals (semitones from root).
  * @param {string} voicing - Voicing type: 'closed', 'drop2', 'drop3', 'spread', 'octave'.
