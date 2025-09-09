@@ -1,3 +1,68 @@
+// Utility: Generate UUID v4
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+/**
+ * Export all saved chord sets as JSON file
+ * @public
+ */
+window.exportChordSets = function() {
+  const sets = window.getSavedChordSets();
+  const dataStr = JSON.stringify(sets, null, 2);
+  const blob = new Blob([dataStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'hypersyn-chord-sets.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  window.showToast('Chord sets exported as JSON.', 'success');
+};
+
+/**
+ * Import chord sets from JSON file/string, only add new sets by unique id
+ * @public
+ */
+window.importChordSets = function(fileInput) {
+  if (!fileInput.files || !fileInput.files[0]) {
+    window.showToast('No file selected.', 'error');
+    return;
+  }
+  const file = fileInput.files[0];
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const importedSets = JSON.parse(e.target.result);
+      if (!Array.isArray(importedSets)) throw new Error('Invalid format');
+      let sets = window.getSavedChordSets();
+      const existingIds = new Set(sets.map(s => s.id));
+      let added = 0;
+      importedSets.forEach(set => {
+        if (set && set.id && !existingIds.has(set.id)) {
+          sets.push(set);
+          added++;
+        }
+      });
+      window.setSavedChordSets(sets);
+      window.updateSavedChordSetsDropdown();
+      if (added > 0) {
+        window.showToast(`Imported ${added} new chord set(s).`, 'success');
+      } else {
+        window.showToast('No new chord sets to import.', 'info');
+      }
+    } catch {
+      window.showToast('Failed to import chord sets.', 'error');
+    }
+    fileInput.value = '';
+  };
+  reader.readAsText(file);
+};
 /**
  * Toggles the synthwave video background visibility.
  * @public
@@ -68,7 +133,7 @@ window.saveChordSet = function() {
   if (idx >= 0) {
     sets[idx].chords = input;
   } else {
-    sets.push({ name, chords: input });
+    sets.push({ name, chords: input, id: generateUUID() });
   }
   window.setSavedChordSets(sets);
   window.updateSavedChordSetsDropdown();

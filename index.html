@@ -224,39 +224,53 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bm7b5 E7 Am9</textarea
         >Save and recall named chord sets</span
       >
       <div id="saveLoadBox" style="display: none">
-        <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-          <input
-            id="chordSetNameInput"
-            type="text"
-            placeholder="Set name..."
-            class="mb-2 p-2 rounded border border-gray-300 w-full sm:w-auto"
-            style="background: #282a36; color: #f1fa8c"
-          />
-          <button
-            onclick="saveChordSet()"
-            class="mb-2 px-4 py-2 bg-pink-600 text-white rounded w-full sm:w-auto"
-          >
-            Save
-          </button>
-          <select
-            id="savedChordSetsSelect"
-            class="mb-2 p-2 rounded border border-gray-300 w-full sm:w-auto"
-            style="background: #282a36; color: #8be9fd"
-          >
-            <option value="">Load saved set...</option>
-          </select>
-          <button
-            onclick="loadChordSet()"
-            class="mb-2 px-4 py-2 bg-gray-600 text-white rounded w-full sm:w-auto"
-          >
-            Load
-          </button>
-          <button
-            onclick="deleteChordSet()"
-            class="mb-2 px-4 py-2 bg-gray-600 text-white rounded w-full sm:w-auto"
-          >
-            Delete
-          </button>
+        <div class="flex flex-col gap-2 mb-2">
+          <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+            <input
+              id="chordSetNameInput"
+              type="text"
+              placeholder="Set name..."
+              class="mb-2 p-2 rounded border border-gray-300 w-full sm:w-auto"
+              style="background: #282a36; color: #f1fa8c"
+            />
+            <button
+              onclick="saveChordSet()"
+              class="mb-2 px-4 py-2 bg-pink-600 text-white rounded w-full sm:w-auto"
+            >
+              Save
+            </button>
+          </div>
+          <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+            <select
+              id="savedChordSetsSelect"
+              class="mb-2 p-2 rounded border border-gray-300 w-full sm:w-auto"
+              style="background: #282a36; color: #8be9fd"
+            >
+              <option value="">Load saved set...</option>
+            </select>
+            <button
+              onclick="loadChordSet()"
+              class="mb-2 px-4 py-2 bg-gray-600 text-white rounded w-full sm:w-auto"
+            >
+              Load
+            </button>
+            <button
+              onclick="deleteChordSet()"
+              class="mb-2 px-4 py-2 bg-gray-600 text-white rounded w-full sm:w-auto"
+            >
+              Delete
+            </button>
+            <button
+              onclick="window.exportChordSets()"
+              class="mb-2 px-4 py-2 bg-pink-600 text-white rounded w-full sm:w-auto"
+            >
+              Export
+            </button>
+            <label for="importChordSetsInput" class="mb-2 px-4 py-2 bg-gray-600 text-white rounded w-full sm:w-auto cursor-pointer" style="display:inline-block;">
+              Import
+              <input id="importChordSetsInput" type="file" accept="application/json" style="display:none;" onchange="window.importChordSets(this)" />
+            </label>
+          </div>
         </div>
       </div>
     </div>
