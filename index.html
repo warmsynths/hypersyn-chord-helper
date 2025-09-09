@@ -178,22 +178,6 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bm7b5 E7 Am9</textarea
         </div>
       </div>
     </div>
-    <!-- Unique Chord Types Box -->
-    <div class="content-box w-full max-w-lg">
-      <button
-        onclick="toggleBox('uniqueBox')"
-        class="mb-2 px-2 py-1 bg-gray-700 text-white rounded w-full sm:w-auto dimmed"
-        data-box="uniqueBox"
-      >
-        Unique Chord Types ▼
-      </button>
-      <span class="ml-2 text-gray-400 text-sm"
-        >Groups by chord type and shows intervals</span
-      >
-      <div id="uniqueBox" class="hidden">
-        <div id="uniqueChordTypes" class="text-lg"></div>
-      </div>
-    </div>
     <!-- Output Box -->
     <div class="content-box w-full max-w-lg">
       <button
@@ -201,7 +185,7 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bm7b5 E7 Am9</textarea
         class="mb-2 px-2 py-1 bg-gray-700 text-white rounded w-full sm:w-auto dimmed"
         data-box="outputBox"
       >
-        Converted Chords ▼
+        Converted Chords ▶
       </button>
       <span class="ml-2 text-gray-400 text-sm"
         >Shows all chords with hex and interval codes</span
@@ -306,6 +290,9 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bm7b5 E7 Am9</textarea
               ><br />
               <span style="color: #ff79c6">Example:</span>
               <span style="color: #ff79c6">Am7 Dm9 G13 Cmaj7</span>
+            </li>
+            <li style="margin-bottom: 0.7em">
+              <strong>Note:</strong> The <span style="color:#8be9fd">00</span>, <span style="color:#8be9fd">01</span>, etc. next to each chord in the Converted Chords box is the chord number for the shape you enter into Hypersyn. Use this number to match the chord shape in your synth or sequencer.
             </li>
             <li style="margin-bottom: 0.7em">
               <strong>Source progressions</strong> from sites like:<br />
@@ -486,19 +473,12 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bm7b5 E7 Am9</textarea
       }
 
       function convertChordsUI() {
-        // Show unique and converted chord boxes
-        document.getElementById("uniqueBox").style.display = "block";
+        // Show converted chord boxes
         document.getElementById("outputBox").style.display = "block";
         // Get dropdown buttons once
-        const uniqueBtn = document.querySelector(
-          'button[data-box="uniqueBox"]'
-        );
         const outputBtn = document.querySelector(
           'button[data-box="outputBox"]'
         );
-        // Set dropdown icons to ▼ when content is shown
-        if (uniqueBtn)
-          uniqueBtn.innerHTML = uniqueBtn.innerHTML.replace("▶", "▼");
         if (outputBtn)
           outputBtn.innerHTML = outputBtn.innerHTML.replace("▶", "▼");
 
@@ -510,63 +490,40 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bm7b5 E7 Am9</textarea
           ? window.getSelectedVoicing()
           : "closed";
         const result = window.convertChords(input, voicing);
-        // Build output HTML from result object
+        // Build output HTML: 4 columns, show note and chord as A(m7), add unique chord number
         let outputHTML = "";
         if (result.chords && result.chords.length > 0) {
-          result.chords.forEach((chord) => {
+          // Map chord name to unique chord number
+          const chordNumMap = {};
+          result.uniqueGroups.forEach((group, idx) => {
+            group.chords.forEach((chordName) => {
+              chordNumMap[chordName] = idx.toString().padStart(2, "0");
+            });
+          });
+          // Build rows of 4 columns
+          outputHTML += '<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">';
+          result.chords.forEach((chord, i) => {
             const intervalHexSpans = chord.intervalOnlyHex
-              .map((hex, i) => {
-                return `<span${i >= 6 ? ' class="dimmed"' : ""}>${hex}</span>`;
-              })
+              .map((hex, idx) => `<span${idx >= 6 ? ' class="dimmed"' : ''}>${hex}</span>`)
               .join(" ");
             const rootBakedSpans = chord.rootBaked
-              .map((hex, i) => {
-                return `<span${i >= 6 ? ' class="dimmed"' : ""}>${hex}</span>`;
-              })
+              .map((hex, idx) => `<span${idx >= 6 ? ' class="dimmed"' : ''}>${hex}</span>`)
               .join(" ");
-            outputHTML += `<div class="mb-4">
-              <span class="chord-name">${chord.chordName} (${chord.type})</span><br>
-              <span class="root-baked-label">Root-baked:</span> 
-              <span class="root-baked-value">${rootBakedSpans}</span><br>
-              <span class="interval-label">Interval:</span> 
-              <span class="interval-value">${intervalHexSpans}</span>
+            // Show note and chord as A(m7), add unique chord number
+            const chordNum = chordNumMap[chord.chordName] || "--";
+            outputHTML += `<div class="p-3 rounded bg-gray-800 text-white shadow">
+              <span class="chord-name text-lg font-bold">${chord.root}(${chord.type}) <span class="text-yellow-300 text-sm">${chordNum}</span></span><br>
+              <span class="root-baked-label">Root-baked:</span> <span class="root-baked-value">${rootBakedSpans}</span><br>
+              <span class="interval-label">Interval:</span> <span class="interval-value">${intervalHexSpans}</span>
             </div>`;
           });
+          outputHTML += '</div>';
         } else {
           outputHTML = "No valid chords found.<br><br>";
           window.showToast("No valid chords found.", "error");
         }
         document.getElementById("output").innerHTML = outputHTML;
-        // Unique chord types box
-        let uniqueHTML =
-          '<span class="interval-label">Unique Chord Types:</span><ul style="margin-top:0.5rem;">';
-        result.uniqueGroups.forEach((group, idx) => {
-          const chordSpans = group.chords
-            .map((chord, i) => {
-              return `<span${i >= 6 ? ' class="dimmed"' : ""}>${chord}</span>`;
-            })
-            .join(", ");
-          const intervalSpans = group.interval
-            .map((hex, i) => {
-              return `<span${i >= 6 ? ' class="dimmed"' : ""}>${hex}</span>`;
-            })
-            .join(" ");
-          uniqueHTML += `<li>
-            <span class=\"chord-name\">Chord ${idx
-              .toString()
-              .padStart(2, "0")}</span><br>
-            <span class=\"root-baked-label\">Chords:</span> <span class=\"root-baked-value\">${chordSpans}</span><br>
-            <span class=\"interval-label\">Interval:</span> <span class=\"interval-value\">${intervalSpans}</span>
-          </li>`;
-        });
-        uniqueHTML += "</ul>";
-        document.getElementById("uniqueChordTypes").innerHTML = uniqueHTML;
-        // Dim unique dropdown button if no unique chords
-        if (!uniqueHTML || uniqueHTML.indexOf("<li>") === -1) {
-          uniqueBtn.classList.add("dimmed");
-        } else {
-          uniqueBtn.classList.remove("dimmed");
-        }
+
         // Dim output dropdown button if no chords
         if (!outputHTML || !outputHTML.trim()) {
           outputBtn.classList.add("dimmed");
