@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <style>
+      .sidebar-toggle-fade {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+      }
+      #sidebarToggle {
+        transition: opacity 0.3s ease;
+      }
+    </style>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Hypersyn Chord Helper</title>
@@ -19,6 +29,240 @@
     <link rel="stylesheet" href="src/styles.css" />
   </head>
   <body class="flex flex-col items-center p-8 space-y-6 sm:p-4 sm:space-y-4">
+    <!-- Collapsible Sidebar -->
+    <div
+      id="sidebar"
+      class="fixed top-0 left-0 h-full w-64 bg-gray-900 bg-opacity-95 shadow-lg z-30 transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col"
+    >
+      <div
+        class="flex items-center justify-between px-4 py-3 border-b border-gray-700"
+      >
+        <span class="text-pink-400 font-bold text-lg">Utilities</span>
+        <button
+          onclick="toggleSidebar()"
+          class="text-gray-400 hover:text-white focus:outline-none text-2xl"
+        >
+          &times;
+        </button>
+      </div>
+      <div class="flex-1 p-4 overflow-y-auto">
+        <!-- Compact Preview Section in Sidebar -->
+        <div class="flex flex-col space-y-4">
+          <!-- Save/Load Chord Sets Section in Sidebar -->
+          <div>
+            <h2 class="text-pink-400 text-lg font-bold mb-2">
+              Save/Load Chord Sets
+            </h2>
+            <div class="flex flex-col space-y-2 mb-2">
+              <div class="flex space-x-2">
+                <input
+                  id="chordSetNameInput"
+                  type="text"
+                  placeholder="Set name..."
+                  class="flex-1 p-1 rounded border border-gray-300 bg-gray-800 text-yellow-200 text-xs"
+                />
+                <button
+                  onclick="saveChordSet()"
+                  class="px-2 py-1 bg-pink-600 text-white rounded text-xs"
+                >
+                  Save
+                </button>
+              </div>
+              <div class="flex space-x-2">
+                <select
+                  id="savedChordSetsSelect"
+                  class="flex-1 p-1 rounded border border-gray-300 bg-gray-800 text-blue-200 text-xs"
+                >
+                  <option value="">Load saved set...</option>
+                </select>
+              </div>
+              <div class="flex space-x-2">
+                <button
+                  onclick="loadChordSet()"
+                  class="flex-1 px-2 py-1 bg-gray-600 text-white rounded text-xs cursor-pointer text-center"
+                >
+                  Load
+                </button>
+                <button
+                  onclick="deleteChordSet()"
+                  class="flex-1 px-2 py-1 bg-gray-600 text-white rounded text-xs cursor-pointer text-center"
+                >
+                  Delete
+                </button>
+              </div>
+              <div class="flex space-x-2">
+                <button
+                  onclick="window.exportChordSets()"
+                  class="flex-1 px-2 py-1 bg-pink-600 text-white rounded text-xs"
+                >
+                  Export
+                </button>
+                <label
+                  for="importChordSetsInput"
+                  class="flex-1 px-2 py-1 bg-gray-600 text-white rounded text-xs cursor-pointer text-center"
+                  style="display: inline-block"
+                >
+                  Import
+                  <input
+                    id="importChordSetsInput"
+                    type="file"
+                    accept="application/json"
+                    style="display: none"
+                    onchange="window.importChordSets(this)"
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+          <hr class="my-4 border-gray-700" />
+          <div>
+            <h2 class="text-pink-400 text-lg font-bold mb-2">Preview</h2>
+            <div class="flex space-x-2 mb-2">
+              <button
+                id="playBtn"
+                class="flex-1 px-2 py-1 bg-pink-600 text-white rounded text-xs cursor-pointer text-center"
+                onclick="handlePlay()"
+              >
+                Play
+              </button>
+              <button
+                id="stopBtn"
+                class="flex-1 px-2 py-1 bg-gray-600 text-white rounded text-xs cursor-pointer text-center"
+                onclick="handleStop()"
+              >
+                Stop
+              </button>
+            </div>
+            <div class="flex items-center space-x-2">
+              <label class="text-yellow-300 text-sm">Volume:</label>
+              <input
+                id="volumeSlider"
+                type="range"
+                min="0"
+                max="100"
+                value="5"
+                class="flex-1"
+                oninput="updateVolumeLabel()"
+              />
+              <span id="volumeLabel" class="text-yellow-300 text-xs">5%</span>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1"
+              >Single Chord Preview</label
+            >
+            <div class="flex space-x-2">
+              <select
+                id="singleChordSelect"
+                class="flex-1 p-1 rounded border border-gray-300 bg-gray-800 text-blue-200 text-xs"
+                disabled
+              >
+                <option value="">Select a chord...</option>
+              </select>
+              <button
+                class="px-2 py-1 bg-pink-600 text-white rounded text-xs"
+                onclick="playSingleChord()"
+              >
+                Play
+              </button>
+            </div>
+          </div>
+          <hr class="my-4 border-gray-700" />
+          <!-- How To Section in Sidebar -->
+          <div>
+            <h2 class="text-pink-400 text-lg font-bold mb-2">How To</h2>
+            <ul class="text-xs text-gray-200 space-y-2 mb-2">
+              <li>
+                <strong>Paste or type a chord progression</strong> into the
+                input field above.<br />
+                <span class="text-blue-300"
+                  >Use plain text with a single space between each chord.</span
+                ><br />
+                <span class="text-pink-300">Example:</span>
+                <span class="text-pink-300">Am7 Dm9 G13 Cmaj7</span>
+              </li>
+              <li>
+                <strong>Source progressions</strong> from sites like:
+                <a
+                  href="https://www.onemotion.com/chord-player/"
+                  target="_blank"
+                  class="text-blue-300 underline"
+                  >onemotion chord player</a
+                >,
+                <a
+                  href="https://chordseqai.com/"
+                  target="_blank"
+                  class="text-blue-300 underline"
+                  >ChordSeqAI</a
+                >, generate them with
+                <a
+                  href="https://chatgpt.com/"
+                  target="_blank"
+                  class="text-blue-300 underline"
+                  >ChatGPT</a
+                >, or even use your 🧠! 😱
+              </li>
+              <li>
+                <strong
+                  >Click <span class="text-pink-300">Convert</span></strong
+                >
+                to see each chord’s hex code and interval code.<br />
+                <span class="text-yellow-200"
+                  >These can be used directly in the Hypersyn instrument on the
+                  M8 Tracker.</span
+                >
+              </li>
+            </ul>
+            <div class="text-xs text-gray-400 mb-1">
+              <span class="font-semibold text-blue-200"
+                >Root-baked hex codes</span
+              >
+              include the chord’s root — ready to drop straight into
+              Hypersyn.<br />
+              <span class="font-semibold text-yellow-200"
+                >Interval-only codes</span
+              >
+              are just the chord shape — you choose the root yourself in the
+              phrase view.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Sidebar Toggle Button -->
+    <button
+      id="sidebarToggle"
+      onclick="toggleSidebar()"
+      class="fixed top-4 left-4 z-40 bg-pink-600 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg focus:outline-none sm:top-4 sm:left-4"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-6 w-6"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M4 6h16M4 12h16M4 18h16"
+        />
+      </svg>
+    </button>
+    <script>
+      function toggleSidebar() {
+        const sidebar = document.getElementById("sidebar");
+        const toggleBtn = document.getElementById("sidebarToggle");
+        if (sidebar.classList.contains("-translate-x-full")) {
+          sidebar.classList.remove("-translate-x-full");
+          toggleBtn.classList.add("sidebar-toggle-fade");
+        } else {
+          sidebar.classList.add("-translate-x-full");
+          toggleBtn.classList.remove("sidebar-toggle-fade");
+        }
+      }
+    </script>
     <!-- Synthwave video background -->
     <div
       id="video-bg"
@@ -71,8 +315,7 @@
         id="chordsInput"
         placeholder="Paste your chord progression here..."
         class="w-full p-2 border border-gray-300 rounded text-3xl"
-      >
-Am7 Dm9 G13 Cmaj7 Fmaj7 Bm7b5 E7 Am9</textarea
+      >Am7 Dm9 G13 Cmaj7 Fmaj7 Bm7b5 E7 Am9</textarea
       >
       <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
         <button
@@ -106,78 +349,8 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bm7b5 E7 Am9</textarea
           <option value="altered-dominant">Altered Dominant</option>
         </select>
       </div>
-      <div class="flex justify-center gap-4 mt-2">
-        <a href="#infoBoxAnchor" class="underline" style="color: #8be9fd"
-          >Help</a
-        >
-        <a href="#previewBoxAnchor" class="underline" style="color: #8be9fd"
-          >Preview</a
-        >
-      </div>
     </div>
     <!-- Preview Box (moved directly below input) -->
-    <div id="previewBoxAnchor" class="content-box w-full max-w-lg mt-6">
-      <button
-        onclick="toggleBox('previewBox')"
-        class="mb-2 px-2 py-1 bg-gray-700 text-white rounded w-full sm:w-auto"
-        data-box="previewBox"
-      >
-        Preview ▶
-      </button>
-      <span class="ml-2 text-gray-400 text-sm"
-        >Play, stop, and adjust volume for your progression</span
-      >
-      <div id="previewBox" style="display: none">
-        <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-4">
-          <button
-            id="playBtn"
-            onclick="handlePlay()"
-            class="px-4 py-2 bg-pink-600 text-white rounded transition-all border border-pink-700 w-full sm:w-auto"
-          >
-            Play
-          </button>
-          <button
-            id="stopBtn"
-            onclick="handleStop()"
-            class="px-4 py-2 bg-gray-600 text-white rounded transition-all border border-gray-700 w-full sm:w-auto"
-          >
-            Stop
-          </button>
-          <div
-            class="flex flex-col sm:flex-row sm:items-center w-full sm:w-auto"
-          >
-            <label class="text-yellow-300 mb-1 sm:mb-0 sm:ml-4">Volume:</label>
-            <input
-              id="volumeSlider"
-              type="range"
-              min="0"
-              max="100"
-              value="5"
-              class="align-middle w-full sm:w-32"
-              oninput="updateVolumeLabel()"
-            />
-            <span id="volumeLabel" class="ml-2 text-yellow-300">5%</span>
-          </div>
-        </div>
-        <!-- Single Chord Preview -->
-        <div class="flex flex-col sm:flex-row sm:items-center gap-2">
-          <select
-            id="singleChordSelect"
-            class="p-2 rounded border border-gray-300 w-full sm:w-auto dimmed"
-            style="background: #282a36; color: #8be9fd"
-            disabled
-          >
-            <option value="">Select a chord...</option>
-          </select>
-          <button
-            onclick="playSingleChord()"
-            class="px-4 py-2 bg-pink-600 text-white rounded w-full sm:w-auto"
-          >
-            Play Chord
-          </button>
-        </div>
-      </div>
-    </div>
     <!-- Output Box -->
     <div class="content-box w-full max-w-lg">
       <button
@@ -195,162 +368,12 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bm7b5 E7 Am9</textarea
       </div>
     </div>
 
-    <!-- Save/Load Chord Sets Box -->
-    <div class="content-box w-full max-w-lg">
-      <button
-        onclick="toggleBox('saveLoadBox')"
-        class="mb-2 px-2 py-1 bg-gray-700 text-white rounded w-full sm:w-auto"
-        data-box="saveLoadBox"
-      >
-        Save/Load Chord Sets ▶
-      </button>
-      <span class="ml-2 text-gray-400 text-sm"
-        >Save and recall named chord sets</span
-      >
-      <div id="saveLoadBox" style="display: none">
-        <div class="flex flex-col gap-2 mb-2">
-          <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-            <input
-              id="chordSetNameInput"
-              type="text"
-              placeholder="Set name..."
-              class="mb-2 p-2 rounded border border-gray-300 w-full sm:w-auto"
-              style="background: #282a36; color: #f1fa8c"
-            />
-            <button
-              onclick="saveChordSet()"
-              class="mb-2 px-4 py-2 bg-pink-600 text-white rounded w-full sm:w-auto"
-            >
-              Save
-            </button>
-          </div>
-          <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-            <select
-              id="savedChordSetsSelect"
-              class="mb-2 p-2 rounded border border-gray-300 w-full sm:w-auto"
-              style="background: #282a36; color: #8be9fd"
-            >
-              <option value="">Load saved set...</option>
-            </select>
-            <button
-              onclick="loadChordSet()"
-              class="mb-2 px-4 py-2 bg-gray-600 text-white rounded w-full sm:w-auto"
-            >
-              Load
-            </button>
-            <button
-              onclick="deleteChordSet()"
-              class="mb-2 px-4 py-2 bg-gray-600 text-white rounded w-full sm:w-auto"
-            >
-              Delete
-            </button>
-            <button
-              onclick="window.exportChordSets()"
-              class="mb-2 px-4 py-2 bg-pink-600 text-white rounded w-full sm:w-auto"
-            >
-              Export
-            </button>
-            <label for="importChordSetsInput" class="mb-2 px-4 py-2 bg-gray-600 text-white rounded w-full sm:w-auto cursor-pointer text-center" style="display:inline-block;">
-              Import
-              <input id="importChordSetsInput" type="file" accept="application/json" style="display:none;" onchange="window.importChordSets(this)" />
-            </label>
-          </div>
-        </div>
-      </div>
-    </div>
     <!-- Info Box (moved to bottom) -->
     <!-- Toast Notification Container -->
     <div
       id="toastContainer"
       class="fixed top-6 left-1/2 transform -translate-x-1/2 z-50 flex flex-col items-center space-y-2"
     ></div>
-    <div id="infoBoxAnchor" class="content-box w-full max-w-lg mt-6">
-      <button
-        onclick="toggleBox('infoBox')"
-        class="mb-2 px-2 py-1 bg-gray-700 text-white rounded w-full sm:w-auto"
-        data-box="infoBox"
-      >
-        How to ▶
-      </button>
-      <span class="ml-2 text-gray-400 text-sm">How to use this tool</span>
-      <div id="infoBox" style="display: none">
-        <div style="margin-bottom: 1rem">
-          <ul
-            style="
-              margin-top: 0.75rem;
-              margin-bottom: 0.75rem;
-              line-height: 1.8;
-            "
-          >
-            <li style="margin-bottom: 0.7em">
-              <strong>Paste or type a chord progression</strong> into the input
-              field above.<br />
-              <span style="color: #bd93f9"
-                >Use plain text with a single space between each chord.</span
-              ><br />
-              <span style="color: #ff79c6">Example:</span>
-              <span style="color: #ff79c6">Am7 Dm9 G13 Cmaj7</span>
-            </li>
-            <li style="margin-bottom: 0.7em">
-              <strong>Note:</strong> The <span style="color:#8be9fd">00</span>, <span style="color:#8be9fd">01</span>, etc. next to each chord in the Converted Chords box is the chord number for the shape you enter into Hypersyn. Use this number to match the chord shape in your synth or sequencer.
-            </li>
-            <li style="margin-bottom: 0.7em">
-              <strong>Source progressions</strong> from sites like:<br />
-              <a
-                href="https://www.onemotion.com/chord-player/"
-                target="_blank"
-                style="color: #8be9fd; text-decoration: underline"
-                >onemotion chord player</a
-              >,<br />
-              <a
-                href="https://chordseqai.com/"
-                target="_blank"
-                style="color: #8be9fd; text-decoration: underline"
-                >ChordSeqAI</a
-              >,<br />
-              generate them with
-              <a
-                href="https://chatgpt.com/"
-                target="_blank"
-                style="color: #8be9fd; text-decoration: underline"
-                >ChatGPT</a
-              >,<br />
-              or even use your 🧠! 😱
-            </li>
-            <li style="margin-bottom: 0.7em">
-              <strong>Click <span style="color: #ff79c6">Convert</span></strong>
-              to see each chord’s hex code and interval code.<br />
-              <span style="color: #f1fa8c"
-                >These can be used directly in the Hypersyn instrument on the M8
-                Tracker.</span
-              >
-            </li>
-            <li style="margin-bottom: 0.7em">
-              <strong>Click <span style="color: #50fa7b">Play</span></strong> to
-              audition the progression as a synth pad,<br />
-              or <strong><span style="color: #ff5555">Stop</span></strong> to
-              halt playback.
-            </li>
-            <li style="margin-bottom: 0.7em">
-              <strong
-                >Explore the
-                <span style="color: #8be9fd">Unique Chord Types</span>
-                box</strong
-              >
-              to see interval structures grouped by type.
-            </li>
-          </ul>
-        </div>
-        <p>
-          <span class="root-baked-label">Root-baked hex codes</span> include the
-          chord’s root — ready to drop straight into Hypersyn.
-        </p>
-        <p>
-          <span class="interval-label">Interval-only codes</span> are just the
-          chord shape — you choose the root yourself in the phrase view.
-        </p>
-      </div>
-    </div>
 
     <script type="text/javascript" src="src/core.js"></script>
     <script>
@@ -501,13 +524,20 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bm7b5 E7 Am9</textarea
             });
           });
           // Build rows of 4 columns
-          outputHTML += '<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">';
+          outputHTML +=
+            '<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">';
           result.chords.forEach((chord, i) => {
             const intervalHexSpans = chord.intervalOnlyHex
-              .map((hex, idx) => `<span${idx >= 6 ? ' class="dimmed"' : ''}>${hex}</span>`)
+              .map(
+                (hex, idx) =>
+                  `<span${idx >= 6 ? ' class="dimmed"' : ""}>${hex}</span>`
+              )
               .join(" ");
             const rootBakedSpans = chord.rootBaked
-              .map((hex, idx) => `<span${idx >= 6 ? ' class="dimmed"' : ''}>${hex}</span>`)
+              .map(
+                (hex, idx) =>
+                  `<span${idx >= 6 ? ' class="dimmed"' : ""}>${hex}</span>`
+              )
               .join(" ");
             // Show note and chord as A(m7), add unique chord number
             const chordNum = chordNumMap[chord.chordName] || "--";
@@ -517,7 +547,7 @@ Am7 Dm9 G13 Cmaj7 Fmaj7 Bm7b5 E7 Am9</textarea
               <span class="interval-label">Interval:</span> <span class="interval-value">${intervalHexSpans}</span>
             </div>`;
           });
-          outputHTML += '</div>';
+          outputHTML += "</div>";
         } else {
           outputHTML = "No valid chords found.<br><br>";
           window.showToast("No valid chords found.", "error");
