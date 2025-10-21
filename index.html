@@ -331,23 +331,6 @@
         >
           Clear
         </button>
-        <select
-          id="voicingSelect"
-          class="mb-2 p-2 rounded border border-gray-300 w-full sm:w-auto"
-          style="background: #282a36; color: #8be9fd"
-        >
-          <option value="closed">Closed Voicing</option>
-          <option value="open-triad">Open Triad</option>
-          <option value="drop2">Drop-2</option>
-          <option value="drop3">Drop-3</option>
-          <option value="spread">Spread</option>
-          <option value="octave">Octave Doubling</option>
-          <option value="first-inversion">First Inversion</option>
-          <option value="second-inversion">Second Inversion</option>
-          <option value="third-inversion">Third Inversion</option>
-          <option value="shell-dominant">Shell Dominant</option>
-          <option value="altered-dominant">Altered Dominant</option>
-        </select>
       </div>
     </div>
     <!-- Preview Box (moved directly below input) -->
@@ -376,6 +359,43 @@
     ></div>
 
     <script type="text/javascript" src="src/core.js"></script>
+    <script>
+      // Simple keyboard visualization for voicing
+      function updateKeyboardViz() {
+        // Example: show C4-B4, highlight notes in current voicing
+        const keyboardDiv = document.getElementById('keyboardViz');
+        if (!keyboardDiv) return;
+        // For demo, use C major triad for 'closed', Dm for 'open-triad', etc.
+        const voicing = document.getElementById('voicingSelect').value;
+        // Map voicing to notes (MIDI numbers for C4-B4: 60-71)
+        let notes = [];
+        if (voicing === 'closed') notes = [60, 64, 67]; // C E G
+        else if (voicing === 'open-triad') notes = [62, 65, 69]; // D F A
+        else if (voicing === 'drop2') notes = [60, 65, 67]; // C F G
+        else if (voicing === 'drop3') notes = [60, 64, 69]; // C E A
+        else if (voicing === 'spread') notes = [60, 67, 71]; // C G B
+        else if (voicing === 'octave') notes = [60, 72]; // C C
+        else if (voicing === 'first-inversion') notes = [64, 67, 72]; // E G C
+        else if (voicing === 'second-inversion') notes = [67, 72, 76]; // G C E
+        else if (voicing === 'third-inversion') notes = [71, 76, 79]; // B E G
+        else if (voicing === 'shell-dominant') notes = [60, 67]; // C G
+        else if (voicing === 'altered-dominant') notes = [60, 64, 70]; // C E Bb
+        // Render keyboard SVG (C4 to C5, 13 keys)
+        let svg = '<svg width="130" height="40">';
+        const noteNames = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B','C'];
+        for (let i = 0; i < 13; i++) {
+          const x = i * 10;
+          const midi = 60 + i;
+          const isActive = notes.includes(midi);
+          svg += `<rect x="${x}" y="5" width="10" height="30" rx="2" fill="${isActive ? '#ff79c6' : '#282a36'}" stroke="#444" />`;
+          svg += `<text x="${x+5}" y="35" text-anchor="middle" font-size="8" fill="#fff">${noteNames[i]}</text>`;
+        }
+        svg += '</svg>';
+        keyboardDiv.innerHTML = svg;
+      }
+      // Initialize on page load
+      window.addEventListener('DOMContentLoaded', updateKeyboardViz);
+    </script>
     <script>
       // Toast fade animations (keep in index.html for style injection)
       const style = document.createElement("style");
@@ -541,11 +561,106 @@
               .join(" ");
             // Show note and chord as A(m7), add unique chord number
             const chordNum = chordNumMap[chord.chordName] || "--";
+            // Per-chord voicing dropdown and keyboard viz
             outputHTML += `<div class="p-3 rounded bg-gray-800 text-white shadow">
               <span class="chord-name text-lg font-bold">${chord.root}(${chord.type}) <span class="text-yellow-300 text-sm">${chordNum}</span></span><br>
               <span class="root-baked-label">Root-baked:</span> <span class="root-baked-value">${rootBakedSpans}</span><br>
               <span class="interval-label">Interval:</span> <span class="interval-value">${intervalHexSpans}</span>
+              <div class="mt-2 flex flex-col items-center">
+                <select class="chord-voicing-select mb-2 p-1 rounded border border-gray-300 bg-gray-800 text-blue-200 text-xs" data-chord-idx="${i}" onchange="updateChordVoicing(${i}, this.value)">
+                  <option value="closed">Closed Voicing</option>
+                  <option value="open-triad">Open Triad</option>
+                  <option value="drop2">Drop-2</option>
+                  <option value="drop3">Drop-3</option>
+                  <option value="spread">Spread</option>
+                  <option value="octave">Octave Doubling</option>
+                  <option value="first-inversion">First Inversion</option>
+                  <option value="second-inversion">Second Inversion</option>
+                  <option value="third-inversion">Third Inversion</option>
+                  <option value="shell-dominant">Shell Dominant</option>
+                  <option value="altered-dominant">Altered Dominant</option>
+                </select>
+                <div id="chordKeyboardViz${i}"></div>
+              </div>
             </div>`;
+    // Store per-chord voicing selections
+    window.chordVoicings = {};
+
+    // Update keyboard visualization for a specific chord
+    window.updateChordKeyboardViz = function(idx, voicing, chordObj) {
+      const keyboardDiv = document.getElementById('chordKeyboardViz' + idx);
+      if (!keyboardDiv || !chordObj) return;
+      // Get notes for this chord and voicing
+      let notes = [];
+      if (chordObj.intervalOnly && Array.isArray(chordObj.intervalOnly)) {
+        // Use applyVoicing from core.js
+        if (typeof window.applyVoicing === 'function') {
+          const midiRoot = chordObj.midiRoot || 60; // fallback to C4
+          notes = window.applyVoicing(chordObj.intervalOnly, voicing).map(v => midiRoot + v);
+        }
+      }
+      // Wrap notes to C4–C5 range for visualization
+      const wrappedNotes = notes.map(n => ((n - 60) % 12 + 12) % 12 + 60);
+      // Render keyboard SVG (C4 to C5, 13 keys)
+      let svg = '<svg width="130" height="40">';
+      const noteNames = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B','C'];
+      for (let i = 0; i < 13; i++) {
+        const x = i * 10;
+        const midi = 60 + i;
+        const isActive = wrappedNotes.includes(midi);
+        svg += `<rect x="${x}" y="5" width="10" height="30" rx="2" fill="${isActive ? '#ff79c6' : '#282a36'}" stroke="#444" />`;
+        svg += `<text x="${x+5}" y="35" text-anchor="middle" font-size="8" fill="#fff">${noteNames[i]}</text>`;
+      }
+      svg += '</svg>';
+      keyboardDiv.innerHTML = svg;
+    };
+
+    // Called when user changes voicing for a chord
+    window.updateChordVoicing = function(idx, voicing) {
+      window.chordVoicings[idx] = voicing;
+      if (window.lastChordObjs && window.lastChordObjs[idx]) {
+        const chordObj = window.lastChordObjs[idx];
+        if (Array.isArray(chordObj.intervalOnly)) {
+          // Get voiced intervals
+          let voicedIntervals = chordObj.intervalOnly;
+          if (typeof window.applyVoicing === 'function') {
+            voicedIntervals = window.applyVoicing(chordObj.intervalOnly, voicing);
+          }
+          // Convert intervals to hex codes
+          const midiRoot = chordObj.midiRoot || 60;
+          const rootBakedHex = voicedIntervals.map(v => {
+            const hex = (midiRoot + v).toString(16).toUpperCase();
+            return `<span>${hex}</span>`;
+          }).join(' ');
+          // Use core.js intervalOnlyHex for correct formatting
+          const chordObjUpdated = Object.assign({}, chordObj, {
+            intervalOnly: voicedIntervals,
+            intervalOnlyHex: voicedIntervals.map(window.semitoneToHex)
+          });
+          const intervalHex = chordObjUpdated.intervalOnlyHex.map(hex => `<span>${hex}</span>`).join(' ');
+          // Update DOM
+          const chordBox = document.getElementById('chordKeyboardViz'+idx).closest('.p-3');
+          if (chordBox) {
+            const rootBakedEl = chordBox.querySelector('.root-baked-value');
+            const intervalEl = chordBox.querySelector('.interval-value');
+            if (rootBakedEl) rootBakedEl.innerHTML = rootBakedHex;
+            if (intervalEl) intervalEl.innerHTML = intervalHex;
+          }
+          // Update keyboard visualization
+          window.updateChordKeyboardViz(idx, voicing, Object.assign({}, chordObj, { intervalOnly: voicedIntervals }));
+        }
+      }
+    };
+
+    // After rendering output grid, initialize all chord voicings and visualizations
+    window.lastChordObjs = result.chords;
+    window.chordVoicings = {};
+    setTimeout(() => {
+      result.chords.forEach((chord, i) => {
+        window.chordVoicings[i] = 'closed';
+        window.updateChordKeyboardViz(i, 'closed', chord);
+      });
+    }, 0);
           });
           outputHTML += "</div>";
         } else {
