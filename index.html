@@ -547,6 +547,9 @@
           outputHTML +=
             '<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">';
           result.chords.forEach((chord, i) => {
+            // Set midiRoot for each chord
+            const midiRootMap = { C: 60, 'C#': 61, Db: 61, D: 62, 'D#': 63, Eb: 63, E: 64, F: 65, 'F#': 66, Gb: 66, G: 67, 'G#': 68, Ab: 68, A: 69, 'A#': 70, Bb: 70, B: 71 };
+            chord.midiRoot = midiRootMap[chord.root] || 60;
             const intervalHexSpans = chord.intervalOnlyHex
               .map(
                 (hex, idx) =>
@@ -561,25 +564,38 @@
               .join(" ");
             // Show note and chord as A(m7), add unique chord number
             const chordNum = chordNumMap[chord.chordName] || "--";
+            // Determine valid voicings for this chord
+            let n = 0;
+            if (Array.isArray(chord.intervalOnly)) {
+              n = chord.intervalOnly.length;
+            } else if (chord.intervalOnly && typeof chord.intervalOnly === 'object' && 'length' in chord.intervalOnly) {
+              n = chord.intervalOnly.length;
+            } else {
+              n = 0;
+            }
+            const voicingOptions = [
+              { value: 'closed', label: 'Closed Voicing', valid: true },
+              { value: 'open-triad', label: 'Open Triad', valid: n === 3 },
+              { value: 'drop2', label: 'Drop-2', valid: n >= 3 },
+              { value: 'drop3', label: 'Drop-3', valid: n >= 4 },
+              { value: 'spread', label: 'Spread', valid: n >= 2 },
+              { value: 'octave', label: 'Octave Doubling', valid: n >= 2 },
+              { value: 'first-inversion', label: 'First Inversion', valid: n >= 2 },
+              { value: 'second-inversion', label: 'Second Inversion', valid: n >= 3 },
+              { value: 'third-inversion', label: 'Third Inversion', valid: n >= 4 },
+              { value: 'shell-dominant', label: 'Shell Dominant', valid: n >= 3 },
+              { value: 'altered-dominant', label: 'Altered Dominant', valid: n >= 3 },
+            ];
+            const voicingSelect = `<select class="chord-voicing-select mb-2 p-1 rounded border border-gray-300 bg-gray-800 text-blue-200 text-xs" data-chord-idx="${i}" onchange="updateChordVoicing(${i}, this.value)">
+              ${voicingOptions.filter(opt => opt.valid).map(opt => `<option value="${opt.value}">${opt.label}</option>`).join('')}
+            </select>`;
             // Per-chord voicing dropdown and keyboard viz
             outputHTML += `<div class="p-3 rounded bg-gray-800 text-white shadow">
               <span class="chord-name text-lg font-bold">${chord.root}(${chord.type}) <span class="text-yellow-300 text-sm">${chordNum}</span></span><br>
               <span class="root-baked-label">Root-baked:</span> <span class="root-baked-value">${rootBakedSpans}</span><br>
               <span class="interval-label">Interval:</span> <span class="interval-value">${intervalHexSpans}</span>
               <div class="mt-2 flex flex-col items-center">
-                <select class="chord-voicing-select mb-2 p-1 rounded border border-gray-300 bg-gray-800 text-blue-200 text-xs" data-chord-idx="${i}" onchange="updateChordVoicing(${i}, this.value)">
-                  <option value="closed">Closed Voicing</option>
-                  <option value="open-triad">Open Triad</option>
-                  <option value="drop2">Drop-2</option>
-                  <option value="drop3">Drop-3</option>
-                  <option value="spread">Spread</option>
-                  <option value="octave">Octave Doubling</option>
-                  <option value="first-inversion">First Inversion</option>
-                  <option value="second-inversion">Second Inversion</option>
-                  <option value="third-inversion">Third Inversion</option>
-                  <option value="shell-dominant">Shell Dominant</option>
-                  <option value="altered-dominant">Altered Dominant</option>
-                </select>
+                ${voicingSelect}
                 <div id="chordKeyboardViz${i}"></div>
               </div>
             </div>`;
@@ -593,24 +609,24 @@
       // Get notes for this chord and voicing
       let notes = [];
       if (chordObj.intervalOnly && Array.isArray(chordObj.intervalOnly)) {
-        // Use applyVoicing from core.js
-        if (typeof window.applyVoicing === 'function') {
-          const midiRoot = chordObj.midiRoot || 60; // fallback to C4
-          notes = window.applyVoicing(chordObj.intervalOnly, voicing).map(v => midiRoot + v);
-        }
+        // Use intervals directly, do not re-apply voicing
+        const midiRoot = chordObj.midiRoot || 60; // fallback to C4
+        notes = chordObj.intervalOnly.map(v => midiRoot + v);
       }
-      // Wrap notes to C4–C5 range for visualization
-      const wrappedNotes = notes.map(n => ((n - 60) % 12 + 12) % 12 + 60);
-      // Render keyboard SVG (C4 to C5, 13 keys)
-      let svg = '<svg width="130" height="40">';
+      // Render two octaves (C4–C5 and C5–C6), each as a row
+      const octaves = [60, 72]; // C4, C5
       const noteNames = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B','C'];
-      for (let i = 0; i < 13; i++) {
-        const x = i * 10;
-        const midi = 60 + i;
-        const isActive = wrappedNotes.includes(midi);
-        svg += `<rect x="${x}" y="5" width="10" height="30" rx="2" fill="${isActive ? '#ff79c6' : '#282a36'}" stroke="#444" />`;
-        svg += `<text x="${x+5}" y="35" text-anchor="middle" font-size="8" fill="#fff">${noteNames[i]}</text>`;
-      }
+      let svg = '<svg width="130" height="90">';
+      octaves.forEach((oct, row) => {
+        for (let i = 0; i < 13; i++) {
+          const x = i * 10;
+          const y = 5 + row * 40;
+          const midi = oct + i;
+          const isActive = notes.includes(midi);
+          svg += `<rect x="${x}" y="${y}" width="10" height="30" rx="2" fill="${isActive ? '#ff79c6' : '#282a36'}" stroke="#444" />`;
+          svg += `<text x="${x+5}" y="${y+30}" text-anchor="middle" font-size="8" fill="#fff">${noteNames[i]}</text>`;
+        }
+      });
       svg += '</svg>';
       keyboardDiv.innerHTML = svg;
     };
@@ -646,8 +662,8 @@
             if (rootBakedEl) rootBakedEl.innerHTML = rootBakedHex;
             if (intervalEl) intervalEl.innerHTML = intervalHex;
           }
-          // Update keyboard visualization
-          window.updateChordKeyboardViz(idx, voicing, Object.assign({}, chordObj, { intervalOnly: voicedIntervals }));
+          // Update keyboard visualization with new intervals and hex
+          window.updateChordKeyboardViz(idx, voicing, chordObjUpdated);
         }
       }
     };
