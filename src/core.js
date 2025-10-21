@@ -1,7 +1,58 @@
+/**
+ * Returns the MIDI root note for a given root string (C, D#, etc.).
+ * @param {string} root - The root note name.
+ * @returns {number} MIDI note number for C4=60.
+ */
+window.getMidiRoot = function (root) {
+  const midiRootMap = {
+    C: 60,
+    "C#": 61,
+    Db: 61,
+    D: 62,
+    "D#": 63,
+    Eb: 63,
+    E: 64,
+    F: 65,
+    "F#": 66,
+    Gb: 66,
+    G: 67,
+    "G#": 68,
+    Ab: 68,
+    A: 69,
+    "A#": 70,
+    Bb: 70,
+    B: 71,
+  };
+  return midiRootMap[root] || 60;
+};
+
+/**
+ * Returns an array of valid voicing option objects for a given interval array.
+ * @param {number[]} intervals - The chord intervals.
+ * @returns {Array<{value: string, label: string}>} Valid voicing options.
+ */
+window.getValidVoicings = function (intervals) {
+  const n = Array.isArray(intervals) ? intervals.length : 0;
+  const voicingOptions = [
+    { value: "closed", label: "Closed Voicing", valid: true },
+    { value: "open-triad", label: "Open Triad", valid: n === 3 },
+    { value: "drop2", label: "Drop-2", valid: n >= 3 },
+    { value: "drop3", label: "Drop-3", valid: n >= 4 },
+    { value: "spread", label: "Spread", valid: n >= 2 },
+    { value: "octave", label: "Octave Doubling", valid: n >= 2 },
+    { value: "first-inversion", label: "First Inversion", valid: n >= 2 },
+    { value: "second-inversion", label: "Second Inversion", valid: n >= 3 },
+    { value: "third-inversion", label: "Third Inversion", valid: n >= 4 },
+    { value: "shell-dominant", label: "Shell Dominant", valid: n >= 3 },
+    { value: "altered-dominant", label: "Altered Dominant", valid: n >= 3 },
+  ];
+  return voicingOptions.filter((opt) => opt.valid);
+};
 // Utility: Generate UUID v4
 function generateUUID() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+    var r = (Math.random() * 16) | 0,
+      v = c === "x" ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
 }
@@ -10,40 +61,40 @@ function generateUUID() {
  * Export all saved chord sets as JSON file
  * @public
  */
-window.exportChordSets = function() {
+window.exportChordSets = function () {
   const sets = window.getSavedChordSets();
   const dataStr = JSON.stringify(sets, null, 2);
-  const blob = new Blob([dataStr], { type: 'application/json' });
+  const blob = new Blob([dataStr], { type: "application/json" });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const a = document.createElement("a");
   a.href = url;
-  a.download = 'hypersyn-chord-sets.json';
+  a.download = "hypersyn-chord-sets.json";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  window.showToast('Chord sets exported as JSON.', 'success');
+  window.showToast("Chord sets exported as JSON.", "success");
 };
 
 /**
  * Import chord sets from JSON file/string, only add new sets by unique id
  * @public
  */
-window.importChordSets = function(fileInput) {
+window.importChordSets = function (fileInput) {
   if (!fileInput.files || !fileInput.files[0]) {
-    window.showToast('No file selected.', 'error');
+    window.showToast("No file selected.", "error");
     return;
   }
   const file = fileInput.files[0];
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = function (e) {
     try {
       const importedSets = JSON.parse(e.target.result);
-      if (!Array.isArray(importedSets)) throw new Error('Invalid format');
+      if (!Array.isArray(importedSets)) throw new Error("Invalid format");
       let sets = window.getSavedChordSets();
-      const existingIds = new Set(sets.map(s => s.id));
+      const existingIds = new Set(sets.map((s) => s.id));
       let added = 0;
-      importedSets.forEach(set => {
+      importedSets.forEach((set) => {
         if (set && set.id && !existingIds.has(set.id)) {
           sets.push(set);
           added++;
@@ -52,14 +103,14 @@ window.importChordSets = function(fileInput) {
       window.setSavedChordSets(sets);
       window.updateSavedChordSetsDropdown();
       if (added > 0) {
-        window.showToast(`Imported ${added} new chord set(s).`, 'success');
+        window.showToast(`Imported ${added} new chord set(s).`, "success");
       } else {
-        window.showToast('No new chord sets to import.', 'info');
+        window.showToast("No new chord sets to import.", "info");
       }
     } catch {
-      window.showToast('Failed to import chord sets.', 'error');
+      window.showToast("Failed to import chord sets.", "error");
     }
-    fileInput.value = '';
+    fileInput.value = "";
   };
   reader.readAsText(file);
 };
@@ -68,27 +119,30 @@ window.importChordSets = function(fileInput) {
  * @public
  */
 window.toggleVideoBg = function () {
-  const videoBg = document.getElementById('video-bg');
-  const btn = document.getElementById('toggleVideoBtn');
+  const videoBg = document.getElementById("video-bg");
+  const btn = document.getElementById("toggleVideoBtn");
   if (!videoBg || !btn) return;
-  const isHidden = videoBg.style.display === 'none';
-  videoBg.style.display = isHidden ? 'block' : 'none';
-  btn.textContent = isHidden ? 'Hide Video' : 'Show Video';
+  const isHidden = videoBg.style.display === "none";
+  videoBg.style.display = isHidden ? "block" : "none";
+  btn.textContent = isHidden ? "Hide Video" : "Show Video";
 };
 /**
  * Toast notification system (Tailwind styled)
  */
-window.showToast = function(message, type = "info") {
+window.showToast = function (message, type = "info") {
   const container = document.getElementById("toastContainer");
   if (!container) return;
-  while (container.children.length > 2) container.removeChild(container.firstChild);
+  while (container.children.length > 2)
+    container.removeChild(container.firstChild);
   const colors = {
     success: "bg-pink-600 text-white border-pink-400",
     info: "bg-blue-600 text-white border-blue-400",
-    error: "bg-gray-700 text-red-200 border-red-400"
+    error: "bg-gray-700 text-red-200 border-red-400",
   };
   const toast = document.createElement("div");
-  toast.className = `px-4 py-2 rounded shadow-lg border ${colors[type] || colors.info} text-lg mb-2 animate-fadeIn`;
+  toast.className = `px-4 py-2 rounded shadow-lg border ${
+    colors[type] || colors.info
+  } text-lg mb-2 animate-fadeIn`;
   toast.textContent = message;
   container.appendChild(toast);
   setTimeout(() => {
@@ -100,7 +154,7 @@ window.showToast = function(message, type = "info") {
 /**
  * Save/load/delete chord sets in localStorage
  */
-window.getSavedChordSets = function() {
+window.getSavedChordSets = function () {
   const sets = localStorage.getItem("hypersynChordSets");
   try {
     return sets ? JSON.parse(sets) : [];
@@ -108,10 +162,10 @@ window.getSavedChordSets = function() {
     return [];
   }
 };
-window.setSavedChordSets = function(sets) {
+window.setSavedChordSets = function (sets) {
   localStorage.setItem("hypersynChordSets", JSON.stringify(sets));
 };
-window.updateSavedChordSetsDropdown = function() {
+window.updateSavedChordSetsDropdown = function () {
   const select = document.getElementById("savedChordSetsSelect");
   if (!select) return;
   const sets = window.getSavedChordSets();
@@ -120,7 +174,7 @@ window.updateSavedChordSetsDropdown = function() {
     select.innerHTML += `<option value="${idx}">${set.name}</option>`;
   });
 };
-window.saveChordSet = function() {
+window.saveChordSet = function () {
   const input = document.getElementById("chordsInput").value;
   const nameInput = document.getElementById("chordSetNameInput");
   const name = nameInput.value.trim();
@@ -139,7 +193,7 @@ window.saveChordSet = function() {
   window.updateSavedChordSetsDropdown();
   window.showToast(`Chord set saved as '${name}'.`, "success");
 };
-window.loadChordSet = function() {
+window.loadChordSet = function () {
   const select = document.getElementById("savedChordSetsSelect");
   const idx = select.value;
   if (!idx || isNaN(idx)) {
@@ -150,13 +204,14 @@ window.loadChordSet = function() {
   const set = sets[parseInt(idx, 10)];
   if (set) {
     document.getElementById("chordsInput").value = set.chords;
-    if (window.updateSingleChordDropdownFromInput) window.updateSingleChordDropdownFromInput();
+    if (window.updateSingleChordDropdownFromInput)
+      window.updateSingleChordDropdownFromInput();
     window.showToast(`Chord set '${set.name}' loaded!`, "success");
   } else {
     window.showToast("Chord set not found.", "error");
   }
 };
-window.deleteChordSet = function() {
+window.deleteChordSet = function () {
   const select = document.getElementById("savedChordSetsSelect");
   const idx = select.value;
   if (!idx || isNaN(idx)) {
@@ -189,70 +244,79 @@ function applyVoicing(intervals, voicing) {
     return intervals.includes(4) && intervals.includes(10);
   }
   switch (voicing) {
-    case 'drop2':
+    case "drop2":
       if (sorted.length >= 2) {
         // Drop 2nd highest
         const idx = sorted.length - 2;
         sorted[idx] -= 12;
       }
       return sorted.slice().sort((a, b) => a - b);
-    case 'open-triad':
+    case "open-triad":
       // For triads, move the middle note up an octave
       if (sorted.length === 3) {
         const open = [sorted[0], sorted[2], sorted[1] + 12];
         return open.sort((a, b) => a - b);
       }
       return sorted;
-    case 'drop3':
+    case "drop3":
       if (sorted.length >= 3) {
         // Drop 3rd highest
         const idx = sorted.length - 3;
         sorted[idx] -= 12;
       }
       return sorted.slice().sort((a, b) => a - b);
-    case 'spread':
+    case "spread":
       // Lift every other (2nd, 4th, ...)
       return sorted.map((v, i) => (i % 2 === 1 ? v + 12 : v));
-    case 'octave':
+    case "octave":
       // Double root and/or 5th for thickness
       const doubled = [...sorted];
       if (doubled.length > 0) doubled.push(doubled[0] + 12); // root
       if (doubled.length > 2) doubled.push(doubled[2] + 12); // 5th
       return doubled;
-    case 'first-inversion':
+    case "first-inversion":
       // Move root up an octave
       if (sorted.length > 1) {
         const inv = [...sorted];
         inv[0] += 12;
-        return inv.slice(1).concat(inv[0]).sort((a, b) => a - b);
+        return inv
+          .slice(1)
+          .concat(inv[0])
+          .sort((a, b) => a - b);
       }
       return sorted;
-    case 'second-inversion':
+    case "second-inversion":
       // Move root and 3rd up an octave
       if (sorted.length > 2) {
         const inv = [...sorted];
         inv[0] += 12;
         inv[1] += 12;
-        return inv.slice(2).concat(inv[0], inv[1]).sort((a, b) => a - b);
+        return inv
+          .slice(2)
+          .concat(inv[0], inv[1])
+          .sort((a, b) => a - b);
       }
       return sorted;
-    case 'third-inversion':
+    case "third-inversion":
       // Move root, 3rd, and 5th up an octave (for 7th chords)
       if (sorted.length > 3) {
         const inv = [...sorted];
         inv[0] += 12;
         inv[1] += 12;
         inv[2] += 12;
-        return inv.slice(3).concat(inv[0], inv[1], inv[2]).sort((a, b) => a - b);
+        return inv
+          .slice(3)
+          .concat(inv[0], inv[1], inv[2])
+          .sort((a, b) => a - b);
       }
       return sorted;
-    case 'shell-dominant':
+    case "shell-dominant":
       // Only root, 3rd, 7th for dominant chords
       if (isDominant(sorted)) {
         return sorted.filter((v) => v === 0 || v === 4 || v === 10);
       }
       return sorted;
-    case 'altered-dominant':
+    case "altered-dominant":
       // Add b9, #9, b13, #11 to dominant chords
       if (isDominant(sorted)) {
         const base = sorted.filter((v) => v === 0 || v === 4 || v === 10);
@@ -260,7 +324,7 @@ function applyVoicing(intervals, voicing) {
         return base.concat([1, 5, 6, 8]).sort((a, b) => a - b);
       }
       return sorted;
-    case 'closed':
+    case "closed":
     default:
       return intervals;
   }
@@ -302,26 +366,26 @@ window.playChordProgression = function () {
   if (parsed.length === 0) return;
 
   // MIDI note numbers for C4 = 60
-    // MIDI note numbers for C3 = 48 (one octave lower)
-    const ROOTS = {
-      C: 48,
-      "C#": 49,
-      Db: 49,
-      D: 50,
-      "D#": 51,
-      Eb: 51,
-      E: 52,
-      F: 53,
-      "F#": 54,
-      Gb: 54,
-      G: 55,
-      "G#": 56,
-      Ab: 56,
-      A: 57,
-      "A#": 58,
-      Bb: 58,
-      B: 59,
-    };
+  // MIDI note numbers for C3 = 48 (one octave lower)
+  const ROOTS = {
+    C: 48,
+    "C#": 49,
+    Db: 49,
+    D: 50,
+    "D#": 51,
+    Eb: 51,
+    E: 52,
+    F: 53,
+    "F#": 54,
+    Gb: 54,
+    G: 55,
+    "G#": 56,
+    Ab: 56,
+    A: 57,
+    "A#": 58,
+    Bb: 58,
+    B: 59,
+  };
 
   // Web Audio setup
   const ctx =
@@ -329,7 +393,7 @@ window.playChordProgression = function () {
     new (window.AudioContext || window.webkitAudioContext)();
   window._hypersynAudioCtx = ctx;
   // iOS fix: resume context if suspended
-  if (ctx.state === 'suspended') {
+  if (ctx.state === "suspended") {
     ctx.resume();
   }
 
@@ -359,7 +423,9 @@ window.playChordProgression = function () {
   window._activeOscillators = [];
   window._activeGains = [];
   // Get voicing from UI (default to 'closed')
-  const voicing = window.getSelectedVoicing ? window.getSelectedVoicing() : 'closed';
+  const voicing = window.getSelectedVoicing
+    ? window.getSelectedVoicing()
+    : "closed";
   parsed.forEach((chord) => {
     let rootMidi = ROOTS[chord.root] || 60;
     if (!isFinite(rootMidi)) rootMidi = 60;
@@ -390,7 +456,11 @@ window.playChordProgression = function () {
       gain.gain.linearRampToValueAtTime(volume, time + attack);
       gain.gain.setValueAtTime(volume, time + chordDuration - release);
       gain.gain.linearRampToValueAtTime(0.0, time + chordDuration);
-      osc.connect(filter).connect(gain).connect(reverb).connect(ctx.destination);
+      osc
+        .connect(filter)
+        .connect(gain)
+        .connect(reverb)
+        .connect(ctx.destination);
       osc.start(time);
       osc.stop(time + chordDuration);
       window._activeOscillators.push(osc);
@@ -536,7 +606,13 @@ function getUniqueChordTypes(chords) {
   chords.forEach((chord, idx) => {
     const key = chord.intervalOnly.join("-");
     // Debug: show intervals and hex after voicing
-    console.log(`[Chord Debug] ${chord.chordName} (${chord.type}) intervals: [${chord.intervalOnly.join(", ")}] hex: [${chord.intervalOnlyHex.join(" ")}]`);
+    console.log(
+      `[Chord Debug] ${chord.chordName} (${
+        chord.type
+      }) intervals: [${chord.intervalOnly.join(
+        ", "
+      )}] hex: [${chord.intervalOnlyHex.join(" ")}]`
+    );
     if (!typeMap[key]) {
       typeOrder.push(key);
       typeMap[key] = {
@@ -556,7 +632,7 @@ function getUniqueChordTypes(chords) {
  * Reads from #chordsInput, parses, deduplicates, and outputs hex.
  * @function
  */
-window.convertChords = function(input, voicing) {
+window.convertChords = function (input, voicing) {
   const chordNames = input.split(/[\s,]+/).filter((s) => s.length > 0);
   // Parse and apply voicing to intervals for display
   const parsed = chordNames
@@ -571,13 +647,18 @@ window.convertChords = function(input, voicing) {
         ...chord,
         intervalOnly: safeIntervals,
         intervalOnlyHex: safeIntervals.map(semitoneToHex),
-        rootBaked: safeIntervals.map((i) => semitoneToHex(i + (notes[chord.root] || 0)))
+        rootBaked: safeIntervals.map((i) =>
+          semitoneToHex(i + (notes[chord.root] || 0))
+        ),
       };
     });
 
   // Defensive: filter out chords with undefined chordName
-  const validParsed = parsed.filter((c) => typeof c.chordName === 'string');
-  let result = validParsed.length > 0 ? validParsed.map((c) => c.chordName).join(" ") + "\n\n" : "No valid chords found.\n\n";
+  const validParsed = parsed.filter((c) => typeof c.chordName === "string");
+  let result =
+    validParsed.length > 0
+      ? validParsed.map((c) => c.chordName).join(" ") + "\n\n"
+      : "No valid chords found.\n\n";
 
   // Group by interval shape (with voicing applied)
   const uniqueGroups = getUniqueChordTypes(validParsed);
@@ -585,7 +666,9 @@ window.convertChords = function(input, voicing) {
     return {
       index: idx,
       chords: Array.isArray(group.chords) ? group.chords : [],
-      interval: Array.isArray(group.intervalOnlyHex) ? group.intervalOnlyHex : []
+      interval: Array.isArray(group.intervalOnlyHex)
+        ? group.intervalOnlyHex
+        : [],
     };
   });
 
@@ -594,7 +677,7 @@ window.convertChords = function(input, voicing) {
     inputChordNames: validParsed.map((c) => c.chordName),
     uniqueGroups: details,
     voicing,
-    chords: validParsed
+    chords: validParsed,
   };
 };
 /**
@@ -605,32 +688,32 @@ window.convertChords = function(input, voicing) {
 window.playSingleChordGlobal = function (chord) {
   if (!chord || !Array.isArray(chord.intervalOnly)) return;
   // MIDI note numbers for C4 = 60
-    // MIDI note numbers for C3 = 48 (one octave lower)
-    const ROOTS = {
-      C: 48,
-      "C#": 49,
-      Db: 49,
-      D: 50,
-      "D#": 51,
-      Eb: 51,
-      E: 52,
-      F: 53,
-      "F#": 54,
-      Gb: 54,
-      G: 55,
-      "G#": 56,
-      Ab: 56,
-      A: 57,
-      "A#": 58,
-      Bb: 58,
-      B: 59,
-    };
+  // MIDI note numbers for C3 = 48 (one octave lower)
+  const ROOTS = {
+    C: 48,
+    "C#": 49,
+    Db: 49,
+    D: 50,
+    "D#": 51,
+    Eb: 51,
+    E: 52,
+    F: 53,
+    "F#": 54,
+    Gb: 54,
+    G: 55,
+    "G#": 56,
+    Ab: 56,
+    A: 57,
+    "A#": 58,
+    Bb: 58,
+    B: 59,
+  };
   const ctx =
     window._hypersynAudioCtx ||
     new (window.AudioContext || window.webkitAudioContext)();
   window._hypersynAudioCtx = ctx;
   // iOS fix: resume context if suspended
-  if (ctx.state === 'suspended') {
+  if (ctx.state === "suspended") {
     ctx.resume();
   }
   // --- Simple Reverb Setup ---
@@ -656,7 +739,9 @@ window.playSingleChordGlobal = function (chord) {
   let rootMidi = ROOTS[chord.root] || 60;
   if (!isFinite(rootMidi)) rootMidi = 60;
   // Get voicing from UI (default to 'closed')
-  const voicing = window.getSelectedVoicing ? window.getSelectedVoicing() : 'closed';
+  const voicing = window.getSelectedVoicing
+    ? window.getSelectedVoicing()
+    : "closed";
   let intervals = chord.intervalOnly.filter(
     (x) => typeof x === "number" && isFinite(x)
   );
