@@ -3,7 +3,7 @@
  * @param {string} root - The root note name.
  * @returns {number} MIDI note number for C4=60.
  */
-window.getMidiRoot = function (root) {
+export function getMidiRoot(root) {
   const midiRootMap = {
     C: 60,
     "C#": 61,
@@ -24,14 +24,14 @@ window.getMidiRoot = function (root) {
     B: 71,
   };
   return midiRootMap[root] || 60;
-};
+}
 
 /**
  * Returns an array of valid voicing option objects for a given interval array.
  * @param {number[]} intervals - The chord intervals.
  * @returns {Array<{value: string, label: string}>} Valid voicing options.
  */
-window.getValidVoicings = function (intervals) {
+export function getValidVoicings(intervals) {
   const n = Array.isArray(intervals) ? intervals.length : 0;
   const voicingOptions = [
     { value: "closed", label: "Closed Voicing", valid: true },
@@ -47,9 +47,9 @@ window.getValidVoicings = function (intervals) {
     { value: "altered-dominant", label: "Altered Dominant", valid: n >= 3 },
   ];
   return voicingOptions.filter((opt) => opt.valid);
-};
+}
 // Utility: Generate UUID v4
-function generateUUID() {
+export function generateUUID() {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
     var r = (Math.random() * 16) | 0,
       v = c === "x" ? r : (r & 0x3) | 0x8;
@@ -235,7 +235,7 @@ window.deleteChordSet = function () {
  * @param {string} voicing - Voicing type: 'closed', 'drop2', 'drop3', 'spread', 'octave'.
  * @returns {number[]} Transformed intervals.
  */
-function applyVoicing(intervals, voicing) {
+export function applyVoicing(intervals, voicing) {
   if (!Array.isArray(intervals)) return intervals;
   const sorted = [...intervals].sort((a, b) => a - b);
   // Helper: is dominant 7th (major 3rd, minor 7th)
@@ -550,7 +550,7 @@ const notes = {
  * @param {number} semitone - The semitone value to convert.
  * @returns {string} The hexadecimal representation (e.g., "00", "0C").
  */
-function semitoneToHex(semitone) {
+export function semitoneToHex(semitone) {
   let hex = semitone.toString(16).toUpperCase();
   return hex.length === 1 ? "0" + hex : hex;
 }
@@ -560,7 +560,7 @@ function semitoneToHex(semitone) {
  * @param {string} chordName - The chord name (e.g., "Cmaj7", "Dm", "G7").
  * @returns {object|null} Object with chordName, root, type, rootBaked, intervalOnlyHex, intervalOnly; or null if invalid.
  */
-function parseChordName(chordName) {
+export function parseChordName(chordName) {
   const rootMatch = chordName.match(/^[A-G][b#]?/);
   if (!rootMatch) return null;
   const root = rootMatch[0];
