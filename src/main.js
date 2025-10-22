@@ -273,6 +273,12 @@ function convertChordsUI() {
     outputBtn.classList.add("dimmed");
   } else {
     outputBtn.classList.remove("dimmed");
+    // Render keyboard graphics for each chord (default voicing)
+    if (result.chords && result.chords.length > 0) {
+      result.chords.forEach((chord, i) => {
+        updateChordKeyboardViz(i, getSelectedVoicing(), chord);
+      });
+    }
   }
 }
 
