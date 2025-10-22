@@ -361,7 +361,7 @@ window.playChordProgression = function () {
   const input = document.getElementById("chordsInput").value;
   const chordNames = input.split(/\s|,/).filter((s) => s.length > 0);
   const parsed = chordNames
-    .map(window.parseChordName)
+    .map(parseChordName)
     .filter((c) => c !== null);
   if (parsed.length === 0) return;
 
