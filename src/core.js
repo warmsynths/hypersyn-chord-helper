@@ -61,8 +61,8 @@ export function generateUUID() {
  * Export all saved chord sets as JSON file
  * @public
  */
-window.exportChordSets = function () {
-  const sets = window.getSavedChordSets();
+export function exportChordSets() {
+  const sets = getSavedChordSets();
   const dataStr = JSON.stringify(sets, null, 2);
   const blob = new Blob([dataStr], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -73,16 +73,16 @@ window.exportChordSets = function () {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  window.showToast("Chord sets exported as JSON.", "success");
-};
+  showToast("Chord sets exported as JSON.", "success");
+}
 
 /**
  * Import chord sets from JSON file/string, only add new sets by unique id
  * @public
  */
-window.importChordSets = function (fileInput) {
+export function importChordSets(fileInput) {
   if (!fileInput.files || !fileInput.files[0]) {
-    window.showToast("No file selected.", "error");
+    showToast("No file selected.", "error");
     return;
   }
   const file = fileInput.files[0];
@@ -91,7 +91,7 @@ window.importChordSets = function (fileInput) {
     try {
       const importedSets = JSON.parse(e.target.result);
       if (!Array.isArray(importedSets)) throw new Error("Invalid format");
-      let sets = window.getSavedChordSets();
+  let sets = getSavedChordSets();
       const existingIds = new Set(sets.map((s) => s.id));
       let added = 0;
       importedSets.forEach((set) => {
@@ -100,36 +100,36 @@ window.importChordSets = function (fileInput) {
           added++;
         }
       });
-      window.setSavedChordSets(sets);
-      window.updateSavedChordSetsDropdown();
+  setSavedChordSets(sets);
+  updateSavedChordSetsDropdown();
       if (added > 0) {
-        window.showToast(`Imported ${added} new chord set(s).`, "success");
+  showToast(`Imported ${added} new chord set(s).`, "success");
       } else {
-        window.showToast("No new chord sets to import.", "info");
+  showToast("No new chord sets to import.", "info");
       }
     } catch {
-      window.showToast("Failed to import chord sets.", "error");
+  showToast("Failed to import chord sets.", "error");
     }
     fileInput.value = "";
   };
   reader.readAsText(file);
-};
+}
 /**
  * Toggles the synthwave video background visibility.
  * @public
  */
-window.toggleVideoBg = function () {
+export function toggleVideoBg() {
   const videoBg = document.getElementById("video-bg");
   const btn = document.getElementById("toggleVideoBtn");
   if (!videoBg || !btn) return;
   const isHidden = videoBg.style.display === "none";
   videoBg.style.display = isHidden ? "block" : "none";
   btn.textContent = isHidden ? "Hide Video" : "Show Video";
-};
+}
 /**
  * Toast notification system (Tailwind styled)
  */
-window.showToast = function (message, type = "info") {
+export function showToast(message, type = "info") {
   const container = document.getElementById("toastContainer");
   if (!container) return;
   while (container.children.length > 2)
@@ -149,32 +149,32 @@ window.showToast = function (message, type = "info") {
     toast.classList.add("animate-fadeOut");
     setTimeout(() => container.removeChild(toast), 600);
   }, 2200);
-};
+}
 
 /**
  * Save/load/delete chord sets in localStorage
  */
-window.getSavedChordSets = function () {
+export function getSavedChordSets() {
   const sets = localStorage.getItem("hypersynChordSets");
   try {
     return sets ? JSON.parse(sets) : [];
   } catch {
     return [];
   }
-};
-window.setSavedChordSets = function (sets) {
+}
+export function setSavedChordSets(sets) {
   localStorage.setItem("hypersynChordSets", JSON.stringify(sets));
-};
-window.updateSavedChordSetsDropdown = function () {
+}
+export function updateSavedChordSetsDropdown() {
   const select = document.getElementById("savedChordSetsSelect");
   if (!select) return;
-  const sets = window.getSavedChordSets();
+  const sets = getSavedChordSets();
   select.innerHTML = '<option value="">Load saved set...</option>';
   sets.forEach((set, idx) => {
     select.innerHTML += `<option value="${idx}">${set.name}</option>`;
   });
-};
-window.saveChordSet = function () {
+}
+export function saveChordSet() {
   const input = document.getElementById("chordsInput").value;
   const nameInput = document.getElementById("chordSetNameInput");
   const name = nameInput.value.trim();
@@ -182,53 +182,53 @@ window.saveChordSet = function () {
     window.showToast("Please enter a name for the chord set.", "error");
     return;
   }
-  let sets = window.getSavedChordSets();
+  let sets = getSavedChordSets();
   const idx = sets.findIndex((s) => s.name === name);
   if (idx >= 0) {
     sets[idx].chords = input;
   } else {
     sets.push({ name, chords: input, id: generateUUID() });
   }
-  window.setSavedChordSets(sets);
-  window.updateSavedChordSetsDropdown();
-  window.showToast(`Chord set saved as '${name}'.`, "success");
-};
-window.loadChordSet = function () {
+  setSavedChordSets(sets);
+  updateSavedChordSetsDropdown();
+  showToast(`Chord set saved as '${name}'.`, "success");
+}
+export function loadChordSet() {
   const select = document.getElementById("savedChordSetsSelect");
   const idx = select.value;
   if (!idx || isNaN(idx)) {
     window.showToast("Please select a saved chord set to load.", "error");
     return;
   }
-  const sets = window.getSavedChordSets();
+  const sets = getSavedChordSets();
   const set = sets[parseInt(idx, 10)];
   if (set) {
     document.getElementById("chordsInput").value = set.chords;
-    if (window.updateSingleChordDropdownFromInput)
-      window.updateSingleChordDropdownFromInput();
-    window.showToast(`Chord set '${set.name}' loaded!`, "success");
+    if (typeof updateSingleChordDropdownFromInput === "function")
+      updateSingleChordDropdownFromInput();
+    showToast(`Chord set '${set.name}' loaded!`, "success");
   } else {
-    window.showToast("Chord set not found.", "error");
+  showToast("Chord set not found.", "error");
   }
-};
-window.deleteChordSet = function () {
+}
+export function deleteChordSet() {
   const select = document.getElementById("savedChordSetsSelect");
   const idx = select.value;
   if (!idx || isNaN(idx)) {
     window.showToast("Please select a saved chord set to delete.", "error");
     return;
   }
-  let sets = window.getSavedChordSets();
+  let sets = getSavedChordSets();
   const set = sets[parseInt(idx, 10)];
   if (set) {
     sets.splice(parseInt(idx, 10), 1);
-    window.setSavedChordSets(sets);
-    window.updateSavedChordSetsDropdown();
-    window.showToast("Chord set deleted.", "success");
+  setSavedChordSets(sets);
+  updateSavedChordSetsDropdown();
+  showToast("Chord set deleted.", "success");
   } else {
-    window.showToast("Chord set not found.", "error");
+  showToast("Chord set not found.", "error");
   }
-};
+}
 /**
  * Transforms chord intervals according to the selected voicing.
  * @param {number[]} intervals - Array of intervals (semitones from root).
@@ -632,7 +632,7 @@ function getUniqueChordTypes(chords) {
  * Reads from #chordsInput, parses, deduplicates, and outputs hex.
  * @function
  */
-window.convertChords = function (input, voicing) {
+export function convertChords(input, voicing) {
   const chordNames = input.split(/[\s,]+/).filter((s) => s.length > 0);
   // Parse and apply voicing to intervals for display
   const parsed = chordNames
@@ -679,13 +679,13 @@ window.convertChords = function (input, voicing) {
     voicing,
     chords: validParsed,
   };
-};
+}
 /**
  * Plays a single chord object (from parseChordName) as a block chord using the Web Audio API.
  * @param {object} chord - Parsed chord object from parseChordName.
  * @function
  */
-window.playSingleChordGlobal = function (chord) {
+export function playSingleChordGlobal(chord) {
   if (!chord || !Array.isArray(chord.intervalOnly)) return;
   // MIDI note numbers for C4 = 60
   // MIDI note numbers for C3 = 48 (one octave lower)
@@ -731,7 +731,7 @@ window.playSingleChordGlobal = function (chord) {
     window._hypersynReverb = convolver;
   }
   const reverb = window._hypersynReverb;
-  window.stopChordProgression();
+  stopChordProgression();
   const volume =
     parseInt(document.getElementById("volumeSlider").value, 10) / 100;
   window._activeOscillators = [];
@@ -739,8 +739,8 @@ window.playSingleChordGlobal = function (chord) {
   let rootMidi = ROOTS[chord.root] || 60;
   if (!isFinite(rootMidi)) rootMidi = 60;
   // Get voicing from UI (default to 'closed')
-  const voicing = window.getSelectedVoicing
-    ? window.getSelectedVoicing()
+  const voicing = typeof getSelectedVoicing === "function"
+    ? getSelectedVoicing()
     : "closed";
   let intervals = chord.intervalOnly.filter(
     (x) => typeof x === "number" && isFinite(x)
@@ -771,7 +771,7 @@ window.playSingleChordGlobal = function (chord) {
     osc.connect(filter).connect(gain).connect(reverb).connect(ctx.destination);
     osc.start(time);
     osc.stop(time + chordDuration);
-    window._activeOscillators.push(osc);
-    window._activeGains.push(gain);
+  window._activeOscillators.push(osc);
+  window._activeGains.push(gain);
   });
-};
+}

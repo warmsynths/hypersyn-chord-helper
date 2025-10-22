@@ -151,31 +151,10 @@ function toggleSidebar() {
   }
 }
 
-function toggleVideoBg() {
-  const videoBg = document.getElementById("video-bg");
-  const btn = document.getElementById("toggleVideoBtn");
-  if (!videoBg || !btn) return;
-  const isHidden = videoBg.style.display === "none";
-  videoBg.style.display = isHidden ? "block" : "none";
-  btn.textContent = isHidden ? "Hide Video" : "Show Video";
-}
 
 // Save/Load/Delete/Export/Import Chord Sets
-function saveChordSet() {
-  if (typeof saveChordSetCore === "function") saveChordSetCore();
-}
-function loadChordSet() {
-  if (typeof loadChordSetCore === "function") loadChordSetCore();
-}
-function deleteChordSet() {
-  if (typeof deleteChordSetCore === "function") deleteChordSetCore();
-}
-function exportChordSets() {
-  if (typeof exportChordSetsCore === "function") exportChordSetsCore();
-}
-function importChordSets(e) {
-  if (typeof importChordSetsCore === "function") importChordSetsCore(e.target);
-}
+// Save/Load/Delete/Export/Import Chord Sets (direct imports from core.js)
+// Functions are imported below
 // main.js - Vite entry point for Hypersyn Chord Helper
 import {
   getMidiRoot,
@@ -183,6 +162,18 @@ import {
   applyVoicing,
   semitoneToHex,
   parseChordName,
+  exportChordSets,
+  importChordSets,
+  showToast,
+  getSavedChordSets,
+  setSavedChordSets,
+  updateSavedChordSetsDropdown,
+  saveChordSet,
+  loadChordSet,
+  deleteChordSet,
+  convertChords,
+  playSingleChordGlobal,
+  toggleVideoBg
 } from "./core.js";
 
 // --- UI Logic Functions ---
@@ -226,7 +217,7 @@ function convertChordsUI() {
   const chordNames = input.split(/[\s,]+/).filter((s) => s.length > 0);
   updateSingleChordDropdown(chordNames);
   const voicing = getSelectedVoicing();
-  const result = typeof convertChords === "function" ? convertChords(input, voicing) : { chords: [], uniqueGroups: [] };
+  const result = convertChords(input, voicing);
   let outputHTML = "";
   if (result.chords && result.chords.length > 0) {
     lastChordObjs = result.chords;
@@ -272,7 +263,7 @@ function convertChordsUI() {
     outputHTML += "</div>";
   } else {
     outputHTML = "No valid chords found.<br><br>";
-  if (typeof showToast === "function") showToast("No valid chords found.", "error");
+  showToast("No valid chords found.", "error");
   }
   document.getElementById("output").innerHTML = outputHTML;
   if (!outputHTML || !outputHTML.trim()) {
@@ -292,9 +283,9 @@ function playSingleChord() {
   const chordName = select.value;
   if (!chordName || chordName === "Select a chord...") return;
   const chordObj = parseChordName(chordName);
-  if (chordObj && typeof playSingleChordGlobal === "function") {
+  if (chordObj) {
     playSingleChordGlobal(chordObj);
-  } else if (typeof showToast === "function") {
+  } else {
     showToast("Chord playback not available.", "error");
   }
 }
