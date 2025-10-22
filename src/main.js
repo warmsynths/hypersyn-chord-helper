@@ -74,6 +74,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initialize volume label and single chord dropdown
   updateVolumeLabel();
   updateSingleChordDropdownFromInput();
+  // Populate saved sets dropdown on initial load
+  updateSavedChordSetsDropdown();
 });
 // Export UI logic for modularity/testing
 export {
