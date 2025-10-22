@@ -5,6 +5,14 @@ import { showToast } from './toast.js';
 // State for last rendered chord objects
 let lastChordObjs = [];
 
+/**
+ * Converts chords from the UI input, updates the output display, and renders chord cards.
+ *
+ * @param {Function} convertChords - Function to convert chord names to structured data.
+ * @param {Function} getSelectedVoicing - Function to get the selected voicing from the UI.
+ * @param {Function} updateSingleChordDropdown - Function to update the single chord dropdown.
+ * @returns {void}
+ */
 export function convertChordsUI(convertChords, getSelectedVoicing, updateSingleChordDropdown) {
 	document.getElementById("outputBox").style.display = "block";
 	const outputBtn = document.querySelector('button[data-box="outputBox"]');
@@ -76,6 +84,14 @@ export function convertChordsUI(convertChords, getSelectedVoicing, updateSingleC
 	}
 }
 
+/**
+ * Updates the SVG keyboard visualization for a specific chord card.
+ *
+ * @param {number} idx - The index of the chord card.
+ * @param {string} voicing - The voicing type to display.
+ * @param {object} chordObj - The chord object to visualize.
+ * @returns {void}
+ */
 export function updateChordKeyboardViz(idx, voicing, chordObj) {
 	const keyboardDiv = document.getElementById("chordKeyboardViz" + idx);
 	if (!keyboardDiv || !chordObj) return;
@@ -119,6 +135,13 @@ export function updateChordKeyboardViz(idx, voicing, chordObj) {
 	keyboardDiv.innerHTML = svg;
 }
 
+/**
+ * Updates the voicing and keyboard visualization for a specific chord card.
+ *
+ * @param {number} idx - The index of the chord card.
+ * @param {string} voicing - The voicing type to apply.
+ * @returns {void}
+ */
 export function updateChordVoicing(idx, voicing) {
 	if (!lastChordObjs || !lastChordObjs[idx]) return;
 	const chordObj = lastChordObjs[idx];

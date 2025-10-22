@@ -1,6 +1,8 @@
 
 /**
  * Updates the main keyboard visualization based on the selected voicing.
+ *
+ * @returns {void}
  */
 export function updateKeyboardViz() {
 	const keyboardDiv = document.getElementById("keyboardViz");

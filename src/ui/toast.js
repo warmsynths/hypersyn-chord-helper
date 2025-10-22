@@ -1,8 +1,10 @@
 
 /**
- * Toast notification system (Tailwind styled)
- * @param {string} message - The message to display
- * @param {string} [type="info"] - The type of toast: success, info, error
+ * Displays a toast notification (Tailwind styled).
+ *
+ * @param {string} message - The message to display.
+ * @param {string} [type="info"] - The type of toast: success, info, error.
+ * @returns {void}
  */
 export function showToast(message, type = "info") {
 	const container = document.getElementById("toastContainer");

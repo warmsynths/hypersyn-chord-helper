@@ -1,6 +1,8 @@
 
 /**
- * Generate UUID v4
+ * Generates a UUID v4 string.
+ *
+ * @returns {string} A randomly generated UUID v4 string.
  */
 export function generateUUID() {
 	return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {

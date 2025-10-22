@@ -9,7 +9,8 @@ import { parseChordName, applyVoicing } from './chords.js';
 
 /**
  * Stops all currently playing oscillators and disconnects gain nodes.
- * @function
+ *
+ * Clears the arrays of active oscillators and gain nodes, and safely stops/disconnects each.
  */
 export function stopChordProgression() {
 	if (_activeOscillators && _activeOscillators.length) {
@@ -32,8 +33,10 @@ export function stopChordProgression() {
 
 /**
  * Plays the input chord progression as block chords using the Web Audio API.
- * Each chord is played for 2.5 seconds as a synth pad.
- * @function
+ *
+ * Each chord is played for 2.5 seconds as a synth pad. Uses the current value of #chordsInput and #volumeSlider.
+ *
+ * @returns {void}
  */
 export function playChordProgression() {
 	const input = document.getElementById("chordsInput").value;
@@ -147,8 +150,9 @@ export function playChordProgression() {
 
 /**
  * Plays a single chord object (from parseChordName) as a block chord using the Web Audio API.
+ *
  * @param {object} chord - Parsed chord object from parseChordName.
- * @function
+ * @returns {void}
  */
 export function playSingleChordGlobal(chord) {
 	if (!chord || !Array.isArray(chord.intervalOnly)) return;

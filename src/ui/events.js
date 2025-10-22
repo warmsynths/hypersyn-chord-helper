@@ -24,6 +24,8 @@ function updateSingleChordDropdownFromInput() {
 
 /**
  * Wires up all DOM event listeners for the app UI.
+ *
+ * @returns {void}
  */
 export function wireEventListeners() {
 	// Sidebar close button (X)

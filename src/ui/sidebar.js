@@ -1,6 +1,8 @@
 
 /**
  * Toggles the sidebar open/close state and updates the toggle button style.
+ *
+ * @returns {void}
  */
 export function toggleSidebar() {
 	const sidebar = document.getElementById("sidebar");

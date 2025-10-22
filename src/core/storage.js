@@ -3,7 +3,9 @@ import { generateUUID } from './utils.js';
 import { showToast } from '../ui/toast.js';
 
 /**
- * Save/load/delete chord sets in localStorage
+ * Retrieves all saved chord sets from localStorage.
+ *
+ * @returns {Array<object>} Array of saved chord set objects.
  */
 export function getSavedChordSets() {
 	const sets = localStorage.getItem("hypersynChordSets");
@@ -13,9 +15,19 @@ export function getSavedChordSets() {
 		return [];
 	}
 }
+/**
+ * Saves the provided chord sets array to localStorage.
+ *
+ * @param {Array<object>} sets - Array of chord set objects to save.
+ */
 export function setSavedChordSets(sets) {
 	localStorage.setItem("hypersynChordSets", JSON.stringify(sets));
 }
+/**
+ * Updates the saved chord sets dropdown in the UI with current sets from localStorage.
+ *
+ * @returns {void}
+ */
 export function updateSavedChordSetsDropdown() {
 	const select = document.getElementById("savedChordSetsSelect");
 	if (!select) return;
@@ -25,6 +37,11 @@ export function updateSavedChordSetsDropdown() {
 		select.innerHTML += `<option value="${idx}">${set.name}</option>`;
 	});
 }
+/**
+ * Saves the current chord set from the UI to localStorage, updating if the name exists.
+ *
+ * @returns {void}
+ */
 export function saveChordSet() {
 	const input = document.getElementById("chordsInput").value;
 	const nameInput = document.getElementById("chordSetNameInput");
@@ -44,6 +61,11 @@ export function saveChordSet() {
 	updateSavedChordSetsDropdown();
 	showToast(`Chord set saved as '${name}'.`, "success");
 }
+/**
+ * Loads the selected chord set from the dropdown into the UI.
+ *
+ * @returns {void}
+ */
 export function loadChordSet() {
 	const select = document.getElementById("savedChordSetsSelect");
 	const idx = select.value;
@@ -62,6 +84,11 @@ export function loadChordSet() {
 		showToast("Chord set not found.", "error");
 	}
 }
+/**
+ * Deletes the selected chord set from localStorage and updates the dropdown.
+ *
+ * @returns {void}
+ */
 export function deleteChordSet() {
 	const select = document.getElementById("savedChordSetsSelect");
 	const idx = select.value;
@@ -81,8 +108,9 @@ export function deleteChordSet() {
 	}
 }
 /**
- * Export all saved chord sets as JSON file
- * @public
+ * Exports all saved chord sets as a downloadable JSON file.
+ *
+ * @returns {void}
  */
 export function exportChordSets() {
 	const sets = getSavedChordSets();
@@ -100,8 +128,10 @@ export function exportChordSets() {
 }
 
 /**
- * Import chord sets from JSON file/string, only add new sets by unique id
- * @public
+ * Imports chord sets from a JSON file input, only adding new sets by unique id.
+ *
+ * @param {HTMLInputElement} fileInput - The file input element containing the JSON file.
+ * @returns {void}
  */
 export function importChordSets(fileInput) {
 	if (!fileInput.files || !fileInput.files[0]) {

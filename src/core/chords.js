@@ -22,8 +22,9 @@ const notes = {
 
 /**
  * Returns the MIDI root note for a given root string (C, D#, etc.).
- * @param {string} root - The root note name.
- * @returns {number} MIDI note number for C4=60.
+ *
+ * @param {string} root - The root note name (e.g., "C", "D#", "Bb").
+ * @returns {number} The MIDI note number for the root (C4=60).
  */
 export function getMidiRoot(root) {
 	const midiRootMap = {
@@ -50,8 +51,9 @@ export function getMidiRoot(root) {
 
 /**
  * Returns an array of valid voicing option objects for a given interval array.
+ *
  * @param {number[]} intervals - The chord intervals.
- * @returns {Array<{value: string, label: string}>} Valid voicing options.
+ * @returns {Array<{value: string, label: string}>} Array of valid voicing options for the chord.
  */
 export function getValidVoicings(intervals) {
 	const n = Array.isArray(intervals) ? intervals.length : 0;
@@ -73,9 +75,10 @@ export function getValidVoicings(intervals) {
 
 /**
  * Transforms chord intervals according to the selected voicing.
+ *
  * @param {number[]} intervals - Array of intervals (semitones from root).
- * @param {string} voicing - Voicing type: 'closed', 'drop2', 'drop3', 'spread', 'octave'.
- * @returns {number[]} Transformed intervals.
+ * @param {string} voicing - Voicing type (e.g., 'closed', 'drop2', 'drop3', 'spread', 'octave', etc.).
+ * @returns {number[]} The transformed intervals after applying the voicing.
  */
 export function applyVoicing(intervals, voicing) {
 	if (!Array.isArray(intervals)) return intervals;
@@ -174,6 +177,7 @@ export function applyVoicing(intervals, voicing) {
 
 /**
  * Converts a semitone value to a 2-digit hexadecimal string (modulo 12).
+ *
  * @param {number} semitone - The semitone value to convert.
  * @returns {string} The hexadecimal representation (e.g., "00", "0C").
  */
@@ -185,6 +189,7 @@ export function semitoneToHex(semitone) {
 /**
  * Mapping of chord type strings to their corresponding intervals.
  * Used for chord name to hex conversion and interval calculation.
+ *
  * @type {Object.<string, number[]>}
  */
 const chordTypes = {
@@ -239,8 +244,9 @@ const chordTypes = {
 
 /**
  * Parses a chord name and returns its components and hex representations.
+ *
  * @param {string} chordName - The chord name (e.g., "Cmaj7", "Dm", "G7").
- * @returns {object|null} Object with chordName, root, type, rootBaked, intervalOnlyHex, intervalOnly; or null if invalid.
+ * @returns {object|null} An object with chordName, root, type, rootBaked, intervalOnlyHex, intervalOnly; or null if invalid.
  */
 export function parseChordName(chordName) {
 	const rootMatch = chordName.match(/^[A-G][b#]?/);
@@ -278,6 +284,7 @@ export function parseChordName(chordName) {
 
 /**
  * Removes duplicate chords by their interval shape.
+ *
  * @param {Array<object>} chords - Array of parsed chord objects.
  * @returns {Array<object>} Array of unique chord group objects.
  */
@@ -306,9 +313,11 @@ function getUniqueChordTypes(chords) {
 }
 
 /**
- * Converts input chord names to hex and displays results in the output element.
- * Reads from #chordsInput, parses, deduplicates, and outputs hex.
- * @function
+ * Converts input chord names to hex and groups results by interval shape.
+ *
+ * @param {string} input - The input string containing chord names (space or comma separated).
+ * @param {string} voicing - The voicing type to apply to each chord.
+ * @returns {object} Structured result for UI rendering, including inputChordNames, uniqueGroups, voicing, and chords.
  */
 export function convertChords(input, voicing) {
 	const chordNames = input.split(/[\s,]+/).filter((s) => s.length > 0);
