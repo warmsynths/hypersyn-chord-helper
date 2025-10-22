@@ -2,7 +2,9 @@
 let lastChordObjs = [];
 
 // Sidebar close button (X)
-  document.getElementById("sidebarCloseBtn")?.addEventListener("click", toggleSidebar);
+document
+  .getElementById("sidebarCloseBtn")
+  ?.addEventListener("click", toggleSidebar);
 // --- Event Listener Wiring ---
 document.addEventListener("DOMContentLoaded", () => {
   // Play/Stop progression
@@ -116,8 +118,8 @@ function handlePlay() {
   if (!isPlaying) {
     isPlaying = true;
     setPlayVisualState(true);
-  // TODO: Replace with imported playChordProgression when modularized
-  if (typeof playChordProgression === "function") playChordProgression();
+    // TODO: Replace with imported playChordProgression when modularized
+    if (typeof playChordProgression === "function") playChordProgression();
     // Estimate total duration and reset state after
     const input = document.getElementById("chordsInput").value;
     const chordCount = input.split(/\s|,/).filter((s) => s.length > 0).length;
@@ -133,9 +135,9 @@ function handleStop() {
   if (isPlaying) {
     isPlaying = false;
     setPlayVisualState(false);
-  if (typeof stopChordProgression === "function") stopChordProgression();
+    if (typeof stopChordProgression === "function") stopChordProgression();
   } else {
-  if (typeof stopChordProgression === "function") stopChordProgression();
+    if (typeof stopChordProgression === "function") stopChordProgression();
   }
 }
 
@@ -150,7 +152,6 @@ function toggleSidebar() {
     toggleBtn.classList.remove("sidebar-toggle-fade");
   }
 }
-
 
 // Save/Load/Delete/Export/Import Chord Sets
 // Save/Load/Delete/Export/Import Chord Sets (direct imports from core.js)
@@ -173,7 +174,7 @@ import {
   deleteChordSet,
   convertChords,
   playSingleChordGlobal,
-  toggleVideoBg
+  toggleVideoBg,
 } from "./core.js";
 
 // --- UI Logic Functions ---
@@ -263,7 +264,7 @@ function convertChordsUI() {
     outputHTML += "</div>";
   } else {
     outputHTML = "No valid chords found.<br><br>";
-  showToast("No valid chords found.", "error");
+    showToast("No valid chords found.", "error");
   }
   document.getElementById("output").innerHTML = outputHTML;
   if (!outputHTML || !outputHTML.trim()) {
@@ -290,7 +291,6 @@ function playSingleChord() {
   }
 }
 
-
 // --- Keyboard Visualization and Voicing Helpers ---
 function updateKeyboardViz() {
   const keyboardDiv = document.getElementById("keyboardViz");
@@ -309,13 +309,33 @@ function updateKeyboardViz() {
   else if (voicing === "shell-dominant") notes = [60, 67];
   else if (voicing === "altered-dominant") notes = [60, 64, 70];
   let svg = '<svg width="130" height="40">';
-  const noteNames = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B","C"];
+  const noteNames = [
+    "C",
+    "C#",
+    "D",
+    "D#",
+    "E",
+    "F",
+    "F#",
+    "G",
+    "G#",
+    "A",
+    "A#",
+    "B",
+    "C",
+  ];
   for (let i = 0; i < 13; i++) {
     const x = i * 10;
     const midi = 60 + i;
     const isActive = notes.includes(midi);
-    svg += `<rect x="${x}" y="5" width="10" height="30" rx="2" fill="${isActive ? "#ff79c6" : "#282a36"}" stroke="#444" />`;
-    svg += `<text x="${x + 5}" y="35" text-anchor="middle" font-size="8" fill="#fff">${noteNames[i]}</text>`;
+    svg += `<rect x="${x}" y="5" width="10" height="30" rx="2" fill="${
+      isActive ? "#ff79c6" : "#282a36"
+    }" stroke="#444" />`;
+    svg += `<text x="${
+      x + 5
+    }" y="35" text-anchor="middle" font-size="8" fill="#fff">${
+      noteNames[i]
+    }</text>`;
   }
   svg += "</svg>";
   keyboardDiv.innerHTML = svg;
@@ -330,7 +350,21 @@ function updateChordKeyboardViz(idx, voicing, chordObj) {
     notes = chordObj.intervalOnly.map((v) => midiRoot + v);
   }
   const octaves = [60, 72];
-  const noteNames = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B","C"];
+  const noteNames = [
+    "C",
+    "C#",
+    "D",
+    "D#",
+    "E",
+    "F",
+    "F#",
+    "G",
+    "G#",
+    "A",
+    "A#",
+    "B",
+    "C",
+  ];
   let svg = '<svg width="130" height="90">';
   octaves.forEach((oct, row) => {
     for (let i = 0; i < 13; i++) {
@@ -338,8 +372,12 @@ function updateChordKeyboardViz(idx, voicing, chordObj) {
       const y = 5 + row * 40;
       const midi = oct + i;
       const isActive = notes.includes(midi);
-      svg += `<rect x="${x}" y="${y}" width="10" height="30" rx="2" fill="${isActive ? "#ff79c6" : "#282a36"}" stroke="#444" />`;
-      svg += `<text x="${x + 5}" y="${y + 30}" text-anchor="middle" font-size="8" fill="#fff">${noteNames[i]}</text>`;
+      svg += `<rect x="${x}" y="${y}" width="10" height="30" rx="2" fill="${
+        isActive ? "#ff79c6" : "#282a36"
+      }" stroke="#444" />`;
+      svg += `<text x="${x + 5}" y="${
+        y + 30
+      }" text-anchor="middle" font-size="8" fill="#fff">${noteNames[i]}</text>`;
     }
   });
   svg += "</svg>";
