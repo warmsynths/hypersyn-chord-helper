@@ -4,6 +4,10 @@
   "description": "Hypersyn Chord Helper is a web-based tool for musicians and synth enthusiasts to convert chord progressions into Hypersyn-compatible hex codes. It features a stylish synthwave interface, advanced voicing options, save/load chord sets, and modern toast notifications for all user feedback.",
   "main": "index.js",
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -19,6 +23,7 @@
   },
   "homepage": "https://github.com/warmsynths/hypersyn-chord-helper#readme",
   "devDependencies": {
+    "typescript": "^5.9.3",
     "vite": "^7.1.11"
   }
 }

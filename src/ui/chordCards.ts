@@ -1,6 +1,6 @@
 
-import { getMidiRoot, getValidVoicings, semitoneToHex, applyVoicing } from '../core/chords.js';
-import { showToast } from './toast.js';
+import { getMidiRoot, getValidVoicings, semitoneToHex, applyVoicing } from '../core/chords';
+import { showToast } from './toast';
 
 // State for last rendered chord objects
 let lastChordObjs = [];

@@ -5,7 +5,7 @@ let _activeGains = [];
 let _hypersynAudioCtx = null;
 let _hypersynReverb = null;
 
-import { parseChordName, applyVoicing } from './chords.js';
+import { parseChordName, applyVoicing } from './chords';
 
 /**
  * Stops all currently playing oscillators and disconnects gain nodes.

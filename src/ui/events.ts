@@ -1,10 +1,10 @@
 
-import { toggleSidebar } from './sidebar.js';
-import { toggleVideoBg } from '../core/core.js';
-import { saveChordSet, loadChordSet, deleteChordSet, exportChordSets, importChordSets, updateSavedChordSetsDropdown } from '../core/storage.js';
-import { convertChords } from '../core/chords.js';
-import { convertChordsUI, updateChordVoicing, updateChordKeyboardViz } from './chordCards.js';
-import { updateKeyboardViz } from './keyboardViz.js';
+import { toggleSidebar } from './sidebar';
+import { toggleVideoBg } from '../core/core';
+import { saveChordSet, loadChordSet, deleteChordSet, exportChordSets, importChordSets, updateSavedChordSetsDropdown } from '../core/storage';
+import { convertChords } from '../core/chords';
+import { convertChordsUI, updateChordVoicing, updateChordKeyboardViz } from './chordCards';
+import { updateKeyboardViz } from './keyboardViz';
 
 // Placeholder: these should be implemented or imported as needed
 function updateVolumeLabel() {

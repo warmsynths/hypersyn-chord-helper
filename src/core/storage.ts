@@ -1,6 +1,6 @@
 
-import { generateUUID } from './utils.js';
-import { showToast } from '../ui/toast.js';
+import { generateUUID } from './utils';
+import { showToast } from '../ui/toast';
 
 /**
  * Retrieves all saved chord sets from localStorage.
