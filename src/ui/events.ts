@@ -8,7 +8,7 @@ export function getSelectedVoicing(): string {
 }
 
 import { toggleSidebar } from './sidebar';
-import { toggleVideoBg } from '../core/core';
+import { toggleVideoBg, playChordProgression } from '../core/core';
 import { saveChordSet, loadChordSet, deleteChordSet, exportChordSets, importChordSets, updateSavedChordSetsDropdown } from '../core/storage';
 import { convertChords } from '../core/chords';
 import { convertChordsUI, updateChordVoicing, updateChordKeyboardViz } from './chordCards';
@@ -37,11 +37,11 @@ export function updateSingleChordDropdownFromInput() {
  */
 export function wireEventListeners() {
 	// Sidebar close button (X)
-	document.getElementById("sidebarCloseBtn")?.addEventListener("click", toggleSidebar);
-	document.addEventListener("DOMContentLoaded", () => {
-		// Play/Stop progression
-		document.getElementById("playBtn")?.addEventListener("click", () => {/* handlePlay */});
-		document.getElementById("stopBtn")?.addEventListener("click", () => {/* handleStop */});
+		document.getElementById("sidebarCloseBtn")?.addEventListener("click", toggleSidebar);
+		document.addEventListener("DOMContentLoaded", () => {
+			// Play/Stop progression
+			document.getElementById("playBtn")?.addEventListener("click", playChordProgression);
+			document.getElementById("stopBtn")?.addEventListener("click", () => {/* handleStop */});
 
 		// Save/Load/Delete/Export/Import chord sets
 		document.getElementById("saveChordSetBtn")?.addEventListener("click", saveChordSet);

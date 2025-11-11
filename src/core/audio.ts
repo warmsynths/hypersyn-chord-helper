@@ -40,10 +40,15 @@ export function stopChordProgression() {
  * @returns {void}
  */
 export function playChordProgression() {
+	console.log("Play button clicked");
 	const input = (document.getElementById("chordsInput") as HTMLInputElement).value;
+	console.log("Chord input value:", input);
 	const chordNames = input.split(/\s|,/).filter((s) => s.length > 0);
 	const parsed = chordNames.map(parseChordName).filter((c) => c !== null);
-	if (parsed.length === 0) return;
+	if (parsed.length === 0) {
+		console.warn("No valid chords parsed from input.");
+		return;
+	}
 
 	// MIDI note numbers for C4 = 60
 	// MIDI note numbers for C3 = 48 (one octave lower)
@@ -105,48 +110,49 @@ export function playChordProgression() {
 	// Get voicing from UI (default to 'closed')
 	const voicing =
 		typeof getSelectedVoicing === "function" ? getSelectedVoicing() : "closed";
-	parsed.forEach((chord) => {
-		let rootMidi = ROOTS[chord.root] || 60;
-		if (!isFinite(rootMidi)) rootMidi = 60;
-		let intervals = Array.isArray(chord.intervalOnly)
-			? chord.intervalOnly.filter((x) => typeof x === "number" && isFinite(x))
-			: [];
-		intervals = applyVoicing(intervals, voicing);
-		if (intervals.length === 0) {
-			console.warn("No intervals for chord:", chord.chordName, chord);
-		}
-		intervals.forEach((semi) => {
-			let midi = rootMidi + semi;
-			if (!isFinite(midi)) return;
-			let freq = 440 * Math.pow(2, (midi - 69) / 12);
-			if (!isFinite(freq)) return;
-			let osc = ctx.createOscillator();
-			let gain = ctx.createGain();
-			let filter = ctx.createBiquadFilter();
-			osc.type = "triangle";
-			osc.frequency.value = freq;
-			osc.detune.value = Math.random() * 10 - 5;
-			filter.type = "lowpass";
-			filter.frequency.value = 220;
-			filter.Q.value = 1.4;
-			const attack = 1.0;
-			const release = 1.2;
-			gain.gain.setValueAtTime(0.0, time);
-			gain.gain.linearRampToValueAtTime(volume, time + attack);
-			gain.gain.setValueAtTime(volume, time + chordDuration - release);
-			gain.gain.linearRampToValueAtTime(0.0, time + chordDuration);
-			osc
-				.connect(filter)
-				.connect(gain)
-				.connect(reverb)
-				.connect(ctx.destination);
-			osc.start(time);
-			osc.stop(time + chordDuration);
-			_activeOscillators.push(osc);
-			_activeGains.push(gain);
+		parsed.forEach((chord) => {
+			let rootMidi = ROOTS[chord.root] || 60;
+			if (!isFinite(rootMidi)) rootMidi = 60;
+			let intervals = Array.isArray(chord.intervalOnly)
+				? chord.intervalOnly.filter((x) => typeof x === "number" && isFinite(x))
+				: [];
+			intervals = applyVoicing(intervals, voicing);
+			if (intervals.length === 0) {
+				console.warn("No intervals for chord:", chord.chordName, chord);
+			}
+			intervals.forEach((semi) => {
+				let midi = rootMidi + semi;
+				if (!isFinite(midi)) return;
+				let freq = 440 * Math.pow(2, (midi - 69) / 12);
+				if (!isFinite(freq)) return;
+				console.log("Oscillator created", { freq, midi, chord: chord.chordName });
+				let osc = ctx.createOscillator();
+				let gain = ctx.createGain();
+				let filter = ctx.createBiquadFilter();
+				osc.type = "triangle";
+				osc.frequency.value = freq;
+				osc.detune.value = Math.random() * 10 - 5;
+				filter.type = "lowpass";
+				filter.frequency.value = 220;
+				filter.Q.value = 1.4;
+				const attack = 1.0;
+				const release = 1.2;
+				gain.gain.setValueAtTime(0.0, time);
+				gain.gain.linearRampToValueAtTime(volume, time + attack);
+				gain.gain.setValueAtTime(volume, time + chordDuration - release);
+				gain.gain.linearRampToValueAtTime(0.0, time + chordDuration);
+				osc
+					.connect(filter)
+					.connect(gain)
+					.connect(reverb)
+					.connect(ctx.destination);
+				osc.start(time);
+				osc.stop(time + chordDuration);
+				_activeOscillators.push(osc);
+				_activeGains.push(gain);
+			});
+			time += chordDuration;
 		});
-		time += chordDuration;
-	});
 }
 
 /**
