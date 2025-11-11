@@ -18,7 +18,7 @@ export function convertChordsUI(convertChords, getSelectedVoicing, updateSingleC
 	const outputBtn = document.querySelector('button[data-box="outputBox"]');
 	if (outputBtn) outputBtn.innerHTML = outputBtn.innerHTML.replace("▶", "▼");
 
-	const input = document.getElementById("chordsInput").value;
+	const input = (document.getElementById("chordsInput") as HTMLInputElement).value;
 	const chordNames = input.split(/[\s,]+/).filter((s) => s.length > 0);
 	updateSingleChordDropdown(chordNames);
 	const voicing = getSelectedVoicing();

@@ -17,8 +17,8 @@
 
     // Other Outputs
     "sourceMap": true,
-    "declaration": true,
-    "declarationMap": true,
+    // "declaration": true,
+    // "declarationMap": true,
 
   // Stricter Typechecking Options
   // "noUncheckedIndexedAccess": true,
@@ -36,7 +36,7 @@
   "strict": false,
     "jsx": "react-jsx",
     "verbatimModuleSyntax": true,
-  "isolatedModules": false,
+  "isolatedModules": true,
   // "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,

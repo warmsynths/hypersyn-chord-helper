@@ -1,3 +1,11 @@
+/**
+ * Returns the currently selected voicing type from the voicing dropdown.
+ * Defaults to 'closed' if not found.
+ */
+export function getSelectedVoicing(): string {
+	const select = document.getElementById("voicingSelect") as HTMLSelectElement | null;
+	return select ? select.value : "closed";
+}
 
 import { toggleSidebar } from './sidebar';
 import { toggleVideoBg } from '../core/core';
@@ -8,17 +16,17 @@ import { updateKeyboardViz } from './keyboardViz';
 
 // Placeholder: these should be implemented or imported as needed
 function updateVolumeLabel() {
-	const slider = document.getElementById("volumeSlider");
-	document.getElementById("volumeLabel").textContent = slider.value + "%";
+	const slider = document.getElementById("volumeSlider") as HTMLInputElement | null;
+	document.getElementById("volumeLabel").textContent = (slider ? slider.value : "0") + "%";
 }
 function clearInput() {
-	document.getElementById("chordsInput").value = "";
+	(document.getElementById("chordsInput") as HTMLInputElement | null)!.value = "";
 	// ...clear other UI as needed
 }
 function playSingleChord() {
 	// ...implement as needed
 }
-function updateSingleChordDropdownFromInput() {
+export function updateSingleChordDropdownFromInput() {
 	// ...implement as needed
 }
 
@@ -81,9 +89,10 @@ export function wireEventListeners() {
 		updateKeyboardViz();
 		// Delegate for per-chord voicing dropdowns
 		document.body.addEventListener("change", (e) => {
-			if (e.target && e.target.classList.contains("chord-voicing-select")) {
-				const idx = e.target.getAttribute("data-chord-idx");
-				const voicing = e.target.value;
+			const target = e.target as Element | null;
+			if (target && target.classList.contains("chord-voicing-select")) {
+				const idx = target.getAttribute("data-chord-idx");
+				const voicing = (target as HTMLSelectElement).value;
 				updateChordVoicing(Number(idx), voicing);
 			}
 		});

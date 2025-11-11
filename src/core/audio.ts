@@ -6,6 +6,7 @@ let _hypersynAudioCtx = null;
 let _hypersynReverb = null;
 
 import { parseChordName, applyVoicing } from './chords';
+import { getSelectedVoicing } from '../ui/events';
 
 /**
  * Stops all currently playing oscillators and disconnects gain nodes.
@@ -39,7 +40,7 @@ export function stopChordProgression() {
  * @returns {void}
  */
 export function playChordProgression() {
-	const input = document.getElementById("chordsInput").value;
+	const input = (document.getElementById("chordsInput") as HTMLInputElement).value;
 	const chordNames = input.split(/\s|,/).filter((s) => s.length > 0);
 	const parsed = chordNames.map(parseChordName).filter((c) => c !== null);
 	if (parsed.length === 0) return;
@@ -98,7 +99,7 @@ export function playChordProgression() {
 
 	stopChordProgression(); // Stop any previous notes
 	const volume =
-		parseInt(document.getElementById("volumeSlider").value, 10) / 100;
+		parseInt((document.getElementById("volumeSlider") as HTMLInputElement).value, 10) / 100;
 	_activeOscillators = [];
 	_activeGains = [];
 	// Get voicing from UI (default to 'closed')
@@ -202,7 +203,7 @@ export function playSingleChordGlobal(chord) {
 	const reverb = _hypersynReverb;
 	stopChordProgression();
 	const volume =
-		parseInt(document.getElementById("volumeSlider").value, 10) / 100;
+		parseInt((document.getElementById("volumeSlider") as HTMLInputElement).value, 10) / 100;
 	_activeOscillators = [];
 	_activeGains = [];
 	let rootMidi = ROOTS[chord.root] || 60;

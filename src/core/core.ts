@@ -1,3 +1,4 @@
+import { getSelectedVoicing, updateSingleChordDropdownFromInput } from '../ui/events';
 /**
  * Returns the MIDI root note for a given root string (C, D#, etc.).
  * @param {string} root - The root note name.
@@ -89,7 +90,10 @@ export function importChordSets(fileInput) {
   const reader = new FileReader();
   reader.onload = function (e) {
     try {
-      const importedSets = JSON.parse(e.target.result);
+      const resultStr = typeof e.target.result === "string"
+        ? e.target.result
+        : new TextDecoder().decode(e.target.result);
+      const importedSets = JSON.parse(resultStr);
       if (!Array.isArray(importedSets)) throw new Error("Invalid format");
       let sets = getSavedChordSets();
       const existingIds = new Set(sets.map((s) => s.id));
@@ -175,8 +179,8 @@ export function updateSavedChordSetsDropdown() {
   });
 }
 export function saveChordSet() {
-  const input = document.getElementById("chordsInput").value;
-  const nameInput = document.getElementById("chordSetNameInput");
+  const input = (document.getElementById("chordsInput") as HTMLInputElement).value;
+  const nameInput = document.getElementById("chordSetNameInput") as HTMLInputElement;
   const name = nameInput.value.trim();
   if (!name) {
     showToast("Please enter a name for the chord set.", "error");
@@ -194,16 +198,16 @@ export function saveChordSet() {
   showToast(`Chord set saved as '${name}'.`, "success");
 }
 export function loadChordSet() {
-  const select = document.getElementById("savedChordSetsSelect");
+  const select = document.getElementById("savedChordSetsSelect") as HTMLSelectElement;
   const idx = select.value;
-  if (!idx || isNaN(idx)) {
+  if (!idx || isNaN(Number(idx))) {
     showToast("Please select a saved chord set to load.", "error");
     return;
   }
   const sets = getSavedChordSets();
   const set = sets[parseInt(idx, 10)];
   if (set) {
-    document.getElementById("chordsInput").value = set.chords;
+    (document.getElementById("chordsInput") as HTMLInputElement).value = set.chords;
     if (typeof updateSingleChordDropdownFromInput === "function")
       updateSingleChordDropdownFromInput();
     showToast(`Chord set '${set.name}' loaded!`, "success");
@@ -212,9 +216,9 @@ export function loadChordSet() {
   }
 }
 export function deleteChordSet() {
-  const select = document.getElementById("savedChordSetsSelect");
+  const select = document.getElementById("savedChordSetsSelect") as HTMLSelectElement;
   const idx = select.value;
-  if (!idx || isNaN(idx)) {
+  if (!idx || isNaN(Number(idx))) {
     showToast("Please select a saved chord set to delete.", "error");
     return;
   }
@@ -363,7 +367,7 @@ export function stopChordProgression() {
  * @function
  */
 export function playChordProgression() {
-  const input = document.getElementById("chordsInput").value;
+  const input = (document.getElementById("chordsInput") as HTMLInputElement).value;
   const chordNames = input.split(/\s|,/).filter((s) => s.length > 0);
   const parsed = chordNames.map(parseChordName).filter((c) => c !== null);
   if (parsed.length === 0) return;
@@ -422,7 +426,7 @@ export function playChordProgression() {
 
   stopChordProgression(); // Stop any previous notes
   const volume =
-    parseInt(document.getElementById("volumeSlider").value, 10) / 100;
+    parseInt((document.getElementById("volumeSlider") as HTMLInputElement).value, 10) / 100;
   _activeOscillators = [];
   _activeGains = [];
   // Get voicing from UI (default to 'closed')
@@ -735,7 +739,7 @@ export function playSingleChordGlobal(chord) {
   const reverb = _hypersynReverb;
   stopChordProgression();
   const volume =
-    parseInt(document.getElementById("volumeSlider").value, 10) / 100;
+    parseInt((document.getElementById("volumeSlider") as HTMLInputElement).value, 10) / 100;
   _activeOscillators = [];
   _activeGains = [];
   let rootMidi = ROOTS[chord.root] || 60;
