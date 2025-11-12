@@ -124,14 +124,27 @@ export const exportChordSets = () => {
   const blob = new Blob([dataStr], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
+  // Try to use the selected set name for the filename
+  let filename = "hypersyn-chord-sets.json";
+  const select = document.getElementById("savedChordSetsSelect") as HTMLSelectElement | null;
+  if (select && select.value && !isNaN(Number(select.value))) {
+    const idx = parseInt(select.value, 10);
+    const setsArr = Array.isArray(sets) ? sets : [];
+    if (setsArr[idx] && setsArr[idx].name) {
+      let base = setsArr[idx].name.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (base.length > 0) {
+        filename = `hypersyn-${base}.json`;
+      }
+    }
+  }
   a.href = url;
-  a.download = "hypersyn-chord-sets.json";
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  showToast("Chord sets exported as JSON.", "success");
-}
+  showToast(`Chord sets exported as ${filename}.`, "success");
+};
 
 /**
  * Imports chord sets from a JSON file input, only adding new sets by unique id.
