@@ -44,11 +44,51 @@ function clearInput() {
     "";
   // ...clear other UI as needed
 }
+import { parseChordName } from "../core/chords";
+import { playSingleChordGlobal } from "../core/core";
+
 function playSingleChord() {
-  // ...implement as needed
+  const select = document.getElementById(
+    "singleChordSelect"
+  ) as HTMLSelectElement | null;
+  if (!select || !select.value) return;
+  const chordName = select.value;
+  const parsed = parseChordName(chordName);
+  if (!parsed) return;
+  playSingleChordGlobal(parsed);
 }
+
 export function updateSingleChordDropdownFromInput() {
-  // ...implement as needed
+  const input = document.getElementById(
+    "chordsInput"
+  ) as HTMLInputElement | null;
+  const select = document.getElementById(
+    "singleChordSelect"
+  ) as HTMLSelectElement | null;
+  if (!input || !select) return;
+  // Split input into chord names
+  const chordNames = input.value
+    .split(/\s|,/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  // Remove duplicates
+  const uniqueChords = Array.from(new Set(chordNames));
+  select.innerHTML = "";
+  if (uniqueChords.length === 0) {
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "(No chords)";
+    select.appendChild(opt);
+    select.disabled = true;
+  } else {
+    uniqueChords.forEach((chord) => {
+      const opt = document.createElement("option");
+      opt.value = chord;
+      opt.textContent = chord;
+      select.appendChild(opt);
+    });
+    select.disabled = false;
+  }
 }
 
 /**
