@@ -1,8 +1,12 @@
-import { getSelectedVoicing, updateSingleChordDropdownFromInput } from '../ui/events';
+import {
+  getSelectedVoicing,
+  updateSingleChordDropdownFromInput,
+} from "../ui/events";
 /**
  * Returns the MIDI root note for a given root string (C, D#, etc.).
- * @param {string} root - The root note name.
- * @returns {number} MIDI note number for C4=60.
+ *
+ * @param {string} root - The root note name (e.g., "C", "D#", "Bb").
+ * @returns {number} The MIDI note number for the root (C4=60).
  */
 export function getMidiRoot(root) {
   const midiRootMap = {
@@ -29,8 +33,9 @@ export function getMidiRoot(root) {
 
 /**
  * Returns an array of valid voicing option objects for a given interval array.
+ *
  * @param {number[]} intervals - The chord intervals.
- * @returns {Array<{value: string, label: string}>} Valid voicing options.
+ * @returns {Array<{value: string, label: string}>} Array of valid voicing options for the chord.
  */
 export function getValidVoicings(intervals) {
   const n = Array.isArray(intervals) ? intervals.length : 0;
@@ -49,7 +54,12 @@ export function getValidVoicings(intervals) {
   ];
   return voicingOptions.filter((opt) => opt.valid);
 }
-// Utility: Generate UUID v4
+
+/**
+ * Generates a random UUID v4 string.
+ *
+ * @returns {string} A UUID v4 string.
+ */
 export function generateUUID() {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
     var r = (Math.random() * 16) | 0,
@@ -59,7 +69,8 @@ export function generateUUID() {
 }
 
 /**
- * Export all saved chord sets as JSON file
+ * Export all saved chord sets as a JSON file for download.
+ *
  * @public
  */
 export function exportChordSets() {
@@ -78,7 +89,9 @@ export function exportChordSets() {
 }
 
 /**
- * Import chord sets from JSON file/string, only add new sets by unique id
+ * Import chord sets from a JSON file/string, only adding new sets by unique id.
+ *
+ * @param {HTMLInputElement} fileInput - The file input element containing the JSON file.
  * @public
  */
 export function importChordSets(fileInput) {
@@ -90,9 +103,10 @@ export function importChordSets(fileInput) {
   const reader = new FileReader();
   reader.onload = function (e) {
     try {
-      const resultStr = typeof e.target.result === "string"
-        ? e.target.result
-        : new TextDecoder().decode(e.target.result);
+      const resultStr =
+        typeof e.target.result === "string"
+          ? e.target.result
+          : new TextDecoder().decode(e.target.result);
       const importedSets = JSON.parse(resultStr);
       if (!Array.isArray(importedSets)) throw new Error("Invalid format");
       let sets = getSavedChordSets();
@@ -118,8 +132,10 @@ export function importChordSets(fileInput) {
   };
   reader.readAsText(file);
 }
+
 /**
  * Toggles the synthwave video background visibility.
+ *
  * @public
  */
 export function toggleVideoBg() {
@@ -130,8 +146,12 @@ export function toggleVideoBg() {
   videoBg.style.display = isHidden ? "block" : "none";
   btn.textContent = isHidden ? "Hide Video" : "Show Video";
 }
+
 /**
- * Toast notification system (Tailwind styled)
+ * Toast notification system (Tailwind styled).
+ *
+ * @param {string} message - The message to display.
+ * @param {string} [type="info"] - The type of toast: 'success', 'info', or 'error'.
  */
 export function showToast(message, type = "info") {
   const container = document.getElementById("toastContainer");
@@ -156,7 +176,9 @@ export function showToast(message, type = "info") {
 }
 
 /**
- * Save/load/delete chord sets in localStorage
+ * Retrieves all saved chord sets from localStorage.
+ *
+ * @returns {Array<object>} Array of saved chord set objects.
  */
 export function getSavedChordSets() {
   const sets = localStorage.getItem("hypersynChordSets");
@@ -166,9 +188,19 @@ export function getSavedChordSets() {
     return [];
   }
 }
+
+/**
+ * Saves the provided chord sets array to localStorage.
+ *
+ * @param {Array<object>} sets - Array of chord set objects to save.
+ */
 export function setSavedChordSets(sets) {
   localStorage.setItem("hypersynChordSets", JSON.stringify(sets));
 }
+
+/**
+ * Updates the saved chord sets dropdown in the UI with all saved sets.
+ */
 export function updateSavedChordSetsDropdown() {
   const select = document.getElementById("savedChordSetsSelect");
   if (!select) return;
@@ -178,9 +210,17 @@ export function updateSavedChordSetsDropdown() {
     select.innerHTML += `<option value="${idx}">${set.name}</option>`;
   });
 }
+
+/**
+ * Saves the current chord input as a named chord set in localStorage.
+ * If a set with the same name exists, it is overwritten.
+ */
 export function saveChordSet() {
-  const input = (document.getElementById("chordsInput") as HTMLInputElement).value;
-  const nameInput = document.getElementById("chordSetNameInput") as HTMLInputElement;
+  const input = (document.getElementById("chordsInput") as HTMLInputElement)
+    .value;
+  const nameInput = document.getElementById(
+    "chordSetNameInput"
+  ) as HTMLInputElement;
   const name = nameInput.value.trim();
   if (!name) {
     showToast("Please enter a name for the chord set.", "error");
@@ -197,8 +237,15 @@ export function saveChordSet() {
   updateSavedChordSetsDropdown();
   showToast(`Chord set saved as '${name}'.`, "success");
 }
+
+/**
+ * Loads the selected chord set from the dropdown into the input field.
+ * Also updates the single chord dropdown and shows a toast.
+ */
 export function loadChordSet() {
-  const select = document.getElementById("savedChordSetsSelect") as HTMLSelectElement;
+  const select = document.getElementById(
+    "savedChordSetsSelect"
+  ) as HTMLSelectElement;
   const idx = select.value;
   if (!idx || isNaN(Number(idx))) {
     showToast("Please select a saved chord set to load.", "error");
@@ -207,7 +254,8 @@ export function loadChordSet() {
   const sets = getSavedChordSets();
   const set = sets[parseInt(idx, 10)];
   if (set) {
-    (document.getElementById("chordsInput") as HTMLInputElement).value = set.chords;
+    (document.getElementById("chordsInput") as HTMLInputElement).value =
+      set.chords;
     if (typeof updateSingleChordDropdownFromInput === "function")
       updateSingleChordDropdownFromInput();
     showToast(`Chord set '${set.name}' loaded!`, "success");
@@ -215,8 +263,14 @@ export function loadChordSet() {
     showToast("Chord set not found.", "error");
   }
 }
+
+/**
+ * Deletes the selected chord set from localStorage and updates the dropdown.
+ */
 export function deleteChordSet() {
-  const select = document.getElementById("savedChordSetsSelect") as HTMLSelectElement;
+  const select = document.getElementById(
+    "savedChordSetsSelect"
+  ) as HTMLSelectElement;
   const idx = select.value;
   if (!idx || isNaN(Number(idx))) {
     showToast("Please select a saved chord set to delete.", "error");
@@ -233,10 +287,12 @@ export function deleteChordSet() {
     showToast("Chord set not found.", "error");
   }
 }
+
 /**
  * Transforms chord intervals according to the selected voicing.
+ *
  * @param {number[]} intervals - Array of intervals (semitones from root).
- * @param {string} voicing - Voicing type: 'closed', 'drop2', 'drop3', 'spread', 'octave'.
+ * @param {string} voicing - Voicing type: 'closed', 'drop2', 'drop3', 'spread', 'octave', etc.
  * @returns {number[]} Transformed intervals.
  */
 export function applyVoicing(intervals, voicing) {
@@ -333,9 +389,12 @@ export function applyVoicing(intervals, voicing) {
       return intervals;
   }
 }
+
 /**
  * Stops all currently playing oscillators and disconnects gain nodes.
- * @function
+ *
+ * This function is called before starting new playback to ensure no overlapping notes.
+ * It safely stops and disconnects all active oscillators and gain nodes, and clears their arrays.
  */
 let _activeOscillators = [];
 let _activeGains = [];
@@ -363,11 +422,15 @@ export function stopChordProgression() {
 
 /**
  * Plays the input chord progression as block chords using the Web Audio API.
- * Each chord is played for 2.5 seconds as a synth pad.
- * @function
+ *
+ * Each chord is played for 2.5 seconds as a synth pad. Uses the current value of #chordsInput and #volumeSlider.
+ * Handles audio context setup, reverb, and applies the selected voicing to each chord.
+ *
+ * @returns {void}
  */
 export function playChordProgression() {
-  const input = (document.getElementById("chordsInput") as HTMLInputElement).value;
+  const input = (document.getElementById("chordsInput") as HTMLInputElement)
+    .value;
   const chordNames = input.split(/\s|,/).filter((s) => s.length > 0);
   const parsed = chordNames.map(parseChordName).filter((c) => c !== null);
   if (parsed.length === 0) return;
@@ -426,7 +489,10 @@ export function playChordProgression() {
 
   stopChordProgression(); // Stop any previous notes
   const volume =
-    parseInt((document.getElementById("volumeSlider") as HTMLInputElement).value, 10) / 100;
+    parseInt(
+      (document.getElementById("volumeSlider") as HTMLInputElement).value,
+      10
+    ) / 100;
   _activeOscillators = [];
   _activeGains = [];
   // Get voicing from UI (default to 'closed')
@@ -475,6 +541,7 @@ export function playChordProgression() {
     time += chordDuration;
   });
 }
+
 /**
  * Mapping of chord type strings to their corresponding intervals.
  * Used for chord name to hex conversion and interval calculation.
@@ -553,6 +620,7 @@ const notes = {
 
 /**
  * Converts a semitone value to a 2-digit hexadecimal string (modulo 12).
+ *
  * @param {number} semitone - The semitone value to convert.
  * @returns {string} The hexadecimal representation (e.g., "00", "0C").
  */
@@ -563,6 +631,7 @@ export function semitoneToHex(semitone) {
 
 /**
  * Parses a chord name and returns its components and hex representations.
+ *
  * @param {string} chordName - The chord name (e.g., "Cmaj7", "Dm", "G7").
  * @returns {object|null} Object with chordName, root, type, rootBaked, intervalOnlyHex, intervalOnly; or null if invalid.
  */
@@ -602,6 +671,7 @@ export function parseChordName(chordName) {
 
 /**
  * Removes duplicate chords by their interval shape.
+ *
  * @param {Array<object>} chords - Array of parsed chord objects.
  * @returns {Array<object>} Array of unique chord group objects.
  */
@@ -635,8 +705,13 @@ function getUniqueChordTypes(chords) {
 
 /**
  * Converts input chord names to hex and displays results in the output element.
+ *
  * Reads from #chordsInput, parses, deduplicates, and outputs hex.
- * @function
+ * Used for UI rendering and deduplication of chord types.
+ *
+ * @param {string} input - The input string containing chord names (space or comma separated).
+ * @param {string} voicing - The voicing type to apply to each chord.
+ * @returns {object} Structured result for UI rendering, including inputChordNames, uniqueGroups, voicing, and chords.
  */
 export function convertChords(input, voicing) {
   const chordNames = input.split(/[\s,]+/).filter((s) => s.length > 0);
@@ -686,10 +761,15 @@ export function convertChords(input, voicing) {
     chords: validParsed,
   };
 }
+
 /**
  * Plays a single chord object (from parseChordName) as a block chord using the Web Audio API.
+ *
+ * This is used for the single chord preview feature. It applies the selected voicing,
+ * sets up the audio context and reverb if needed, and plays the chord as a short pad.
+ *
  * @param {object} chord - Parsed chord object from parseChordName.
- * @function
+ * @returns {void}
  */
 export function playSingleChordGlobal(chord) {
   if (!chord || !Array.isArray(chord.intervalOnly)) return;
@@ -739,7 +819,10 @@ export function playSingleChordGlobal(chord) {
   const reverb = _hypersynReverb;
   stopChordProgression();
   const volume =
-    parseInt((document.getElementById("volumeSlider") as HTMLInputElement).value, 10) / 100;
+    parseInt(
+      (document.getElementById("volumeSlider") as HTMLInputElement).value,
+      10
+    ) / 100;
   _activeOscillators = [];
   _activeGains = [];
   let rootMidi = ROOTS[chord.root] || 60;

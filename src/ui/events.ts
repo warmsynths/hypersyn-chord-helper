@@ -22,7 +22,8 @@ import { updateKeyboardViz } from "./keyboardViz";
 
 /**
  * Returns the currently selected voicing type from the voicing dropdown.
- * Defaults to 'closed' if not found.
+ *
+ * @returns {string} The selected voicing type, or 'closed' if not found.
  */
 export function getSelectedVoicing(): string {
   const select = document.getElementById(
@@ -31,7 +32,11 @@ export function getSelectedVoicing(): string {
   return select ? select.value : "closed";
 }
 
-// Placeholder: these should be implemented or imported as needed
+/**
+ * Updates the volume label to reflect the current value of the volume slider.
+ *
+ * @returns {void}
+ */
 function updateVolumeLabel() {
   const slider = document.getElementById(
     "volumeSlider"
@@ -39,6 +44,11 @@ function updateVolumeLabel() {
   document.getElementById("volumeLabel").textContent =
     (slider ? slider.value : "0") + "%";
 }
+/**
+ * Clears the chords input field and any other relevant UI elements.
+ *
+ * @returns {void}
+ */
 function clearInput() {
   (document.getElementById("chordsInput") as HTMLInputElement | null)!.value =
     "";
@@ -47,6 +57,11 @@ function clearInput() {
 import { parseChordName } from "../core/chords";
 import { playSingleChordGlobal } from "../core/core";
 
+/**
+ * Plays the currently selected chord from the single chord dropdown using the audio engine.
+ *
+ * @returns {void}
+ */
 function playSingleChord() {
   const select = document.getElementById(
     "singleChordSelect"
@@ -58,6 +73,11 @@ function playSingleChord() {
   playSingleChordGlobal(parsed);
 }
 
+/**
+ * Populates the single chord dropdown with unique chord names from the input field.
+ *
+ * @returns {void}
+ */
 export function updateSingleChordDropdownFromInput() {
   const input = document.getElementById(
     "chordsInput"
@@ -92,7 +112,9 @@ export function updateSingleChordDropdownFromInput() {
 }
 
 /**
- * Wires up all DOM event listeners for the app UI.
+ * Wires up all DOM event listeners for the app UI, connecting UI elements to their handlers.
+ *
+ * This includes play/stop, chord set management, sidebar toggles, volume, single chord preview, and output box.
  *
  * @returns {void}
  */
