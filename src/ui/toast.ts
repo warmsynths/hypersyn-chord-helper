@@ -5,7 +5,7 @@
  * @param {string} [type="info"] - The type of toast: success, info, error.
  * @returns {void}
  */
-export function showToast(message, type = "info") {
+export const showToast = (message, type = "info") => {
   const container = document.getElementById("toastContainer");
   if (!container) return;
   while (container.children.length > 2)

@@ -25,35 +25,35 @@ import { updateKeyboardViz } from "./keyboardViz";
  *
  * @returns {string} The selected voicing type, or 'closed' if not found.
  */
-export function getSelectedVoicing(): string {
+export const getSelectedVoicing = (): string => {
   const select = document.getElementById(
     "voicingSelect"
   ) as HTMLSelectElement | null;
   return select ? select.value : "closed";
-}
+};
 
 /**
  * Updates the volume label to reflect the current value of the volume slider.
  *
  * @returns {void}
  */
-function updateVolumeLabel() {
+const updateVolumeLabel = () => {
   const slider = document.getElementById(
     "volumeSlider"
   ) as HTMLInputElement | null;
   document.getElementById("volumeLabel").textContent =
     (slider ? slider.value : "0") + "%";
-}
+};
 /**
  * Clears the chords input field and any other relevant UI elements.
  *
  * @returns {void}
  */
-function clearInput() {
+const clearInput = () => {
   (document.getElementById("chordsInput") as HTMLInputElement | null)!.value =
     "";
   // ...clear other UI as needed
-}
+};
 import { parseChordName } from "../core/chords";
 import { playSingleChordGlobal } from "../core/core";
 
@@ -62,7 +62,7 @@ import { playSingleChordGlobal } from "../core/core";
  *
  * @returns {void}
  */
-function playSingleChord() {
+const playSingleChord = () => {
   const select = document.getElementById(
     "singleChordSelect"
   ) as HTMLSelectElement | null;
@@ -71,14 +71,14 @@ function playSingleChord() {
   const parsed = parseChordName(chordName);
   if (!parsed) return;
   playSingleChordGlobal(parsed);
-}
+};
 
 /**
  * Populates the single chord dropdown with unique chord names from the input field.
  *
  * @returns {void}
  */
-export function updateSingleChordDropdownFromInput() {
+export const updateSingleChordDropdownFromInput = () => {
   const input = document.getElementById(
     "chordsInput"
   ) as HTMLInputElement | null;
@@ -109,7 +109,7 @@ export function updateSingleChordDropdownFromInput() {
     });
     select.disabled = false;
   }
-}
+};
 
 /**
  * Wires up all DOM event listeners for the app UI, connecting UI elements to their handlers.
@@ -118,7 +118,7 @@ export function updateSingleChordDropdownFromInput() {
  *
  * @returns {void}
  */
-export function wireEventListeners() {
+export const wireEventListeners = () => {
   // Sidebar close button (X)
   document
     .getElementById("sidebarCloseBtn")

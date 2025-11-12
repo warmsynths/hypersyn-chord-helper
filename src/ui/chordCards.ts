@@ -20,11 +20,11 @@ let lastChordObjs = [];
  * @param {Function} updateSingleChordDropdown - Function to update the single chord dropdown with chord names.
  * @returns {void}
  */
-export function convertChordsUI(
+export const convertChordsUI = (
   convertChords,
   getSelectedVoicing,
   updateSingleChordDropdown
-) {
+) => {
   document.getElementById("outputBox").style.display = "block";
   const outputBtn = document.querySelector('button[data-box="outputBox"]');
   if (outputBtn) outputBtn.innerHTML = outputBtn.innerHTML.replace("▶", "▼");
@@ -104,7 +104,7 @@ export function convertChordsUI(
  * @param {object} chordObj - The chord object to visualize.
  * @returns {void}
  */
-export function updateChordKeyboardViz(idx, voicing, chordObj) {
+export const updateChordKeyboardViz = (idx, voicing, chordObj) => {
   const keyboardDiv = document.getElementById("chordKeyboardViz" + idx);
   if (!keyboardDiv || !chordObj) return;
   let notes = [];
@@ -154,7 +154,7 @@ export function updateChordKeyboardViz(idx, voicing, chordObj) {
  * @param {string} voicing - The voicing type to apply.
  * @returns {void}
  */
-export function updateChordVoicing(idx, voicing) {
+export const updateChordVoicing = (idx, voicing) => {
   if (!lastChordObjs || !lastChordObjs[idx]) return;
   const chordObj = lastChordObjs[idx];
   if (Array.isArray(chordObj.intervalOnly)) {

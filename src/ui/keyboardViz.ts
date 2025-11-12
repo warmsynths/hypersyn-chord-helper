@@ -3,10 +3,10 @@
  *
  * @returns {void}
  */
-export function updateKeyboardViz() {
+export const updateKeyboardViz = () => {
   const keyboardDiv = document.getElementById("keyboardViz");
   if (!keyboardDiv) return;
-  const voicing = document.getElementById("voicingSelect").value;
+  const voicing = (document.getElementById("voicingSelect") as HTMLSelectElement).value;
   let notes = [];
   if (voicing === "closed") notes = [60, 64, 67];
   else if (voicing === "open-triad") notes = [62, 65, 69];

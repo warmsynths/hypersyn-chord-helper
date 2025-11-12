@@ -1,12 +1,13 @@
 import { generateUUID } from "./utils";
 import { showToast } from "../ui/toast";
+import { updateSingleChordDropdownFromInput } from "../ui/events";
 
 /**
  * Retrieves all saved chord sets from localStorage.
  *
  * @returns {Array<object>} Array of saved chord set objects.
  */
-export function getSavedChordSets() {
+export const getSavedChordSets = () => {
   const sets = localStorage.getItem("hypersynChordSets");
   try {
     return sets ? JSON.parse(sets) : [];
@@ -20,7 +21,7 @@ export function getSavedChordSets() {
  *
  * @param {Array<object>} sets - Array of chord set objects to save.
  */
-export function setSavedChordSets(sets) {
+export const setSavedChordSets = (sets) => {
   localStorage.setItem("hypersynChordSets", JSON.stringify(sets));
 }
 
@@ -29,7 +30,7 @@ export function setSavedChordSets(sets) {
  *
  * @returns {void}
  */
-export function updateSavedChordSetsDropdown() {
+export const updateSavedChordSetsDropdown = () => {
   const select = document.getElementById("savedChordSetsSelect");
   if (!select) return;
   const sets = getSavedChordSets();
@@ -44,9 +45,9 @@ export function updateSavedChordSetsDropdown() {
  *
  * @returns {void}
  */
-export function saveChordSet() {
-  const input = document.getElementById("chordsInput").value;
-  const nameInput = document.getElementById("chordSetNameInput");
+export const saveChordSet = () => {
+  const input = (document.getElementById("chordsInput") as HTMLInputElement).value;
+  const nameInput = document.getElementById("chordSetNameInput") as HTMLInputElement;
   const name = nameInput.value.trim();
   if (!name) {
     showToast("Please enter a name for the chord set.", "error");
@@ -69,17 +70,17 @@ export function saveChordSet() {
  *
  * @returns {void}
  */
-export function loadChordSet() {
-  const select = document.getElementById("savedChordSetsSelect");
+export const loadChordSet = () => {
+  const select = document.getElementById("savedChordSetsSelect") as HTMLSelectElement;
   const idx = select.value;
-  if (!idx || isNaN(idx)) {
+  if (!idx || isNaN(Number(idx))) {
     showToast("Please select a saved chord set to load.", "error");
     return;
   }
   const sets = getSavedChordSets();
   const set = sets[parseInt(idx, 10)];
   if (set) {
-    document.getElementById("chordsInput").value = set.chords;
+    (document.getElementById("chordsInput") as HTMLInputElement).value = set.chords;
     if (typeof updateSingleChordDropdownFromInput === "function")
       updateSingleChordDropdownFromInput();
     showToast(`Chord set '${set.name}' loaded!`, "success");
@@ -93,10 +94,10 @@ export function loadChordSet() {
  *
  * @returns {void}
  */
-export function deleteChordSet() {
-  const select = document.getElementById("savedChordSetsSelect");
+export const deleteChordSet = () => {
+  const select = document.getElementById("savedChordSetsSelect") as HTMLSelectElement;
   const idx = select.value;
-  if (!idx || isNaN(idx)) {
+  if (!idx || isNaN(Number(idx))) {
     showToast("Please select a saved chord set to delete.", "error");
     return;
   }
@@ -117,7 +118,7 @@ export function deleteChordSet() {
  *
  * @returns {void}
  */
-export function exportChordSets() {
+export const exportChordSets = () => {
   const sets = getSavedChordSets();
   const dataStr = JSON.stringify(sets, null, 2);
   const blob = new Blob([dataStr], { type: "application/json" });
@@ -138,7 +139,7 @@ export function exportChordSets() {
  * @param {HTMLInputElement} fileInput - The file input element containing the JSON file.
  * @returns {void}
  */
-export function importChordSets(fileInput) {
+export const importChordSets = (fileInput) => {
   if (!fileInput.files || !fileInput.files[0]) {
     showToast("No file selected.", "error");
     return;
@@ -147,7 +148,8 @@ export function importChordSets(fileInput) {
   const reader = new FileReader();
   reader.onload = function (e) {
     try {
-      const importedSets = JSON.parse(e.target.result);
+      const resultStr = typeof e.target.result === "string" ? e.target.result : "";
+      const importedSets = JSON.parse(resultStr);
       if (!Array.isArray(importedSets)) throw new Error("Invalid format");
       let sets = getSavedChordSets();
       const existingIds = new Set(sets.map((s) => s.id));
