@@ -27,7 +27,7 @@ describe('core module', () => {
   describe('exportChordSets and importChordSets', () => {
     beforeEach(() => {
       document.body.innerHTML = '<div id="toastContainer"></div>';
-      global.Blob = function() { return {}; };
+      global.Blob = function(this: any, blobParts?: any[], options?: any) { return {}; } as any;
       global.URL.createObjectURL = jest.fn(() => 'blob:url');
       global.URL.revokeObjectURL = jest.fn();
       const a = document.createElement('a');
@@ -38,11 +38,15 @@ describe('core module', () => {
       global.localStorage = {
         getItem: jest.fn(() => JSON.stringify([{name:'Set1', chords:'Cmaj7', id:'1'}])),
         setItem: jest.fn(() => {}),
-      };
+        removeItem: jest.fn(() => {}),
+        clear: jest.fn(() => {}),
+        key: jest.fn(() => null),
+        get length() { return 0; }
+      } as unknown as Storage;
     });
     it('exportChordSets triggers download and toast', () => {
       expect(() => core.exportChordSets()).not.toThrow();
-      const a = document.createElement();
+      const a = document.createElement("a");
       expect(a.click).toHaveBeenCalled();
     });
     it('importChordSets handles no file selected', () => {
@@ -52,10 +56,20 @@ describe('core module', () => {
     });
     it('importChordSets handles invalid JSON', (done) => {
       const input = document.createElement('input');
-      const file = new Blob(['not json'], { type: 'application/json' });
-      input.files = [file];
+      const file = new File(['not json'], 'test.json', { type: 'application/json', lastModified: Date.now() });
+      // Mock FileList with item method
+      input.files = {
+        0: file,
+        length: 1,
+        item: (index: number) => index === 0 ? file : null
+      } as unknown as FileList;
       const reader = { onload: null, readAsText: jest.fn(function() { this.onload({ target: { result: 'not json' } }); }) };
-      global.FileReader = jest.fn(() => reader);
+      // Mock FileReader constructor and static properties
+      const MockFileReader = jest.fn(() => reader);
+      (MockFileReader as any).EMPTY = 0;
+      (MockFileReader as any).LOADING = 1;
+      (MockFileReader as any).DONE = 2;
+      global.FileReader = MockFileReader as any;
       expect(() => core.importChordSets(input)).not.toThrow();
       setTimeout(() => { done(); }, 0);
     });
@@ -70,7 +84,14 @@ describe('core module', () => {
     });
     it('updateSavedChordSetsDropdown handles no sets', () => {
       document.body.innerHTML = '<select id="savedChordSetsSelect"></select>';
-      global.localStorage = { getItem: jest.fn(() => null) };
+      global.localStorage = {
+        getItem: jest.fn(() => null),
+        setItem: jest.fn(() => {}),
+        removeItem: jest.fn(() => {}),
+        clear: jest.fn(() => {}),
+        key: jest.fn(() => null),
+        get length() { return 0; }
+      } as unknown as Storage;
       expect(() => core.updateSavedChordSetsDropdown()).not.toThrow();
       const select = document.getElementById('savedChordSetsSelect');
       expect(select.innerHTML).toMatch(/Load saved set/);
@@ -98,17 +119,24 @@ describe('core module', () => {
         resume: jest.fn(),
         destination: {},
       };
-      global.AudioContext = jest.fn(() => ctxMock);
+      global.AudioContext = function(this: any) { return ctxMock; } as any;
       global.webkitAudioContext = undefined;
     });
     it('playChordProgression returns early if no chords', () => {
       expect(() => core.playChordProgression()).not.toThrow();
     });
     it('playChordProgression runs with empty intervals and does not throw', () => {
-      jest.spyOn(core, 'parseChordName').mockImplementation((name) => ({ root: 'C', intervalOnly: [] }));
+      jest.spyOn(core, 'parseChordName').mockImplementation((name) => ({
+        chordName: name,
+        root: 'C',
+        type: '',
+        rootBaked: 'C',
+        intervalOnlyHex: [],
+        intervalOnly: []
+      }));
       jest.spyOn(core, 'applyVoicing').mockImplementation((arr, v) => []);
       global.getSelectedVoicing = () => 'closed';
-      document.getElementById('chordsInput').value = 'Cmaj7';
+      (document.getElementById('chordsInput') as HTMLInputElement).value = 'Cmaj7';
       expect(() => core.playChordProgression()).not.toThrow();
     });
     it('playSingleChordGlobal returns early if chord is null', () => {
@@ -240,8 +268,10 @@ describe('core module', () => {
         getItem: jest.fn((k) => store[k] || null),
         setItem: jest.fn((k, v) => { store[k] = v; }),
         removeItem: jest.fn((k) => { delete store[k]; }),
-        clear: jest.fn(() => { Object.keys(store).forEach(k => delete store[k]); })
-      };
+        clear: jest.fn(() => { Object.keys(store).forEach(k => delete store[k]); }),
+        key: jest.fn((i: number) => Object.keys(store)[i] || null),
+        get length() { return Object.keys(store).length; }
+      } as unknown as Storage;
     });
     it('getSavedChordSets returns array', () => {
       expect(Array.isArray(core.getSavedChordSets())).toBe(true);
@@ -267,7 +297,11 @@ describe('core module', () => {
       global.localStorage = {
         getItem: jest.fn(() => null),
         setItem: jest.fn(() => {}),
-      };
+        removeItem: jest.fn(() => {}),
+        clear: jest.fn(() => {}),
+        key: jest.fn(() => null),
+        get length() { return 0; }
+      } as unknown as Storage;
     });
     it('toggleVideoBg toggles display', () => {
       const btn = document.getElementById('toggleVideoBtn');
@@ -292,15 +326,15 @@ describe('core module', () => {
     });
     it('loadChordSet loads and shows toast', () => {
       core.setSavedChordSets([{name:'TestSet', chords:'Cmaj7', id:'1'}]);
-      const select = document.getElementById('savedChordSetsSelect');
+      const select = document.getElementById('savedChordSetsSelect') as HTMLSelectElement;
       select.innerHTML = '<option value="0">TestSet</option>';
       select.value = '0';
       core.loadChordSet();
-      expect((document.getElementById('chordsInput')).value).toBe('Cmaj7');
+      expect((document.getElementById('chordsInput') as HTMLInputElement).value).toBe('Cmaj7');
     });
     it('deleteChordSet deletes and shows toast', () => {
       core.setSavedChordSets([{name:'TestSet', chords:'Cmaj7', id:'1'}]);
-      const select = document.getElementById('savedChordSetsSelect');
+      const select = document.getElementById('savedChordSetsSelect') as HTMLSelectElement;
       select.innerHTML = '<option value="0">TestSet</option>';
       select.value = '0';
       core.deleteChordSet();
@@ -329,7 +363,7 @@ describe('core module', () => {
         resume: jest.fn(),
         destination: {},
       };
-      global.AudioContext = jest.fn(() => ctxMock);
+      global.AudioContext = function(this: any) { return ctxMock; } as any;
       global.webkitAudioContext = undefined;
       // DOM mocks
       document.body.innerHTML = `
@@ -341,10 +375,17 @@ describe('core module', () => {
     it('stopChordProgression stops and disconnects all', () => {
       // Use the exported function to trigger the internal state
       // Call playChordProgression to populate _activeOscillators/_activeGains
-      jest.spyOn(core, 'parseChordName').mockImplementation((name) => ({ root: 'C', intervalOnly: [0,4,7] }));
+      jest.spyOn(core, 'parseChordName').mockImplementation((name) => ({
+        chordName: name,
+        root: 'C',
+        type: '',
+        rootBaked: 'C',
+        intervalOnlyHex: ['00', '04', '07'],
+        intervalOnly: [0, 4, 7]
+      }));
       jest.spyOn(core, 'applyVoicing').mockImplementation((arr, v) => arr);
       global.getSelectedVoicing = () => 'closed';
-      document.getElementById('chordsInput').value = 'Cmaj7';
+      (document.getElementById('chordsInput') as HTMLInputElement).value = 'Cmaj7';
       core.playChordProgression();
       // Now stop
       core.stopChordProgression();
@@ -354,7 +395,14 @@ describe('core module', () => {
     });
 
     it('playChordProgression runs without error', () => {
-      jest.spyOn(core, 'parseChordName').mockImplementation((name) => ({ root: 'C', intervalOnly: [0,4,7] }));
+      jest.spyOn(core, 'parseChordName').mockImplementation((name) => ({
+        chordName: name,
+        root: 'C',
+        type: '',
+        rootBaked: 'C',
+        intervalOnlyHex: ['00', '04', '07'],
+        intervalOnly: [0, 4, 7]
+      }));
       jest.spyOn(core, 'applyVoicing').mockImplementation((arr, v) => arr);
       global.getSelectedVoicing = () => 'closed';
       expect(() => core.playChordProgression()).not.toThrow();
