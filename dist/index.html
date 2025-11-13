@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <style>
+      .sidebar-toggle-fade {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+      }
+      #sidebarToggle {
+        transition: opacity 0.3s ease;
+      }
+    </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hypersyn Chord Helper</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎶</text></svg>"
+    />
+    <script type="module" crossorigin src="./assets/index-BH7ojTJo.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-B9s-qWEs.css">
+  </head>
+  <body class="flex flex-col items-center p-8 space-y-6 sm:p-4 sm:space-y-4">
+    <!-- Collapsible Sidebar -->
+    <div
+      id="sidebar"
+      class="fixed top-0 left-0 h-full w-64 bg-gray-900 bg-opacity-95 shadow-lg z-30 transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col"
+    >
+      <div
+        class="flex items-center justify-between px-4 py-3 border-b border-gray-700"
+      >
+        <span class="text-pink-400 font-bold text-lg">Utilities</span>
+        <button
+          id="sidebarCloseBtn"
+          class="text-gray-400 hover:text-white focus:outline-none text-2xl"
+        >
+          &times;
+        </button>
+      </div>
+      <div class="flex-1 p-4 overflow-y-auto">
+        <!-- Compact Preview Section in Sidebar -->
+        <div class="flex flex-col space-y-4">
+          <!-- Save/Load Chord Sets Section in Sidebar -->
+          <div>
+            <h2 class="text-pink-400 text-lg font-bold mb-2">
+              Save/Load Chord Sets
+            </h2>
+            <div class="flex flex-col space-y-2 mb-2">
+              <div class="flex space-x-2">
+                <input
+                  id="chordSetNameInput"
+                  type="text"
+                  placeholder="Set name..."
+                  class="flex-1 p-1 rounded border border-gray-300 bg-gray-800 text-yellow-200 text-xs"
+                />
+                <button
+                  id="saveChordSetBtn"
+                  class="px-2 py-1 bg-pink-600 text-white rounded text-xs"
+                >
+                  Save
+                </button>
+              </div>
+              <div class="flex space-x-2">
+                <select
+                  id="savedChordSetsSelect"
+                  class="flex-1 p-1 rounded border border-gray-300 bg-gray-800 text-blue-200 text-xs"
+                >
+                  <option value="">Load saved set...</option>
+                </select>
+              </div>
+              <div class="flex space-x-2">
+                <button
+                  id="loadChordSetBtn"
+                  class="flex-1 px-2 py-1 bg-gray-600 text-white rounded text-xs cursor-pointer text-center"
+                >
+                  Load
+                </button>
+                <button
+                  id="deleteChordSetBtn"
+                  class="flex-1 px-2 py-1 bg-gray-600 text-white rounded text-xs cursor-pointer text-center"
+                >
+                  Delete
+                </button>
+              </div>
+              <div class="flex space-x-2">
+                <button
+                  id="exportChordSetsBtn"
+                  class="flex-1 px-2 py-1 bg-pink-600 text-white rounded text-xs"
+                >
+                  Export
+                </button>
+                <label
+                  for="importChordSetsInput"
+                  class="flex-1 px-2 py-1 bg-gray-600 text-white rounded text-xs cursor-pointer text-center"
+                  style="display: inline-block"
+                >
+                  Import
+                  <input
+                    id="importChordSetsInput"
+                    type="file"
+                    accept="application/json"
+                    style="display: none"
+                    id="importChordSetsInput"
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+          <hr class="my-4 border-gray-700" />
+          <div>
+            <h2 class="text-pink-400 text-lg font-bold mb-2">Preview</h2>
+            <div class="flex space-x-2 mb-2">
+              <button
+                id="playBtn"
+                class="flex-1 px-2 py-1 bg-pink-600 text-white rounded text-xs cursor-pointer text-center"
+              >
+                Play
+              </button>
+              <button
+                id="stopBtn"
+                class="flex-1 px-2 py-1 bg-gray-600 text-white rounded text-xs cursor-pointer text-center"
+              >
+                Stop
+              </button>
+            </div>
+            <div class="flex items-center space-x-2">
+              <label class="text-yellow-300 text-sm">Volume:</label>
+              <input
+                id="volumeSlider"
+                type="range"
+                min="0"
+                max="100"
+                value="5"
+                class="flex-1"
+              />
+              <span id="volumeLabel" class="text-yellow-300 text-xs">5%</span>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1"
+              >Single Chord Preview</label
+            >
+            <div class="flex space-x-2">
+              <select
+                id="singleChordSelect"
+                class="flex-1 p-1 rounded border border-gray-300 bg-gray-800 text-blue-200 text-xs"
+                disabled
+              >
+                <option value="">Select a chord...</option>
+              </select>
+              <button
+                id="playSingleChordBtn"
+                class="px-2 py-1 bg-pink-600 text-white rounded text-xs"
+              >
+                Play
+              </button>
+            </div>
+          </div>
+          <hr class="my-4 border-gray-700" />
+          <!-- How To Section in Sidebar -->
+          <div>
+            <h2 class="text-pink-400 text-lg font-bold mb-2">How To</h2>
+            <ul class="text-xs text-gray-200 space-y-2 mb-2">
+              <li>
+                <strong>Paste or type a chord progression</strong> into the
+                input field above.<br />
+                <span class="text-blue-300"
+                  >Use plain text with a single space between each chord.</span
+                ><br />
+                <span class="text-pink-300">Example:</span>
+                <span class="text-pink-300">Am7 Dm9 G13 Cmaj7</span>
+              </li>
+              <li>
+                <strong>Source progressions</strong> from sites like:
+                <a
+                  href="https://www.onemotion.com/chord-player/"
+                  target="_blank"
+                  class="text-blue-300 underline"
+                  >onemotion chord player</a
+                >,
+                <a
+                  href="https://chordseqai.com/"
+                  target="_blank"
+                  class="text-blue-300 underline"
+                  >ChordSeqAI</a
+                >, generate them with
+                <a
+                  href="https://chatgpt.com/"
+                  target="_blank"
+                  class="text-blue-300 underline"
+                  >ChatGPT</a
+                >, or even use your 🧠! 😱
+              </li>
+              <li>
+                <strong
+                  >Click <span class="text-pink-300">Convert</span></strong
+                >
+                to see each chord’s hex code and interval code.<br />
+                <span class="text-yellow-200"
+                  >These can be used directly in the Hypersyn instrument on the
+                  M8 Tracker.</span
+                >
+              </li>
+            </ul>
+            <div class="text-xs text-gray-400 mb-1">
+              <span class="font-semibold text-blue-200"
+                >Root-baked hex codes</span
+              >
+              include the chord’s root — ready to drop straight into
+              Hypersyn.<br />
+              <span class="font-semibold text-yellow-200"
+                >Interval-only codes</span
+              >
+              are just the chord shape — you choose the root yourself in the
+              phrase view.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Sidebar Toggle Button -->
+    <button
+      id="sidebarToggle"
+      class="fixed top-4 left-4 z-40 bg-pink-600 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg focus:outline-none sm:top-4 sm:left-4"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-6 w-6"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M4 6h16M4 12h16M4 18h16"
+        />
+      </svg>
+    </button>
+    <!-- Synthwave video background -->
+    <div
+      id="video-bg"
+      style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: -2;
+        overflow: hidden;
+      "
+    >
+      <video
+        autoplay
+        loop
+        muted
+        playsinline
+        style="
+          width: 100vw;
+          height: 100vh;
+          object-fit: cover;
+          filter: blur(8px) brightness(0.7) saturate(1.1);
+        "
+      >
+        <source src="./assets/synthwave-Dbm8fxvT.mp4" type="video/mp4" />
+      </video>
+      <div
+        style="
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background: rgba(40, 42, 54, 0.5);
+          mix-blend-mode: soft-light;
+        "
+      ></div>
+    </div>
+    <h1
+      class="synthwave-header text-5xl font-extrabold text-pink-400"
+      style="font-family: 'Share Tech Mono', monospace !important"
+    >
+      Hypersyn Chord Helper
+    </h1>
+
+    <!-- Input Box with Example Progression -->
+    <div class="content-box w-full max-w-lg">
+      <textarea
+        id="chordsInput"
+        placeholder="Paste your chord progression here..."
+        class="w-full p-2 border border-gray-300 rounded text-3xl"
+      >
+Am7 Dm9 G13 Cmaj7 Fmaj7 Bm7b5 E7 Am9</textarea
+      >
+      <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+        <button
+          id="convertChordsBtn"
+          class="mb-2 px-4 py-2 bg-pink-600 text-white rounded w-full sm:w-auto"
+        >
+          Convert
+        </button>
+
+        <button
+          id="clearInputBtn"
+          class="mb-2 px-4 py-2 bg-gray-600 text-white rounded w-full sm:w-auto"
+        >
+          Clear
+        </button>
+      </div>
+    </div>
+    <!-- Preview Box (moved directly below input) -->
+    <!-- Output Box -->
+    <div class="content-box w-full max-w-lg">
+      <button
+        id="toggleOutputBoxBtn"
+        class="mb-2 px-2 py-1 bg-gray-700 text-white rounded w-full sm:w-auto dimmed"
+        data-box="outputBox"
+      >
+        Converted Chords ▶
+      </button>
+      <span class="ml-2 text-gray-400 text-sm"
+        >Shows all chords with hex and interval codes</span
+      >
+      <div id="outputBox" class="hidden">
+        <div id="output" class="text-lg"></div>
+      </div>
+    </div>
+
+    <!-- Info Box (moved to bottom) -->
+    <!-- Toast Notification Container -->
+    <div
+      id="toastContainer"
+      class="fixed top-6 left-1/2 transform -translate-x-1/2 z-50 flex flex-col items-center space-y-2"
+    ></div>
+
+  </body>
+  <!-- Video credit as page content -->
+  <div
+    id="video-credit"
+    style="
+      margin: 2.5rem auto 0 auto;
+      font-size: 0.95rem;
+      color: #8be9fd;
+      background: rgba(40, 42, 54, 0.7);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-family: 'Share Tech Mono', monospace;
+      box-shadow: 0 2px 8px #000;
+      text-align: center;
+      display: inline-flex;
+      align-items: center;
+    "
+  >
+    <span style="display: inline">
+      Video by
+      <a
+        href="https://www.reddit.com/user/visualdon/"
+        target="_blank"
+        style="color: #ff79c6; text-decoration: underline"
+        >visualdon</a
+      >
+      on Reddit
+    </span>
+    <button
+      id="toggleVideoBtn"
+      style="
+        background: #282a36;
+        color: #f8f8f2;
+        border: none;
+        border-radius: 5px;
+        padding: 2px 10px;
+        font-size: 0.95em;
+        cursor: pointer;
+        margin-left: 0.7em;
+        display: inline;
+      "
+    >
+      Hide Video
+    </button>
+  </div>
+  <style>
+    .dimmed {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  </style>
+</html>

@@ -9,7 +9,7 @@
     // See also https://aka.ms/tsconfig/module
     "module": "ESNext",
     "target": "ESNext",
-    "types": ["jest"],
+    "types": ["node", "jest"],
     // For nodejs:
     // "lib": ["esnext"],
     // "types": ["node"],
@@ -20,9 +20,9 @@
     // "declaration": true,
     // "declarationMap": true,
 
-  // Stricter Typechecking Options
-  // "noUncheckedIndexedAccess": true,
-  // "exactOptionalPropertyTypes": true,
+    // Stricter Typechecking Options
+    // "noUncheckedIndexedAccess": true,
+    // "exactOptionalPropertyTypes": true,
 
     // Style Options
     // "noImplicitReturns": true,
@@ -32,16 +32,16 @@
     // "noFallthroughCasesInSwitch": true,
     // "noPropertyAccessFromIndexSignature": true,
 
-  // Recommended Options
-  "strict": false,
+    // Recommended Options
+    "strict": false,
     "jsx": "react-jsx",
     "verbatimModuleSyntax": true,
-  "isolatedModules": true,
-  // "noUncheckedSideEffectImports": true,
+    "isolatedModules": true,
+    // "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
 
-    "moduleResolution": "Node",
+    "moduleResolution": "Node"
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "main.ts"],
   "exclude": ["node_modules", "dist"]
