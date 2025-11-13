@@ -37,7 +37,7 @@ export const getSelectedVoicing = (): string => {
  *
  * @returns {void}
  */
-const updateVolumeLabel = () => {
+export const updateVolumeLabel = () => {
   const slider = document.getElementById(
     "volumeSlider"
   ) as HTMLInputElement | null;
@@ -49,7 +49,7 @@ const updateVolumeLabel = () => {
  *
  * @returns {void}
  */
-const clearInput = () => {
+export const clearInput = () => {
   (document.getElementById("chordsInput") as HTMLInputElement | null)!.value =
     "";
   // ...clear other UI as needed
@@ -62,7 +62,7 @@ import { playSingleChordGlobal } from "../core/core";
  *
  * @returns {void}
  */
-const playSingleChord = () => {
+export const playSingleChord = () => {
   const select = document.getElementById(
     "singleChordSelect"
   ) as HTMLSelectElement | null;
