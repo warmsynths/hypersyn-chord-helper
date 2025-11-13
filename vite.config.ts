@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  base: "./", // Use relative paths for all assets
+  build: { outDir: 'docs' },
+  base: "/hypersyn-chord-helper/", // Use relative paths for all assets
 });
