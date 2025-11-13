@@ -87,6 +87,8 @@ export const getValidVoicings = (intervals) => {
  * @returns {number[]} The transformed intervals.
  */
 export const applyVoicing = (intervals, voicing) => {
+  // Defensive: create a sorted copy of intervals
+  const sorted = Array.isArray(intervals) ? intervals.slice().sort((a, b) => a - b) : [];
   // Helper: is dominant 7th (major 3rd, minor 7th)
   function isDominant(intervals) {
     // Intervals: root=0, major 3rd=4, perfect 5th=7, minor 7th=10
