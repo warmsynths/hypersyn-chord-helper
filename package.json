@@ -32,5 +32,9 @@
     "ts-jest": "^29.4.5",
     "typescript": "^5.9.3",
     "vite": "^7.1.11"
+  },
+  "dependencies": {
+    "@tonaljs/chord": "^6.1.2",
+    "@tonaljs/interval": "^5.1.0"
   }
 }
