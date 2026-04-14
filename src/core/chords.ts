@@ -1,3 +1,6 @@
+import * as Chord from "@tonaljs/chord";
+import * as Interval from "@tonaljs/interval";
+
 /**
  * Note name to semitone mapping.
  * Used for converting note names (e.g., C, D#, Bb) to semitone offsets.
@@ -257,6 +260,113 @@ const chordTypes = {
   "13#9": [0, 4, 7, 10, 15, 21],
 };
 
+const typeAliases = {
+  "": "maj",
+  major: "maj",
+  min: "m",
+  minor: "m",
+  "-": "m",
+  "Δ": "maj7",
+  "Δ7": "maj7",
+  M7: "maj7",
+  min7: "m7",
+  "ø": "m7b5",
+  "ø7": "m7b5",
+  "°7": "dim7",
+  o7: "dim7",
+  "+": "aug",
+  mM7: "mMaj7",
+  mmaj7: "mMaj7",
+};
+
+const tonalTypeVariants = {
+  maj: ["", "maj"],
+  m: ["m", "min"],
+  maj7: ["maj7", "M7"],
+  m7: ["m7", "min7"],
+  m7b5: ["m7b5", "ø7"],
+  aug: ["aug", "+"],
+  mMaj7: ["mMaj7", "mM7"],
+};
+
+const fallbackTypeVariants = {
+  maj: ["maj"],
+  m: ["m", "min"],
+  maj7: ["maj7", "M7"],
+  m7: ["m7", "min7"],
+  m7b5: ["m7b5", "ø7"],
+  aug: ["aug", "+"],
+  mMaj7: ["mMaj7"],
+};
+
+const normalizeRoot = (rootToken) => {
+  if (!rootToken) return null;
+  const letter = rootToken.charAt(0).toUpperCase();
+  if (!/[A-G]/.test(letter)) return null;
+  const accidental = rootToken
+    .slice(1)
+    .replace(/♯/g, "#")
+    .replace(/♭/g, "b");
+  if (!["", "#", "b"].includes(accidental)) return null;
+  return letter + accidental;
+};
+
+const normalizeType = (rawType) => {
+  const compact = (rawType || "").trim().replace(/\s+/g, "");
+  if (Object.prototype.hasOwnProperty.call(typeAliases, compact)) {
+    return typeAliases[compact];
+  }
+  return compact || "maj";
+};
+
+const getVariants = (lookup, type) => {
+  const variants = lookup[type] || [type];
+  const deduped = [];
+  variants.forEach((v) => {
+    if (typeof v === "string" && v.length >= 0 && !deduped.includes(v)) {
+      deduped.push(v);
+    }
+  });
+  return deduped;
+};
+
+const parseIntervalsWithTonal = (root, type) => {
+  const candidates = getVariants(tonalTypeVariants, type);
+  for (let i = 0; i < candidates.length; i++) {
+    const candidate = candidates[i];
+    const symbol = `${root}${candidate}`;
+    const chordData = Chord.get(symbol);
+    if (!chordData || chordData.empty || !Array.isArray(chordData.intervals)) {
+      continue;
+    }
+    const intervalOnly = chordData.intervals
+      .map((iv) => Interval.semitones(iv))
+      .filter((n) => typeof n === "number" && isFinite(n));
+    if (intervalOnly.length > 0) {
+      return {
+        intervalOnly,
+        type: candidate === "" ? "maj" : candidate,
+      };
+    }
+  }
+  return null;
+};
+
+const parseIntervalsWithFallbackMap = (type) => {
+  const candidates = getVariants(fallbackTypeVariants, type);
+  for (let i = 0; i < candidates.length; i++) {
+    const candidate = candidates[i];
+    const intervals = chordTypes[candidate];
+    if (Array.isArray(intervals) && intervals.length > 0) {
+      return {
+        intervalOnly: intervals.slice(),
+        type: candidate,
+      };
+    }
+  }
+  return null;
+};
+
 /**
  * Parses a chord name and returns its components and hex representations.
  *
@@ -264,33 +374,32 @@ const chordTypes = {
  * @returns {object|null} An object with chordName, root, type, rootBaked, intervalOnlyHex, intervalOnly; or null if invalid.
  */
 export const parseChordName = (chordName) => {
-  const rootMatch = chordName.match(/^[A-G][b#]?/);
+  if (typeof chordName !== "string") return null;
+  const trimmed = chordName.trim();
+  if (!trimmed) return null;
+  const rootMatch = trimmed.match(/^[A-Ga-g][b#♭♯]?/);
   if (!rootMatch) return null;
-  const root = rootMatch[0];
-  let type = chordName.slice(root.length) || "maj";
-  // Handle half-diminished: ø7
-  if (type === "ø7") {
-    type = "ø7";
-  } else {
-    // Translate ø to dim for compatibility (for triads)
-    type = type.replace("ø", "m7b5");
-  }
-  const intervals = chordTypes[type];
-  if (!intervals) return null;
+  const root = normalizeRoot(rootMatch[0]);
+  if (!root || typeof notes[root] !== "number") return null;
+  const type = normalizeType(trimmed.slice(rootMatch[0].length));
+  const tonalParsed = parseIntervalsWithTonal(root, type);
+  const fallbackParsed = tonalParsed || parseIntervalsWithFallbackMap(type);
+  if (!fallbackParsed) return null;
+
+  const intervalOnly = fallbackParsed.intervalOnly;
+  const parsedType = fallbackParsed.type;
   const rootSemitone = notes[root];
 
   // Root-baked chord: add root semitone, wrap modulo 12
-  const rootBaked = intervals.map((i) => semitoneToHex(i + rootSemitone));
+  const rootBaked = intervalOnly.map((i) => semitoneToHex(i + rootSemitone));
 
   // Interval-only hex for display
-  const intervalOnlyHex = intervals.map((i) => semitoneToHex(i));
-  // Interval-only numbers for playback
-  const intervalOnly = intervals.slice();
+  const intervalOnlyHex = intervalOnly.map((i) => semitoneToHex(i));
 
   return {
-    chordName,
+    chordName: trimmed,
     root,
-    type,
+    type: parsedType,
     rootBaked,
     intervalOnlyHex,
     intervalOnly,

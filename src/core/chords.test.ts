@@ -41,10 +41,27 @@ describe('chords module', () => {
     expect(Array.isArray(chord.intervalOnly)).toBe(true);
   });
 
+  it('parseChordName handles common aliases and casing', () => {
+    expect(parseChordName('cmin7')).toBeTruthy();
+    expect(parseChordName('CΔ7')).toBeTruthy();
+    expect(parseChordName('Bø7')).toBeTruthy();
+    expect(parseChordName('C♯m7')).toBeTruthy();
+  });
+
+  it('parseChordName returns null for unsupported token', () => {
+    expect(parseChordName('Hmaj7')).toBeNull();
+    expect(parseChordName('Cwhatever')).toBeNull();
+  });
+
   it('convertChords returns structured result', () => {
     const result = convertChords('Cmaj7 Dm7', 'closed');
     expect(result).toHaveProperty('chords');
     expect(Array.isArray(result.chords)).toBe(true);
     expect(result.chords.length).toBeGreaterThan(0);
+  });
+
+  it('convertChords keeps valid mixed-symbol chords', () => {
+    const result = convertChords('cmin7 CΔ7 Bø7 C♯m7 nope', 'closed');
+    expect(result.chords.length).toBe(4);
   });
 });
