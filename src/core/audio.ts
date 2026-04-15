@@ -131,7 +131,7 @@ export const playChordProgression = () => {
     let intervals = Array.isArray(chord.intervalOnly)
       ? chord.intervalOnly.filter((x) => typeof x === "number" && isFinite(x))
       : [];
-    intervals = applyVoicing(intervals, voicing);
+    intervals = applyVoicing(intervals, voicing, chord);
     if (intervals.length === 0) {
       console.warn("No intervals for chord:", chord.chordName, chord);
     }
@@ -243,7 +243,7 @@ export const playSingleChordGlobal = (chord) => {
   let intervals = chord.intervalOnly.filter(
     (x) => typeof x === "number" && isFinite(x)
   );
-  intervals = applyVoicing(intervals, voicing);
+  intervals = applyVoicing(intervals, voicing, chord);
   intervals.forEach((semi) => {
     let midi = rootMidi + semi;
     if (!isFinite(midi)) return;

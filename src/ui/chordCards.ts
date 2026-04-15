@@ -160,7 +160,7 @@ export const updateChordVoicing = (idx, voicing) => {
   if (Array.isArray(chordObj.intervalOnly)) {
     let voicedIntervals = chordObj.intervalOnly;
     if (typeof applyVoicing === "function") {
-      voicedIntervals = applyVoicing(chordObj.intervalOnly, voicing);
+      voicedIntervals = applyVoicing(chordObj.intervalOnly, voicing, chordObj);
     }
     const midiRoot = chordObj.midiRoot || 60;
     const rootBakedHex = voicedIntervals

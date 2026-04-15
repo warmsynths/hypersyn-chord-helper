@@ -1,5 +1,8 @@
 import * as Chord from "@tonaljs/chord";
 import * as Interval from "@tonaljs/interval";
+import * as Midi from "@tonaljs/midi";
+import * as Voicing from "@tonaljs/voicing";
+import * as VoicingDictionary from "@tonaljs/voicing-dictionary";
 
 /**
  * Note name to semitone mapping.
@@ -78,6 +81,104 @@ export const getValidVoicings = (intervals) => {
   return voicingOptions.filter((opt) => opt.valid);
 }
 
+const tonalSymbolByType = {
+  maj: "maj",
+  m: "m",
+  m7: "m7",
+  maj7: "maj7",
+  m7b5: "m7b5",
+  dim7: "dim7",
+  aug: "aug",
+  mMaj7: "mMaj7",
+};
+
+const intervalsFromTonalNotes = (notesWithOctave, root) => {
+  if (!Array.isArray(notesWithOctave) || !root) return null;
+  const baseMidi = getMidiRoot(root);
+  const semitones = notesWithOctave
+    .map((n) => Midi.toMidi(n))
+    .filter((m) => typeof m === "number" && isFinite(m))
+    .map((m) => m - baseMidi)
+    .sort((a, b) => a - b);
+  return semitones.length > 0 ? semitones : null;
+};
+
+const tonalRangeForRoot = (root) => [`${root}2`, `${root}6`];
+
+const resolveTonalDictionary = (voicing) => {
+  if (voicing === "open-triad") {
+    return VoicingDictionary.triads;
+  }
+  if (voicing === "shell-dominant" || voicing === "altered-dominant") {
+    return VoicingDictionary.lefthand;
+  }
+  return VoicingDictionary.defaultDictionary;
+};
+
+const pickTonalCandidate = (candidates, voicing, root) => {
+  if (!Array.isArray(candidates) || candidates.length === 0) return null;
+  const targetMidi = getMidiRoot(root) + 5;
+  const parsed = candidates
+    .map((notes) => {
+      const midis = notes
+        .map((n) => Midi.toMidi(n))
+        .filter((m) => typeof m === "number" && isFinite(m));
+      if (midis.length === 0) return null;
+      const avg = midis.reduce((sum, m) => sum + m, 0) / midis.length;
+      const span = Math.max(...midis) - Math.min(...midis);
+      return { notes, avg, span };
+    })
+    .filter(Boolean);
+  if (parsed.length === 0) return null;
+
+  parsed.sort((a, b) => {
+    const aDist = Math.abs(a.avg - targetMidi);
+    const bDist = Math.abs(b.avg - targetMidi);
+    if (aDist !== bDist) return aDist - bDist;
+    return a.span - b.span;
+  });
+
+  const nearest = parsed.slice(0, Math.min(6, parsed.length));
+  if (voicing === "spread" || voicing === "octave") {
+    return nearest.slice().sort((a, b) => b.span - a.span)[0].notes;
+  }
+  if (voicing === "drop2" || voicing === "first-inversion") {
+    return nearest[Math.min(1, nearest.length - 1)].notes;
+  }
+  if (voicing === "drop3" || voicing === "second-inversion") {
+    return nearest[Math.min(2, nearest.length - 1)].notes;
+  }
+  if (voicing === "third-inversion") {
+    return nearest[Math.min(3, nearest.length - 1)].notes;
+  }
+  return nearest[0].notes;
+};
+
+const tryApplyTonalVoicing = (intervals, voicing, chordMeta) => {
+  if (!chordMeta || !chordMeta.root || !chordMeta.type) return null;
+  const tonalType = tonalSymbolByType[chordMeta.type] || chordMeta.type;
+  const chordSymbol = `${chordMeta.root}${tonalType}`;
+  const tonalChord = Chord.get(chordSymbol);
+  if (!tonalChord || tonalChord.empty) {
+    return null;
+  }
+  const dictionary = resolveTonalDictionary(voicing);
+  let candidates = Voicing.search(
+    chordSymbol,
+    tonalRangeForRoot(chordMeta.root),
+    dictionary
+  );
+  if (!Array.isArray(candidates) || candidates.length === 0) {
+    candidates = Voicing.search(
+      chordSymbol,
+      tonalRangeForRoot(chordMeta.root),
+      VoicingDictionary.defaultDictionary
+    );
+  }
+  const voicedNotes = pickTonalCandidate(candidates, voicing, chordMeta.root);
+  return intervalsFromTonalNotes(voicedNotes, chordMeta.root);
+};
+
 /**
  * Transforms chord intervals according to the selected voicing.
 /**
@@ -89,99 +190,12 @@ export const getValidVoicings = (intervals) => {
  * @param {string} voicing - The voicing type to apply.
  * @returns {number[]} The transformed intervals.
  */
-export const applyVoicing = (intervals, voicing) => {
-  // Defensive: create a sorted copy of intervals
-  const sorted = Array.isArray(intervals) ? intervals.slice().sort((a, b) => a - b) : [];
-  // Helper: is dominant 7th (major 3rd, minor 7th)
-  function isDominant(intervals) {
-    // Intervals: root=0, major 3rd=4, perfect 5th=7, minor 7th=10
-    return intervals.includes(4) && intervals.includes(10);
+export const applyVoicing = (intervals, voicing, chordMeta = null) => {
+  const tonalVoiced = tryApplyTonalVoicing(intervals, voicing, chordMeta);
+  if (Array.isArray(tonalVoiced) && tonalVoiced.length > 0) {
+    return tonalVoiced;
   }
-  switch (voicing) {
-    case "drop2":
-      if (sorted.length >= 2) {
-        // Drop 2nd highest
-        const idx = sorted.length - 2;
-        sorted[idx] -= 12;
-      }
-      return sorted.slice().sort((a, b) => a - b);
-    case "open-triad":
-      // For triads, move the middle note up an octave
-      if (sorted.length === 3) {
-        const open = [sorted[0], sorted[2], sorted[1] + 12];
-        return open.sort((a, b) => a - b);
-      }
-      return sorted;
-    case "drop3":
-      if (sorted.length >= 3) {
-        // Drop 3rd highest
-        const idx = sorted.length - 3;
-        sorted[idx] -= 12;
-      }
-      return sorted.slice().sort((a, b) => a - b);
-    case "spread":
-      // Lift every other (2nd, 4th, ...)
-      return sorted.map((v, i) => (i % 2 === 1 ? v + 12 : v));
-    case "octave":
-      // Double root and/or 5th for thickness
-      const doubled = [...sorted];
-      if (doubled.length > 0) doubled.push(doubled[0] + 12); // root
-      if (doubled.length > 2) doubled.push(doubled[2] + 12); // 5th
-      return doubled;
-    case "first-inversion":
-      // Move root up an octave
-      if (sorted.length > 1) {
-        const inv = [...sorted];
-        inv[0] += 12;
-        return inv
-          .slice(1)
-          .concat(inv[0])
-          .sort((a, b) => a - b);
-      }
-      return sorted;
-    case "second-inversion":
-      // Move root and 3rd up an octave
-      if (sorted.length > 2) {
-        const inv = [...sorted];
-        inv[0] += 12;
-        inv[1] += 12;
-        return inv
-          .slice(2)
-          .concat(inv[0], inv[1])
-          .sort((a, b) => a - b);
-      }
-      return sorted;
-    case "third-inversion":
-      // Move root, 3rd, and 5th up an octave (for 7th chords)
-      if (sorted.length > 3) {
-        const inv = [...sorted];
-        inv[0] += 12;
-        inv[1] += 12;
-        inv[2] += 12;
-        return inv
-          .slice(3)
-          .concat(inv[0], inv[1], inv[2])
-          .sort((a, b) => a - b);
-      }
-      return sorted;
-    case "shell-dominant":
-      // Only root, 3rd, 7th for dominant chords
-      if (isDominant(sorted)) {
-        return sorted.filter((v) => v === 0 || v === 4 || v === 10);
-      }
-      return sorted;
-    case "altered-dominant":
-      // Add b9, #9, b13, #11 to dominant chords
-      if (isDominant(sorted)) {
-        const base = sorted.filter((v) => v === 0 || v === 4 || v === 10);
-        // b9=1, #9=5, #11=6, b13=8
-        return base.concat([1, 5, 6, 8]).sort((a, b) => a - b);
-      }
-      return sorted;
-    case "closed":
-    default:
-      return intervals;
-  }
+  return intervals;
 }
 
 /**
@@ -313,10 +327,14 @@ const normalizeRoot = (rootToken) => {
 
 const normalizeType = (rawType) => {
   const compact = (rawType || "").trim().replace(/\s+/g, "");
+  const unwrapped = compact.match(/^\((.+)\)$/)?.[1] || compact;
   if (Object.prototype.hasOwnProperty.call(typeAliases, compact)) {
     return typeAliases[compact];
   }
-  return compact || "maj";
+  if (Object.prototype.hasOwnProperty.call(typeAliases, unwrapped)) {
+    return typeAliases[unwrapped];
+  }
+  return unwrapped || "maj";
 };
 
 const getVariants = (lookup, type) => {
@@ -453,7 +471,7 @@ export const convertChords = (input, voicing) => {
     .filter((c) => c !== null)
     .map((chord) => {
       // Apply voicing to intervals
-      const intervals = applyVoicing(chord.intervalOnly, voicing);
+      const intervals = applyVoicing(chord.intervalOnly, voicing, chord);
       // Defensive: ensure intervals is array
       const safeIntervals = Array.isArray(intervals) ? intervals : [];
       return {

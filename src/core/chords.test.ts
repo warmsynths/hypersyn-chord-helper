@@ -27,6 +27,14 @@ describe('chords module', () => {
     expect(Array.isArray(drop2)).toBe(true);
   });
 
+  it('applyVoicing keeps E7 near visible register', () => {
+    const voiced = applyVoicing([0, 4, 7, 10], 'closed', {
+      root: 'E',
+      type: '7'
+    });
+    expect(voiced.some(v => v >= -4 && v <= 20)).toBe(true);
+  });
+
   it('semitoneToHex returns hex string', () => {
     expect(semitoneToHex(0)).toBe('00');
     expect(semitoneToHex(11)).toBe('0B');
@@ -46,6 +54,8 @@ describe('chords module', () => {
     expect(parseChordName('CΔ7')).toBeTruthy();
     expect(parseChordName('Bø7')).toBeTruthy();
     expect(parseChordName('C♯m7')).toBeTruthy();
+    expect(parseChordName('E(7)')).toBeTruthy();
+    expect(parseChordName('C(maj7)')).toBeTruthy();
   });
 
   it('parseChordName returns null for unsupported token', () => {
