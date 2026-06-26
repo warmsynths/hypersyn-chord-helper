@@ -22,6 +22,6 @@ describe('toast module', () => {
   });
 
   it('showToast does not throw for unknown type', () => {
-    expect(() => showToast('Unknown', 'notatype')).not.toThrow();
+    expect(() => showToast('Unknown', 'notatype' as any)).not.toThrow();
   });
 });

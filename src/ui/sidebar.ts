@@ -1,44 +1,41 @@
 /**
- * Toggles the sidebar open/close state and updates the toggle button style.
+ * Toggles the sidebar open/close state using CSS classes.
+ * Uses the new Condiiox theme classes: `open` on #sidebar and `visible` on #sidebar-overlay.
  *
  * @returns {void}
  */
-/**
- * Toggles the sidebar open/close state and updates the toggle button style.
- * When opening, adds a document click listener to close the sidebar if clicking outside.
- * When closing, removes the document click listener.
- *
- * @returns {void}
- */
-let sidebarOutsideClickListener = null;
-export const toggleSidebar = () => {
-  const sidebar = document.getElementById("sidebar");
-  const toggleBtn = document.getElementById("sidebarToggle");
-  if (sidebar.classList.contains("-translate-x-full")) {
-    sidebar.classList.remove("-translate-x-full");
-    toggleBtn.classList.add("sidebar-toggle-fade");
-    // Add outside click listener
-    sidebarOutsideClickListener = (e) => {
-      // Only close if click is outside sidebar and not on toggle button
+let _outsideClickListener: ((e: MouseEvent) => void) | null = null;
+
+export const toggleSidebar = (): void => {
+  const sidebar  = document.getElementById("sidebar");
+  const overlay  = document.getElementById("sidebar-overlay");
+  if (!sidebar) return;
+
+  const isOpen = sidebar.classList.contains("open");
+
+  if (isOpen) {
+    // Close
+    sidebar.classList.remove("open");
+    overlay?.classList.remove("visible");
+    if (_outsideClickListener) {
+      document.removeEventListener("mousedown", _outsideClickListener);
+      _outsideClickListener = null;
+    }
+  } else {
+    // Open
+    sidebar.classList.add("open");
+    overlay?.classList.add("visible");
+    _outsideClickListener = (e: MouseEvent) => {
       if (
         sidebar &&
-        !sidebar.contains(e.target) &&
-        (!toggleBtn || !toggleBtn.contains(e.target))
+        !sidebar.contains(e.target as Node) &&
+        !(document.getElementById("sidebarToggle"))?.contains(e.target as Node)
       ) {
         toggleSidebar();
       }
     };
     setTimeout(() => {
-      // Delay to avoid immediate close from the click that opened it
-      document.addEventListener("mousedown", sidebarOutsideClickListener);
+      document.addEventListener("mousedown", _outsideClickListener!);
     }, 0);
-  } else {
-    sidebar.classList.add("-translate-x-full");
-    toggleBtn.classList.remove("sidebar-toggle-fade");
-    // Remove outside click listener
-    if (sidebarOutsideClickListener) {
-      document.removeEventListener("mousedown", sidebarOutsideClickListener);
-      sidebarOutsideClickListener = null;
-    }
   }
-}
+};

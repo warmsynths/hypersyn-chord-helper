@@ -19,80 +19,55 @@ import {
   updateChordKeyboardViz,
 } from "./chordCards";
 import { updateKeyboardViz } from "./keyboardViz";
-
-/**
- * Returns the currently selected voicing type from the voicing dropdown.
- *
- * @returns {string} The selected voicing type, or 'closed' if not found.
- */
-export const getSelectedVoicing = (): string => {
-  const select = document.getElementById(
-    "voicingSelect"
-  ) as HTMLSelectElement | null;
-  return select ? select.value : "closed";
-};
-
-/**
- * Updates the volume label to reflect the current value of the volume slider.
- *
- * @returns {void}
- */
-export const updateVolumeLabel = () => {
-  const slider = document.getElementById(
-    "volumeSlider"
-  ) as HTMLInputElement | null;
-  document.getElementById("volumeLabel").textContent =
-    (slider ? slider.value : "0") + "%";
-};
-/**
- * Clears the chords input field and any other relevant UI elements.
- *
- * @returns {void}
- */
-export const clearInput = () => {
-  (document.getElementById("chordsInput") as HTMLInputElement | null)!.value =
-    "";
-  // ...clear other UI as needed
-};
+import { showToast } from "./toast";
 import { parseChordName } from "../core/chords";
 import { playSingleChordGlobal } from "../core/core";
 
+// ─── Voicing select (legacy global — returns "closed" in new UI) ────
+
 /**
- * Plays the currently selected chord from the single chord dropdown using the audio engine.
+ * Returns the currently selected voicing type.
+ * In the new tracker UI, per-chord voicing is controlled via drag; this
+ * returns "closed" as the default for initial rendering.
  *
- * @returns {void}
+ * @returns {string} "closed"
  */
-export const playSingleChord = () => {
-  const select = document.getElementById(
-    "singleChordSelect"
-  ) as HTMLSelectElement | null;
-  if (!select || !select.value) return;
-  const chordName = select.value;
-  const parsed = parseChordName(chordName);
-  if (!parsed) return;
-  playSingleChordGlobal(parsed);
+export const getSelectedVoicing = (): string => "closed";
+
+// ─── Volume label ───────────────────────────────────────────────────
+
+/**
+ * Updates the volume label to reflect the current value of the volume slider.
+ */
+export const updateVolumeLabel = (): void => {
+  const slider = document.getElementById("volumeSlider") as HTMLInputElement | null;
+  const label  = document.getElementById("volumeLabel");
+  if (label) label.textContent = (slider ? slider.value : "0") + "%";
 };
+
+// ─── Clear input ────────────────────────────────────────────────────
+
+/**
+ * Clears the chords input field.
+ */
+export const clearInput = (): void => {
+  const input = document.getElementById("chordsInput") as HTMLInputElement | null;
+  if (input) input.value = "";
+};
+
+// ─── Single chord dropdown ──────────────────────────────────────────
 
 /**
  * Populates the single chord dropdown with unique chord names from the input field.
- *
- * @returns {void}
  */
-export const updateSingleChordDropdownFromInput = () => {
-  const input = document.getElementById(
-    "chordsInput"
-  ) as HTMLInputElement | null;
-  const select = document.getElementById(
-    "singleChordSelect"
-  ) as HTMLSelectElement | null;
+export const updateSingleChordDropdownFromInput = (): void => {
+  const input  = document.getElementById("chordsInput")  as HTMLInputElement  | null;
+  const select = document.getElementById("singleChordSelect") as HTMLSelectElement | null;
   if (!input || !select) return;
-  // Split input into chord names
-  const chordNames = input.value
-    .split(/\s|,/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-  // Remove duplicates
+
+  const chordNames  = input.value.split(/\s|,/).map((s) => s.trim()).filter(Boolean);
   const uniqueChords = Array.from(new Set(chordNames));
+
   select.innerHTML = "";
   if (uniqueChords.length === 0) {
     const opt = document.createElement("option");
@@ -111,109 +86,157 @@ export const updateSingleChordDropdownFromInput = () => {
   }
 };
 
+// ─── Play single chord ──────────────────────────────────────────────
+
 /**
- * Wires up all DOM event listeners for the app UI, connecting UI elements to their handlers.
- *
- * This includes play/stop, chord set management, sidebar toggles, volume, single chord preview, and output box.
- *
- * @returns {void}
+ * Plays the currently selected chord from the single chord dropdown.
  */
-export const wireEventListeners = () => {
+export const playSingleChord = (): void => {
+  const select = document.getElementById("singleChordSelect") as HTMLSelectElement | null;
+  if (!select || !select.value) return;
+  const parsed = parseChordName(select.value);
+  if (!parsed) return;
+  playSingleChordGlobal(parsed);
+};
+
+// ─── Konami Code Easter Egg ─────────────────────────────────────────
+
+const KONAMI_SEQUENCE = [
+  "ArrowUp", "ArrowUp",
+  "ArrowDown", "ArrowDown",
+  "ArrowLeft", "ArrowRight",
+  "ArrowLeft", "ArrowRight",
+  "b", "a",
+];
+
+let konamiBuffer: string[] = [];
+
+function handleKonamiKey(e: KeyboardEvent): void {
+  konamiBuffer.push(e.key);
+  if (konamiBuffer.length > KONAMI_SEQUENCE.length) {
+    konamiBuffer.shift();
+  }
+  if (konamiBuffer.join(",") === KONAMI_SEQUENCE.join(",")) {
+    konamiBuffer = [];
+    const body    = document.body;
+    const isOn    = body.classList.toggle("theme-synthwave");
+    const videoBg = document.getElementById("video-bg");
+    const appTitle = document.getElementById("app-title");
+
+    if (videoBg)  videoBg.style.display  = isOn ? "block" : "none";
+    if (appTitle) appTitle.style.display = isOn ? "block" : "none";
+
+    showToast(
+      isOn ? "🎮 Synthwave easter egg activated!" : "🎮 Back to tracker mode",
+      isOn ? "success" : "info"
+    );
+  }
+}
+
+// ─── Wire all event listeners ───────────────────────────────────────
+
+/**
+ * Wires up all DOM event listeners for the app UI.
+ */
+export const wireEventListeners = (): void => {
+
+  // Konami code — works any time
+  document.addEventListener("keydown", handleKonamiKey);
+
   // Sidebar close button (X)
-  document
-    .getElementById("sidebarCloseBtn")
-    ?.addEventListener("click", toggleSidebar);
+  document.getElementById("sidebarCloseBtn")?.addEventListener("click", toggleSidebar);
+
+  // Sidebar overlay click
+  document.getElementById("sidebar-overlay")?.addEventListener("click", toggleSidebar);
+
   document.addEventListener("DOMContentLoaded", () => {
-    // Play/Stop progression
-    document
-      .getElementById("playBtn")
-      ?.addEventListener("click", playChordProgression);
-    document
-      .getElementById("stopBtn")
-      ?.addEventListener("click", stopChordProgression);
+    // ── Playback ──
+    document.getElementById("playBtn")?.addEventListener("click", playChordProgression);
+    document.getElementById("stopBtn")?.addEventListener("click", stopChordProgression);
 
-    // Save/Load/Delete/Export/Import chord sets
-    document
-      .getElementById("saveChordSetBtn")
-      ?.addEventListener("click", saveChordSet);
-    document
-      .getElementById("loadChordSetBtn")
-      ?.addEventListener("click", loadChordSet);
-    document
-      .getElementById("deleteChordSetBtn")
-      ?.addEventListener("click", deleteChordSet);
-    document
-      .getElementById("exportChordSetsBtn")
-      ?.addEventListener("click", exportChordSets);
-    document
-      .getElementById("importChordSetsInput")
-      ?.addEventListener("change", importChordSets);
+    // ── Chord set management ──
+    document.getElementById("saveChordSetBtn")?.addEventListener("click",   saveChordSet);
+    document.getElementById("loadChordSetBtn")?.addEventListener("click",   loadChordSet);
+    document.getElementById("deleteChordSetBtn")?.addEventListener("click", deleteChordSet);
+    document.getElementById("exportChordSetsBtn")?.addEventListener("click", exportChordSets);
+    document.getElementById("importChordSetsInput")?.addEventListener("change", importChordSets);
 
-    // Sidebar and video toggles
-    document
-      .getElementById("sidebarToggle")
-      ?.addEventListener("click", toggleSidebar);
-    document
-      .getElementById("toggleVideoBtn")
-      ?.addEventListener("click", toggleVideoBg);
+    // ── Sidebar toggle (hamburger in nav bar) ──
+    document.getElementById("sidebarToggle")?.addEventListener("click", toggleSidebar);
 
-    // Volume slider
-    document
-      .getElementById("volumeSlider")
-      ?.addEventListener("input", updateVolumeLabel);
+    // ── Nav bar action buttons → open sidebar ──
+    ["nav-load-btn", "nav-save-btn", "nav-settings-btn"].forEach((id) => {
+      document.getElementById(id)?.addEventListener("click", toggleSidebar);
+    });
 
-    // Convert/Clear/Single Chord Preview
+    // ── Nav bar: New Project ──
+    document.getElementById("nav-new-btn")?.addEventListener("click", () => {
+      const input = document.getElementById("chordsInput") as HTMLInputElement;
+      if (input) input.value = "";
+      const outputBox = document.getElementById("outputBox");
+      if (outputBox) outputBox.style.display = "none";
+      const toggleBtn = document.getElementById("toggleOutputBoxBtn");
+      if (toggleBtn) {
+        toggleBtn.innerHTML = "CHORDS ▶";
+        toggleBtn.setAttribute("aria-expanded", "false");
+        toggleBtn.classList.add("dimmed");
+      }
+      showToast("New project started.", "info");
+    });
+
+    // ── Nav bar: Export ──
+    document.getElementById("nav-export-btn")?.addEventListener("click", exportChordSets);
+
+    // ── Video toggle (legacy — now hidden in sidebar info section) ──
+    document.getElementById("toggleVideoBtn")?.addEventListener("click", toggleVideoBg);
+
+    // ── Volume slider ──
+    document.getElementById("volumeSlider")?.addEventListener("input", updateVolumeLabel);
+
+    // ── Convert / Clear / Single Chord ──
     document.getElementById("convertChordsBtn")?.addEventListener("click", () =>
       convertChordsUI(
         convertChords,
         () => "closed",
-        () => {}
+        updateSingleChordDropdownFromInput
       )
     );
-    document
-      .getElementById("clearInputBtn")
-      ?.addEventListener("click", clearInput);
-    document
-      .getElementById("playSingleChordBtn")
-      ?.addEventListener("click", playSingleChord);
+    document.getElementById("clearInputBtn")?.addEventListener("click", clearInput);
+    document.getElementById("playSingleChordBtn")?.addEventListener("click", playSingleChord);
 
-    // Chords input updates single chord dropdown
-    document
-      .getElementById("chordsInput")
-      ?.addEventListener("input", updateSingleChordDropdownFromInput);
+    // ── Chords input → update single chord dropdown ──
+    document.getElementById("chordsInput")?.addEventListener("input", updateSingleChordDropdownFromInput);
 
-    // Output box toggle
-    document
-      .getElementById("toggleOutputBoxBtn")
-      ?.addEventListener("click", () => {
-        const box = document.getElementById("outputBox");
-        const btn = document.getElementById("toggleOutputBoxBtn");
-        if (!box || !btn) return;
-        const isOpen = box.style.display !== "none" && box.style.display !== "";
-        box.style.display = isOpen ? "none" : "block";
-        btn.innerHTML = isOpen
-          ? btn.innerHTML.replace("▼", "▶")
-          : btn.innerHTML.replace("▶", "▼");
-      });
-
-    // Initialize volume label and single chord dropdown
-    updateVolumeLabel();
-    updateSingleChordDropdownFromInput();
-    // Populate saved sets dropdown on initial load
-    updateSavedChordSetsDropdown();
-  });
-
-  // --- Wire up voicing/keyboard viz on DOMContentLoaded ---
-  document.addEventListener("DOMContentLoaded", () => {
-    updateKeyboardViz();
-    // Delegate for per-chord voicing dropdowns
-    document.body.addEventListener("change", (e) => {
-      const target = e.target as Element | null;
-      if (target && target.classList.contains("chord-voicing-select")) {
-        const idx = target.getAttribute("data-chord-idx");
-        const voicing = (target as HTMLSelectElement).value;
-        updateChordVoicing(Number(idx), voicing);
+    // ── Output box toggle ──
+    document.getElementById("toggleOutputBoxBtn")?.addEventListener("click", () => {
+      const box = document.getElementById("outputBox");
+      const btn = document.getElementById("toggleOutputBoxBtn");
+      if (!box || !btn) return;
+      const isOpen = box.style.display !== "none" && box.style.display !== "";
+      box.style.display = isOpen ? "none" : "block";
+      btn.setAttribute("aria-expanded", String(!isOpen));
+      if (isOpen) {
+        btn.innerHTML = "CHORDS ▶";
+      } else {
+        btn.innerHTML = "CHORDS ▼";
       }
     });
+
+    // ── Step strip: clicking a step number highlights it ──
+    document.getElementById("step-strip")?.addEventListener("click", (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.classList.contains("step-num")) {
+        document.querySelectorAll(".step-num").forEach((el) => el.classList.remove("active"));
+        target.classList.add("active");
+      }
+    });
+
+    // ── Initialise labels & dropdowns ──
+    updateVolumeLabel();
+    updateSingleChordDropdownFromInput();
+    updateSavedChordSetsDropdown();
+
+    // ── Legacy keyboard viz (no-op in new UI) ──
+    updateKeyboardViz();
   });
-}
+};
