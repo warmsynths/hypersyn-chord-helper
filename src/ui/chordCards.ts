@@ -1,13 +1,14 @@
+import * as Midi from "@tonaljs/midi";
 import {
   getMidiRoot,
   semitoneToHex,
 } from "../core/chords";
+import { playChordProgression } from "../core/core";
 import { showToast } from "./toast";
 import {
   renderKeyboardSVG,
   buildAllChordNotes,
   buildWindows,
-  windowLabel,
 } from "./keyboardViz";
 
 // ─── Module state ────────────────────────────────────────────────────
@@ -48,7 +49,6 @@ function attachHorizontalDrag(wrap: HTMLElement, idx: number, numWindows: number
     active   = true;
     wrap.classList.add('dragging');
     wrap.setPointerCapture(e.pointerId);
-    e.preventDefault();
   });
 
   wrap.addEventListener('pointermove', (e: PointerEvent) => {
@@ -98,9 +98,6 @@ function _applyWindow(idx: number, windowIdx: number): void {
   const kbdDiv = document.getElementById('chordKeyboardViz' + idx);
   if (kbdDiv) kbdDiv.innerHTML = renderKeyboardSVG(notes);
 
-  // Update voicing label
-  const labelEl = document.getElementById('voicingLabel' + idx);
-  if (labelEl) labelEl.textContent = windowLabel(notes);
 
   // Update hex boxes — root-baked MIDI values for the 4 displayed notes
   const hexEl = document.getElementById('hexBoxes' + idx);
@@ -108,7 +105,8 @@ function _applyWindow(idx: number, windowIdx: number): void {
     hexEl.innerHTML = notes
       .map((midi, j) => {
         const hex = midi.toString(16).toUpperCase().padStart(2, '0');
-        return `<span class="hex-box" title="MIDI ${midi} → ${hex}" data-copy="${hex}">${hex}</span>`;
+        const noteName = Midi.midiToNoteName(midi);
+        return `<div class="hex-col"><span class="hex-box" title="MIDI ${midi} → ${hex}" data-copy="${hex}">${hex}</span><span class="hex-note-name">${noteName}</span></div>`;
       })
       .join('');
   }
@@ -141,8 +139,13 @@ export const convertChordsUI = (
     document.getElementById('output')!.innerHTML =
       `<div style="padding:16px;color:var(--text-dim);font-size:0.8rem;">NO VALID CHORDS FOUND</div>`;
     showToast('No valid chords found.', 'error');
+    const pbControls = document.getElementById("playbackControls");
+    if (pbControls) pbControls.style.display = "none";
     return;
   }
+
+  const pbControls = document.getElementById("playbackControls");
+  if (pbControls) pbControls.style.display = "flex";
 
   lastChordObjs      = result.chords;
   chordWindowIndices = result.chords.map(() => 0);
@@ -169,13 +172,13 @@ export const convertChordsUI = (
   result.chords.forEach((chord: any, i: number) => {
     const chordNum  = chordNumMap[chord.chordName] ?? i.toString(16).toUpperCase().padStart(2, '0');
     const initNotes = chordWindows[i]?.[0] ?? [];
-    const initLabel = windowLabel(initNotes);
 
     // Initial 4 hex boxes
     const hexBoxes = initNotes
       .map(midi => {
         const hex = midi.toString(16).toUpperCase().padStart(2, '0');
-        return `<span class="hex-box" title="MIDI ${midi} → ${hex}" data-copy="${hex}">${hex}</span>`;
+        const noteName = Midi.midiToNoteName(midi);
+        return `<div class="hex-col"><span class="hex-box" title="MIDI ${midi} → ${hex}" data-copy="${hex}">${hex}</span><span class="hex-note-name">${noteName}</span></div>`;
       })
       .join('');
 
@@ -183,12 +186,16 @@ export const convertChordsUI = (
       <div class="chord-row" id="chord-row-${i}">
         <div class="chord-meta">
           <span class="chord-label">CHORD ${chordNum}</span>
-          <span class="chord-name-display">[${chord.root}${chord.type}]</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="chord-name-display">[${chord.root}${chord.type}]</span>
+            <button class="btn btn-muted chord-play-btn" data-chord-idx="${i}" title="Play Chord" style="padding:3px 6px; height:20px; display:flex; align-items:center; justify-content:center;">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            </button>
+          </div>
         </div>
         <div class="chord-keyboard-wrap" id="kbdWrap${i}" data-chord-idx="${i}"
              title="Drag left/right to move through voicing positions">
           <div id="chordKeyboardViz${i}"></div>
-          <span class="voicing-label" id="voicingLabel${i}">${initLabel}</span>
         </div>
         <div class="hex-boxes" id="hexBoxes${i}">${hexBoxes}</div>
       </div>`;
@@ -206,9 +213,24 @@ export const convertChordsUI = (
     }
   });
 
-  // Click hex box → copy
+  // Delegated clicks for play and hex copy
   document.getElementById('chord-list')?.addEventListener('click', (e: MouseEvent) => {
     const t = e.target as HTMLElement;
+
+    // Play chord button
+    const playBtn = t.closest('.chord-play-btn') as HTMLElement;
+    if (playBtn) {
+      const idxStr = playBtn.dataset.chordIdx;
+      if (idxStr) {
+        const idx = parseInt(idxStr, 10);
+        const windowIdx = chordWindowIndices[idx] ?? 0;
+        const windows = chordWindows[idx] ?? [];
+        const notes = windows[windowIdx] ?? windows[0] ?? [];
+        playChordProgression([notes]);
+      }
+      return;
+    }
+
     if (t.classList.contains('hex-box') && t.dataset.copy) {
       navigator.clipboard?.writeText(t.dataset.copy)
         .then(() => showToast(`Copied ${t.dataset.copy}`, 'info'))
@@ -239,4 +261,12 @@ export const updateChordVoicing = (idx: number, _voicing: string, _label?: strin
   // Calling this re-renders the current window.
   const windowIdx = chordWindowIndices[idx] ?? 0;
   _applyWindow(idx, windowIdx);
+};
+
+export const getCurrentProgressionNotes = (): number[][] => {
+  return lastChordObjs.map((_, idx) => {
+    const windowIdx = chordWindowIndices[idx] ?? 0;
+    const windows = chordWindows[idx] ?? [];
+    return windows[windowIdx] ?? windows[0] ?? [];
+  });
 };

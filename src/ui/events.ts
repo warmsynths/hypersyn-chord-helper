@@ -1,4 +1,4 @@
-import { toggleSidebar } from "./sidebar";
+
 import {
   toggleVideoBg,
   playChordProgression,
@@ -17,6 +17,7 @@ import {
   convertChordsUI,
   updateChordVoicing,
   updateChordKeyboardViz,
+  getCurrentProgressionNotes,
 } from "./chordCards";
 import { updateKeyboardViz } from "./keyboardViz";
 import { showToast } from "./toast";
@@ -36,14 +37,7 @@ export const getSelectedVoicing = (): string => "closed";
 
 // ─── Volume label ───────────────────────────────────────────────────
 
-/**
- * Updates the volume label to reflect the current value of the volume slider.
- */
-export const updateVolumeLabel = (): void => {
-  const slider = document.getElementById("volumeSlider") as HTMLInputElement | null;
-  const label  = document.getElementById("volumeLabel");
-  if (label) label.textContent = (slider ? slider.value : "0") + "%";
-};
+// (Volume slider removed)
 
 // ─── Clear input ────────────────────────────────────────────────────
 
@@ -143,16 +137,58 @@ export const wireEventListeners = (): void => {
   // Konami code — works any time
   document.addEventListener("keydown", handleKonamiKey);
 
-  // Sidebar close button (X)
-  document.getElementById("sidebarCloseBtn")?.addEventListener("click", toggleSidebar);
 
-  // Sidebar overlay click
-  document.getElementById("sidebar-overlay")?.addEventListener("click", toggleSidebar);
 
   document.addEventListener("DOMContentLoaded", () => {
     // ── Playback ──
-    document.getElementById("playBtn")?.addEventListener("click", playChordProgression);
-    document.getElementById("stopBtn")?.addEventListener("click", stopChordProgression);
+    let isPlaying = false;
+    let isLooping = false;
+
+    const PLAY_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
+    const STOP_ICON = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="4" y="4" width="16" height="16"></rect></svg>`;
+
+    const resetPlayBtn = () => {
+      isPlaying = false;
+      const btn = document.getElementById("mainPlayBtn");
+      if (btn) {
+        btn.innerHTML = PLAY_ICON;
+        btn.classList.remove("btn-primary");
+        btn.classList.add("btn-muted");
+      }
+    };
+
+    document.getElementById("mainPlayBtn")?.addEventListener("click", () => {
+      const btn = document.getElementById("mainPlayBtn");
+      if (isPlaying) {
+        stopChordProgression();
+        resetPlayBtn();
+      } else {
+        const notesArray = getCurrentProgressionNotes();
+        playChordProgression(notesArray, isLooping, resetPlayBtn);
+        isPlaying = true;
+        if (btn) {
+          btn.innerHTML = STOP_ICON;
+          btn.classList.remove("btn-muted");
+          btn.classList.add("btn-primary");
+        }
+      }
+    });
+
+    document.getElementById("mainLoopBtn")?.addEventListener("click", () => {
+      isLooping = !isLooping;
+      const btn = document.getElementById("mainLoopBtn");
+      if (isLooping) {
+        if (btn) {
+          btn.classList.remove("btn-muted");
+          btn.classList.add("btn-primary");
+        }
+      } else {
+        if (btn) {
+          btn.classList.remove("btn-primary");
+          btn.classList.add("btn-muted");
+        }
+      }
+    });
 
     // ── Chord set management ──
     document.getElementById("saveChordSetBtn")?.addEventListener("click",   saveChordSet);
@@ -161,16 +197,38 @@ export const wireEventListeners = (): void => {
     document.getElementById("exportChordSetsBtn")?.addEventListener("click", exportChordSets);
     document.getElementById("importChordSetsInput")?.addEventListener("change", importChordSets);
 
-    // ── Sidebar toggle (hamburger in nav bar) ──
-    document.getElementById("sidebarToggle")?.addEventListener("click", toggleSidebar);
-
-    // ── Nav bar action buttons → open sidebar ──
-    ["nav-load-btn", "nav-save-btn", "nav-settings-btn"].forEach((id) => {
-      document.getElementById(id)?.addEventListener("click", toggleSidebar);
+    // ── Nav bar: Help Modal ──
+    const helpModal = document.getElementById("helpModal") as HTMLDialogElement;
+    document.getElementById("nav-settings-btn")?.addEventListener("click", () => {
+      if (helpModal) helpModal.showModal();
+    });
+    document.getElementById("helpModalCloseBtn")?.addEventListener("click", () => {
+      if (helpModal) helpModal.close();
+    });
+    // Close modal on click outside
+    helpModal?.addEventListener("click", (e) => {
+      if (e.target === helpModal) {
+        helpModal.close();
+      }
     });
 
-    // ── Nav bar: New Project ──
-    document.getElementById("nav-new-btn")?.addEventListener("click", () => {
+    // ── Nav bar: Disk Modal ──
+    const diskModal = document.getElementById("diskModal") as HTMLDialogElement;
+    document.getElementById("nav-disk-btn")?.addEventListener("click", () => {
+      if (diskModal) diskModal.showModal();
+    });
+    document.getElementById("diskModalCloseBtn")?.addEventListener("click", () => {
+      if (diskModal) diskModal.close();
+    });
+    // Close modal on click outside
+    diskModal?.addEventListener("click", (e) => {
+      if (e.target === diskModal) {
+        diskModal.close();
+      }
+    });
+
+    // ── Disk Modal: New Project ──
+    document.getElementById("newProjectBtn")?.addEventListener("click", () => {
       const input = document.getElementById("chordsInput") as HTMLInputElement;
       if (input) input.value = "";
       const outputBox = document.getElementById("outputBox");
@@ -181,26 +239,25 @@ export const wireEventListeners = (): void => {
         toggleBtn.setAttribute("aria-expanded", "false");
         toggleBtn.classList.add("dimmed");
       }
+      if (diskModal) diskModal.close();
       showToast("New project started.", "info");
     });
 
-    // ── Nav bar: Export ──
-    document.getElementById("nav-export-btn")?.addEventListener("click", exportChordSets);
+
 
     // ── Video toggle (legacy — now hidden in sidebar info section) ──
     document.getElementById("toggleVideoBtn")?.addEventListener("click", toggleVideoBg);
 
-    // ── Volume slider ──
-    document.getElementById("volumeSlider")?.addEventListener("input", updateVolumeLabel);
-
     // ── Convert / Clear / Single Chord ──
-    document.getElementById("convertChordsBtn")?.addEventListener("click", () =>
+    document.getElementById("convertChordsBtn")?.addEventListener("click", () => {
       convertChordsUI(
         convertChords,
         () => "closed",
         updateSingleChordDropdownFromInput
-      )
-    );
+      );
+      stopChordProgression();
+      resetPlayBtn();
+    });
     document.getElementById("clearInputBtn")?.addEventListener("click", clearInput);
     document.getElementById("playSingleChordBtn")?.addEventListener("click", playSingleChord);
 
@@ -231,8 +288,7 @@ export const wireEventListeners = (): void => {
       }
     });
 
-    // ── Initialise labels & dropdowns ──
-    updateVolumeLabel();
+    // ── Initialise dropdowns ──
     updateSingleChordDropdownFromInput();
     updateSavedChordSetsDropdown();
 
