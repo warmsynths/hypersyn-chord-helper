@@ -18,6 +18,7 @@ import {
   updateChordVoicing,
   updateChordKeyboardViz,
   getCurrentProgressionNotes,
+  toggleIntervalMode,
 } from "./chordCards";
 import { updateKeyboardViz } from "./keyboardViz";
 import { showToast } from "./toast";
@@ -39,6 +40,109 @@ export const getSelectedVoicing = (): string => "closed";
 
 // (Volume slider removed)
 
+// ─── Chord Sets State ───────────────────────────────────────────────
+export let chordSetsData: string[] = [""];
+export let activeSetIndex = 0;
+export let hasConverted = false;
+
+export const setHasConverted = (val: boolean) => { hasConverted = val; };
+
+export const loadSetsData = (sets: string[]) => {
+  if (!sets || sets.length === 0) sets = [""];
+  chordSetsData.length = 0;
+  chordSetsData.push(...sets);
+  activeSetIndex = 0;
+  
+  const input = document.getElementById("chordsInput") as HTMLInputElement;
+  if (input) input.value = chordSetsData[0];
+  
+  updateSingleChordDropdownFromInput();
+  
+  hasConverted = true;
+  renderStepStrip();
+  
+  document.getElementById("convertChordsBtn")?.click();
+};
+
+export const renderStepStrip = (): void => {
+  const strip = document.getElementById("step-strip");
+  if (!strip) return;
+  strip.innerHTML = "";
+
+  if (!hasConverted) return;
+
+  chordSetsData.forEach((_, i) => {
+    const el = document.createElement("div");
+    el.className = "step-num" + (i === activeSetIndex ? " active" : "");
+    el.textContent = (i + 1).toString();
+    el.style.cursor = "pointer";
+    el.addEventListener("click", () => switchSet(i));
+    strip.appendChild(el);
+  });
+
+  const addBtn = document.createElement("div");
+  addBtn.className = "step-num";
+  addBtn.textContent = "+";
+  addBtn.title = "Add Chord Set";
+  addBtn.style.cursor = "pointer";
+  addBtn.addEventListener("click", addSet);
+  strip.appendChild(addBtn);
+
+  const removeBtn = document.getElementById("removeSetBtn");
+  if (removeBtn) {
+    removeBtn.style.display = chordSetsData.length > 1 ? "inline-block" : "none";
+  }
+};
+
+const addSet = (): void => {
+  chordSetsData.push(""); // new empty set
+  switchSet(chordSetsData.length - 1);
+};
+
+const removeSet = (): void => {
+  if (chordSetsData.length <= 1) return;
+  
+  // Remove the current set
+  chordSetsData.splice(activeSetIndex, 1);
+  
+  // Adjust active index if it was the last one
+  if (activeSetIndex >= chordSetsData.length) {
+    activeSetIndex = chordSetsData.length - 1;
+  }
+  
+  // Force update by bypassing the check in switchSet
+  const newIndex = activeSetIndex;
+  activeSetIndex = -1; 
+  switchSet(newIndex);
+};
+
+const switchSet = (index: number): void => {
+  if (index < 0 || index >= chordSetsData.length) return;
+  activeSetIndex = index;
+  
+  const input = document.getElementById("chordsInput") as HTMLInputElement;
+  if (input) input.value = chordSetsData[activeSetIndex];
+  
+  updateSingleChordDropdownFromInput();
+  
+  // Update step strip active state visually
+  renderStepStrip();
+  
+  // Hide output box if empty set, or trigger conversion if not empty
+  if (chordSetsData[activeSetIndex].trim() === "") {
+    const outputBox = document.getElementById("outputBox");
+    if (outputBox) outputBox.style.display = "none";
+    const toggleBtn = document.getElementById("toggleOutputBoxBtn");
+    if (toggleBtn) {
+      toggleBtn.innerHTML = "CHORDS ▶";
+      toggleBtn.setAttribute("aria-expanded", "false");
+      toggleBtn.classList.add("dimmed");
+    }
+  } else {
+    document.getElementById("convertChordsBtn")?.click();
+  }
+};
+
 // ─── Clear input ────────────────────────────────────────────────────
 
 /**
@@ -46,7 +150,20 @@ export const getSelectedVoicing = (): string => "closed";
  */
 export const clearInput = (): void => {
   const input = document.getElementById("chordsInput") as HTMLInputElement | null;
-  if (input) input.value = "";
+  if (input) {
+    input.value = "";
+    chordSetsData[activeSetIndex] = "";
+    updateSingleChordDropdownFromInput();
+    
+    const outputBox = document.getElementById("outputBox");
+    if (outputBox) outputBox.style.display = "none";
+    const toggleBtn = document.getElementById("toggleOutputBoxBtn");
+    if (toggleBtn) {
+      toggleBtn.innerHTML = "CHORDS ▶";
+      toggleBtn.setAttribute("aria-expanded", "false");
+      toggleBtn.classList.add("dimmed");
+    }
+  }
 };
 
 // ─── Single chord dropdown ──────────────────────────────────────────
@@ -140,6 +257,12 @@ export const wireEventListeners = (): void => {
 
 
   document.addEventListener("DOMContentLoaded", () => {
+    // Initialise first set with HTML textarea default
+    const inputInit = document.getElementById("chordsInput") as HTMLInputElement | null;
+    if (inputInit) {
+      chordSetsData[0] = inputInit.value;
+    }
+
     // ── Playback ──
     let isPlaying = false;
     let isLooping = false;
@@ -190,6 +313,10 @@ export const wireEventListeners = (): void => {
       }
     });
 
+    document.getElementById("intervalToggleBtn")?.addEventListener("click", () => {
+      toggleIntervalMode();
+    });
+
     // ── Chord set management ──
     document.getElementById("saveChordSetBtn")?.addEventListener("click",   saveChordSet);
     document.getElementById("loadChordSetBtn")?.addEventListener("click",   loadChordSet);
@@ -229,6 +356,11 @@ export const wireEventListeners = (): void => {
 
     // ── Disk Modal: New Project ──
     document.getElementById("newProjectBtn")?.addEventListener("click", () => {
+      chordSetsData = [""];
+      activeSetIndex = 0;
+      hasConverted = false;
+      renderStepStrip();
+
       const input = document.getElementById("chordsInput") as HTMLInputElement;
       if (input) input.value = "";
       const outputBox = document.getElementById("outputBox");
@@ -239,6 +371,8 @@ export const wireEventListeners = (): void => {
         toggleBtn.setAttribute("aria-expanded", "false");
         toggleBtn.classList.add("dimmed");
       }
+      const intContainer = document.getElementById("intervalToggleContainer");
+      if (intContainer) intContainer.style.display = "none";
       if (diskModal) diskModal.close();
       showToast("New project started.", "info");
     });
@@ -250,6 +384,11 @@ export const wireEventListeners = (): void => {
 
     // ── Convert / Clear / Single Chord ──
     document.getElementById("convertChordsBtn")?.addEventListener("click", () => {
+      if (!hasConverted) {
+        hasConverted = true;
+        renderStepStrip();
+      }
+
       convertChordsUI(
         convertChords,
         () => "closed",
@@ -259,10 +398,15 @@ export const wireEventListeners = (): void => {
       resetPlayBtn();
     });
     document.getElementById("clearInputBtn")?.addEventListener("click", clearInput);
+    document.getElementById("removeSetBtn")?.addEventListener("click", removeSet);
     document.getElementById("playSingleChordBtn")?.addEventListener("click", playSingleChord);
 
-    // ── Chords input → update single chord dropdown ──
-    document.getElementById("chordsInput")?.addEventListener("input", updateSingleChordDropdownFromInput);
+    // ── Chords input → update single chord dropdown and state ──
+    document.getElementById("chordsInput")?.addEventListener("input", (e) => {
+      const target = e.target as HTMLInputElement;
+      chordSetsData[activeSetIndex] = target.value;
+      updateSingleChordDropdownFromInput();
+    });
 
     // ── Output box toggle ──
     document.getElementById("toggleOutputBoxBtn")?.addEventListener("click", () => {
@@ -279,14 +423,7 @@ export const wireEventListeners = (): void => {
       }
     });
 
-    // ── Step strip: clicking a step number highlights it ──
-    document.getElementById("step-strip")?.addEventListener("click", (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.classList.contains("step-num")) {
-        document.querySelectorAll(".step-num").forEach((el) => el.classList.remove("active"));
-        target.classList.add("active");
-      }
-    });
+    // ── Step strip rendering is now dynamic ──
 
     // ── Initialise dropdowns ──
     updateSingleChordDropdownFromInput();

@@ -13,6 +13,7 @@ import {
 
 // ─── Module state ────────────────────────────────────────────────────
 let lastChordObjs: any[] = [];
+let isIntervalOnly: boolean = false;
 
 /**
  * Per-chord: which window (4-note slice) is currently shown.
@@ -99,18 +100,50 @@ function _applyWindow(idx: number, windowIdx: number): void {
   if (kbdDiv) kbdDiv.innerHTML = renderKeyboardSVG(notes);
 
 
-  // Update hex boxes — root-baked MIDI values for the 4 displayed notes
+  // Update hex boxes
   const hexEl = document.getElementById('hexBoxes' + idx);
   if (hexEl) {
     hexEl.innerHTML = notes
       .map((midi, j) => {
-        const hex = midi.toString(16).toUpperCase().padStart(2, '0');
+        let hex = "";
+        let tooltip = "";
+        
+        if (isIntervalOnly) {
+          const interval = midi - (chordObj.midiRoot ?? 60);
+          hex = semitoneToHex(interval);
+          tooltip = `Interval ${interval} → ${hex}`;
+        } else {
+          hex = midi.toString(16).toUpperCase().padStart(2, '0');
+          tooltip = `MIDI ${midi} → ${hex}`;
+        }
+        
         const noteName = Midi.midiToNoteName(midi);
-        return `<div class="hex-col"><span class="hex-box" title="MIDI ${midi} → ${hex}" data-copy="${hex}">${hex}</span><span class="hex-note-name">${noteName}</span></div>`;
+        const classNames = isIntervalOnly ? 'hex-box interval-mode' : 'hex-box';
+        
+        return `<div class="hex-col"><span class="${classNames}" title="${tooltip}" data-copy="${hex}">${hex}</span><span class="hex-note-name">${noteName}</span></div>`;
       })
       .join('');
   }
 }
+
+export const toggleIntervalMode = (): void => {
+  isIntervalOnly = !isIntervalOnly;
+  
+  // Update button visual state
+  const btn = document.getElementById('intervalToggleBtn');
+  if (btn) {
+    if (isIntervalOnly) {
+      btn.classList.remove('btn-muted');
+      btn.classList.add('btn-primary');
+    } else {
+      btn.classList.remove('btn-primary');
+      btn.classList.add('btn-muted');
+    }
+  }
+
+  // Re-render all current windows
+  lastChordObjs.forEach((_, i) => _applyWindow(i, chordWindowIndices[i] ?? 0));
+};
 
 // ─── Public: convert chords → tracker rows ───────────────────────────
 
@@ -141,11 +174,16 @@ export const convertChordsUI = (
     showToast('No valid chords found.', 'error');
     const pbControls = document.getElementById("playbackControls");
     if (pbControls) pbControls.style.display = "none";
+    const intContainer = document.getElementById("intervalToggleContainer");
+    if (intContainer) intContainer.style.display = "none";
     return;
   }
 
   const pbControls = document.getElementById("playbackControls");
   if (pbControls) pbControls.style.display = "flex";
+  
+  const intContainer = document.getElementById("intervalToggleContainer");
+  if (intContainer) intContainer.style.display = "flex";
 
   lastChordObjs      = result.chords;
   chordWindowIndices = result.chords.map(() => 0);
@@ -176,9 +214,21 @@ export const convertChordsUI = (
     // Initial 4 hex boxes
     const hexBoxes = initNotes
       .map(midi => {
-        const hex = midi.toString(16).toUpperCase().padStart(2, '0');
+        let hex = "";
+        let tooltip = "";
+        
+        if (isIntervalOnly) {
+          const interval = midi - (chord.midiRoot ?? 60);
+          hex = semitoneToHex(interval);
+          tooltip = `Interval ${interval} → ${hex}`;
+        } else {
+          hex = midi.toString(16).toUpperCase().padStart(2, '0');
+          tooltip = `MIDI ${midi} → ${hex}`;
+        }
+        
         const noteName = Midi.midiToNoteName(midi);
-        return `<div class="hex-col"><span class="hex-box" title="MIDI ${midi} → ${hex}" data-copy="${hex}">${hex}</span><span class="hex-note-name">${noteName}</span></div>`;
+        const classNames = isIntervalOnly ? 'hex-box interval-mode' : 'hex-box';
+        return `<div class="hex-col"><span class="${classNames}" title="${tooltip}" data-copy="${hex}">${hex}</span><span class="hex-note-name">${noteName}</span></div>`;
       })
       .join('');
 

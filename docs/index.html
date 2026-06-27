@@ -26,8 +26,8 @@
       transition: opacity 0.3s ease;
     }
   </style>
-  <script type="module" crossorigin src="/hypersyn-chord-helper/assets/index-BprDDAJO.js"></script>
-  <link rel="stylesheet" crossorigin href="/hypersyn-chord-helper/assets/index-DiPOk_D3.css">
+  <script type="module" crossorigin src="/hypersyn-chord-helper/assets/index-BcIN3FbL.js"></script>
+  <link rel="stylesheet" crossorigin href="/hypersyn-chord-helper/assets/index-Cls2fXS3.css">
 </head>
 
 <body>
@@ -87,6 +87,7 @@
         <div class="controls-row">
           <button id="convertChordsBtn" class="btn btn-primary" aria-label="Convert chords">CONVERT</button>
           <button id="clearInputBtn" class="btn btn-muted" aria-label="Clear input">CLEAR</button>
+          <button id="removeSetBtn" class="btn btn-muted" aria-label="Delete set" style="display:none; color: #f99; border-color: #f55;">DELETE SET</button>
           <div id="playbackControls" style="display:none; align-items:center; gap:8px;">
             <button id="mainPlayBtn" class="btn btn-muted" title="Play Progression" style="padding: 6px 12px; display:flex; align-items:center; justify-content:center;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
@@ -96,6 +97,16 @@
             </button>
           </div>
           <span id="output-toggle-row" style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+            <span id="intervalToggleContainer" style="display:none; align-items:center; gap:8px;">
+              <button id="intervalToggleBtn" class="btn btn-muted" title="Toggle Interval Only Mode" style="padding: 6px 12px; display:flex; align-items:center; justify-content:center;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="5" cy="12" r="3"></circle>
+                  <circle cx="19" cy="12" r="3"></circle>
+                  <line x1="8" y1="12" x2="16" y2="12"></line>
+                </svg>
+              </button>
+              <div style="width: 1px; height: 16px; background: var(--border-color); margin: 0 4px;"></div>
+            </span>
             <button id="toggleOutputBoxBtn" class="btn btn-muted dimmed" data-box="outputBox" aria-expanded="false"
               aria-controls="outputBox">CHORDS ▶</button>
           </span>
@@ -111,14 +122,7 @@
 
     <!-- Right step-number strip -->
     <aside id="step-strip" aria-label="Step numbers">
-      <div class="step-num active">1</div>
-      <div class="step-num">2</div>
-      <div class="step-num">3</div>
-      <div class="step-num">4</div>
-      <div class="step-num">5</div>
-      <div class="step-num">6</div>
-      <div class="step-num">7</div>
-      <div class="step-num">8</div>
+      <!-- Populated dynamically -->
     </aside>
 
   </div>
@@ -170,18 +174,25 @@
   <!-- Help Modal -->
   <dialog id="helpModal" class="disk-modal">
     <div class="disk-modal-header">
-      <span class="sidebar-title">Help</span>
+      <span class="sidebar-title">How To</span>
       <button id="helpModalCloseBtn" class="sidebar-close" aria-label="Close">&times;</button>
     </div>
     <div class="disk-modal-body">
       <!-- How To -->
       <div>
-        <div class="sidebar-section-title">How To</div>
         <div class="sidebar-info">
           <p><strong>1. Enter a chord progression</strong> — e.g. <span style="color:var(--accent);">Am7 Dm9 G13
               Cmaj7</span></p>
           <p><strong>2. Hit Convert</strong> — get hex codes &amp; interval codes ready for Hypersyn on M8.</p>
           <p><strong>3. Drag the keyboard</strong> — slide up/down on any chord's piano keys to cycle voicings.</p>
+          <p><strong>4. Toggle Interval Mode</strong> — click the 
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;">
+              <circle cx="5" cy="12" r="3"></circle>
+              <circle cx="19" cy="12" r="3"></circle>
+              <line x1="8" y1="12" x2="16" y2="12"></line>
+            </svg> 
+            button to switch between root-baked hex and interval-only hex (shown in green).
+          </p>
           <p>Source progressions from
             <a href="https://www.onemotion.com/chord-player/" target="_blank">Onemotion</a>,
             <a href="https://chordseqai.com/" target="_blank">ChordSeqAI</a>, or
@@ -195,10 +206,6 @@
           </p>
         </div>
       </div>
-
-      <hr class="sidebar-divider" />
-
-
     </div>
   </dialog>
 

@@ -382,6 +382,15 @@ body {
   box-shadow: 0 0 6px rgba(50,236,255,0.30);
 }
 
+.hex-box.interval-mode {
+  color: var(--accent-green);
+}
+
+.hex-box.interval-mode:hover {
+  border-color: var(--accent-green);
+  box-shadow: 0 0 6px rgba(0,255,112,0.30);
+}
+
 .hex-box.dimmed {
   opacity: 0.3;
   cursor: default;
