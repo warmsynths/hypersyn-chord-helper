@@ -24,7 +24,7 @@ describe('storage module', () => {
   });
 
   it('setSavedChordSets and getSavedChordSets work together', () => {
-    const sets = [{ name: 'Test', chords: 'C Dm G7', id: 'abc' }];
+    const sets = [{ name: 'Test', chords: 'C Dm G7', chordSets: ['C Dm G7'], id: 'abc' }];
     setSavedChordSets(sets);
     expect(getSavedChordSets()).toEqual(sets);
   });
@@ -45,7 +45,7 @@ describe('storage module', () => {
   });
 
   it('loadChordSet loads the correct set', () => {
-    setSavedChordSets([{ name: 'LoadMe', chords: 'C', id: '1' }]);
+    setSavedChordSets([{ name: 'LoadMe', chords: 'C', chordSets: ['C'], id: '1' }]);
     updateSavedChordSetsDropdown();
     const select = document.getElementById('savedChordSetsSelect') as HTMLSelectElement;
     select.value = '0';
@@ -54,7 +54,7 @@ describe('storage module', () => {
   });
 
   it('deleteChordSet removes a set', () => {
-    setSavedChordSets([{ name: 'DelMe', chords: 'C', id: '1' }]);
+    setSavedChordSets([{ name: 'DelMe', chords: 'C', chordSets: ['C'], id: '1' }]);
     updateSavedChordSetsDropdown();
     const select = document.getElementById('savedChordSetsSelect') as HTMLSelectElement;
     select.value = '0';

@@ -399,6 +399,24 @@ export const wireEventListeners = (): void => {
     });
     document.getElementById("clearInputBtn")?.addEventListener("click", clearInput);
     document.getElementById("removeSetBtn")?.addEventListener("click", removeSet);
+    document.getElementById("shareProgressionBtn")?.addEventListener("click", () => {
+      const activeSets = chordSetsData.map(s => s.trim()).filter(Boolean);
+      if (activeSets.length === 0) {
+        showToast("No chords to share!", "error");
+        return;
+      }
+      const serialized = activeSets.join(";");
+      const url = new URL(window.location.href);
+      url.searchParams.set("p", serialized);
+      
+      navigator.clipboard.writeText(url.toString())
+        .then(() => {
+          showToast("Shareable link copied to clipboard!", "success");
+        })
+        .catch(() => {
+          showToast("Failed to copy link to clipboard.", "error");
+        });
+    });
     document.getElementById("playSingleChordBtn")?.addEventListener("click", playSingleChord);
 
     // ── Chords input → update single chord dropdown and state ──
@@ -431,5 +449,22 @@ export const wireEventListeners = (): void => {
 
     // ── Legacy keyboard viz (no-op in new UI) ──
     updateKeyboardViz();
+
+    // ── Load progression from URL query string if present ──
+    const params = new URLSearchParams(window.location.search);
+    let pParams = params.getAll('p');
+    if (pParams.length === 0) {
+      pParams = params.getAll('progression');
+    }
+    if (pParams.length > 0) {
+      const querySets: string[] = [];
+      pParams.forEach(param => {
+        const parts = param.split(';');
+        querySets.push(...parts);
+      });
+      if (querySets.length > 0 && querySets.some(s => s.trim() !== "")) {
+        loadSetsData(querySets);
+      }
+    }
   });
 };

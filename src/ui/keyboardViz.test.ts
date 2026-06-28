@@ -12,21 +12,7 @@ describe('keyboardViz module', () => {
     `;
   });
 
-  it('updateKeyboardViz renders SVG', () => {
-    const select = document.getElementById('voicingSelect') as HTMLSelectElement;
-    select.value = 'closed';
-    updateKeyboardViz();
-    const div = document.getElementById('keyboardViz');
-    expect(div?.innerHTML).toContain('<svg');
-    expect(div?.innerHTML).toContain('C');
-  });
-
-  it('updateKeyboardViz does not throw for all voicings', () => {
-    const select = document.getElementById('voicingSelect') as HTMLSelectElement;
-    const voicings = ['closed', 'open-triad', 'drop2', 'drop3', 'spread', 'octave', 'first-inversion', 'second-inversion', 'third-inversion', 'shell-dominant', 'altered-dominant'];
-    voicings.forEach(v => {
-      select.value = v;
-      expect(() => updateKeyboardViz()).not.toThrow();
-    });
+  it('updateKeyboardViz is a no-op and does not throw', () => {
+    expect(() => updateKeyboardViz()).not.toThrow();
   });
 });
