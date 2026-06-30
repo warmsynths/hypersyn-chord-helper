@@ -320,13 +320,23 @@ const normalizeRoot = (rootToken) => {
   const accidental = rootToken
     .slice(1)
     .replace(/♯/g, "#")
-    .replace(/♭/g, "b");
+    .replace(/♭/g, "b")
+    .replace(/B/g, "b");
   if (!["", "#", "b"].includes(accidental)) return null;
   return letter + accidental;
 };
 
 const normalizeType = (rawType) => {
-  const compact = (rawType || "").trim().replace(/\s+/g, "");
+  let compact = (rawType || "").trim().replace(/\s+/g, "");
+  compact = compact
+    .replace(/major/i, "major")
+    .replace(/minor/i, "minor")
+    .replace(/maj/i, "maj")
+    .replace(/min/i, "min")
+    .replace(/dim/i, "dim")
+    .replace(/aug/i, "aug")
+    .replace(/sus/i, "sus")
+    .replace(/add/i, "add");
   const unwrapped = compact.match(/^\((.+)\)$/)?.[1] || compact;
   if (Object.prototype.hasOwnProperty.call(typeAliases, compact)) {
     return typeAliases[compact];
@@ -395,7 +405,7 @@ export const parseChordName = (chordName) => {
   if (typeof chordName !== "string") return null;
   const trimmed = chordName.trim();
   if (!trimmed) return null;
-  const rootMatch = trimmed.match(/^[A-Ga-g][b#♭♯]?/);
+  const rootMatch = trimmed.match(/^[A-Ga-g][bB#♭♯]?/);
   if (!rootMatch) return null;
   const root = normalizeRoot(rootMatch[0]);
   if (!root || typeof notes[root] !== "number") return null;

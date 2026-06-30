@@ -438,7 +438,7 @@ export function stopChordProgression() {
  *
  * @returns {void}
  */
-export function playChordProgression(chordNotesArray, loop = false, onEnd = null) {
+export function playChordProgression(chordNotesArray?: any[], loop = false, onEnd = null) {
   if (!chordNotesArray || chordNotesArray.length === 0) {
     if (onEnd) onEnd();
     return;
@@ -621,10 +621,34 @@ export function semitoneToHex(semitone) {
  * @returns {object|null} Object with chordName, root, type, rootBaked, intervalOnlyHex, intervalOnly; or null if invalid.
  */
 export function parseChordName(chordName) {
-  const rootMatch = chordName.match(/^[A-G][b#]?/);
+  if (typeof chordName !== "string") return null;
+  const trimmed = chordName.trim();
+  if (!trimmed) return null;
+  const rootMatch = trimmed.match(/^[A-Ga-g][bB#♭♯]?/);
   if (!rootMatch) return null;
-  const root = rootMatch[0];
-  let type = chordName.slice(root.length) || "maj";
+  const rootToken = rootMatch[0];
+
+  const letter = rootToken.charAt(0).toUpperCase();
+  const accidental = rootToken
+    .slice(1)
+    .replace(/♯/g, "#")
+    .replace(/♭/g, "b")
+    .replace(/B/g, "b");
+  const root = letter + accidental;
+  if (typeof notes[root] !== "number") return null;
+
+  let type = trimmed.slice(rootToken.length) || "maj";
+  type = type.trim().replace(/\s+/g, "");
+  type = type
+    .replace(/major/i, "major")
+    .replace(/minor/i, "minor")
+    .replace(/maj/i, "maj")
+    .replace(/min/i, "min")
+    .replace(/dim/i, "dim")
+    .replace(/aug/i, "aug")
+    .replace(/sus/i, "sus")
+    .replace(/add/i, "add");
+
   // Handle half-diminished: ø7
   if (type === "ø7") {
     type = "ø7";
@@ -645,7 +669,7 @@ export function parseChordName(chordName) {
   const intervalOnly = intervals.slice();
 
   return {
-    chordName,
+    chordName: trimmed,
     root,
     type,
     rootBaked,
