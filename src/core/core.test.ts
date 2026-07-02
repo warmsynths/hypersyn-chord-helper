@@ -1,6 +1,10 @@
 import * as core from './core';
 
 describe('core module', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it('should export functions', () => {
     expect(typeof core.getMidiRoot).toBe('function');
     expect(typeof core.getValidVoicings).toBe('function');
@@ -194,18 +198,27 @@ describe('core module', () => {
       expect(c).toMatchObject({root: 'C'});
       expect(Array.isArray(c.intervalOnly)).toBe(true);
     });
-    it('returns empty intervals for invalid', () => {
-      // Both '' and 'Zz' return {root: 'C', intervalOnly: []} due to regex, so just check for empty intervals
+    it('returns null for invalid', () => {
       const result1 = core.parseChordName('');
       const result2 = core.parseChordName('Zz');
-      expect(result1 && Array.isArray(result1.intervalOnly) && result1.intervalOnly.length === 0).toBe(true);
-      expect(result2 && Array.isArray(result2.intervalOnly) && result2.intervalOnly.length === 0).toBe(true);
+      expect(result1).toBeNull();
+      expect(result2).toBeNull();
     });
     it('handles half-diminished', () => {
       const c = core.parseChordName('Bø7');
       expect(c).not.toBeNull();
-      // type may be undefined, so just check for intervalOnly array
       expect(Array.isArray(c.intervalOnly)).toBe(true);
+    });
+    it('parses BBm7 and C#Dim', () => {
+      const bbm7 = core.parseChordName('BBm7');
+      expect(bbm7).not.toBeNull();
+      expect(bbm7.root).toBe('Bb');
+      expect(bbm7.type).toBe('m7');
+
+      const csDim = core.parseChordName('C#Dim');
+      expect(csDim).not.toBeNull();
+      expect(csDim.root).toBe('C#');
+      expect(csDim.type).toBe('dim');
     });
   });
 

@@ -56,6 +56,22 @@ describe('chords module', () => {
     expect(parseChordName('C♯m7')).toBeTruthy();
     expect(parseChordName('E(7)')).toBeTruthy();
     expect(parseChordName('C(maj7)')).toBeTruthy();
+
+    // Test uppercase B accidental and capitalized qualities
+    const bbm7 = parseChordName('BBm7');
+    expect(bbm7).toBeTruthy();
+    expect(bbm7.root).toBe('Bb');
+    expect(bbm7.type).toBe('m7');
+
+    const csDim = parseChordName('C#Dim');
+    expect(csDim).toBeTruthy();
+    expect(csDim.root).toBe('C#');
+    expect(csDim.type).toBe('dim');
+
+    const ebmaj7 = parseChordName('EBmaj7');
+    expect(ebmaj7).toBeTruthy();
+    expect(ebmaj7.root).toBe('Eb');
+    expect(ebmaj7.type).toBe('maj7');
   });
 
   it('parseChordName returns null for unsupported token', () => {

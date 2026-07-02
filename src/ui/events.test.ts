@@ -26,6 +26,7 @@ describe('events module', () => {
       <span id="volumeLabel"></span>
       <button id="convertChordsBtn"></button>
       <button id="clearInputBtn"></button>
+      <button id="shareProgressionBtn"></button>
       <button id="playSingleChordBtn"></button>
       <button id="toggleOutputBoxBtn">▶</button>
       <div id="outputBox" style="display:none"></div>
@@ -37,26 +38,8 @@ describe('events module', () => {
       <select id="savedChordSetsSelect"></select>
     `;
   });
-  it('getSelectedVoicing returns "closed" if select is missing', () => {
-    document.getElementById('voicingSelect')?.remove();
+  it('getSelectedVoicing always returns "closed"', () => {
     expect(getSelectedVoicing()).toBe('closed');
-  });
-
-  it('updateVolumeLabel updates label with slider value', () => {
-    // @ts-ignore: access private
-    const { updateVolumeLabel } = require('./events');
-    const slider = document.getElementById('volumeSlider') as HTMLInputElement;
-    slider.value = '77';
-    updateVolumeLabel();
-    expect(document.getElementById('volumeLabel')?.textContent).toBe('77%');
-  });
-
-  it('updateVolumeLabel sets label to 0% if slider missing', () => {
-    // @ts-ignore: access private
-    const { updateVolumeLabel } = require('./events');
-    document.getElementById('volumeSlider')?.remove();
-    updateVolumeLabel();
-    expect(document.getElementById('volumeLabel')?.textContent).toBe('0%');
   });
 
   it('clearInput clears the chords input', () => {
@@ -140,14 +123,6 @@ describe('events module', () => {
   //   spy.mockRestore();
   // });
 
-  it('getSelectedVoicing returns the selected value', () => {
-    const select = document.getElementById('voicingSelect') as HTMLSelectElement;
-    select.value = 'open';
-    expect(getSelectedVoicing()).toBe('open');
-    select.value = 'closed';
-    expect(getSelectedVoicing()).toBe('closed');
-  });
-
   it('updateSingleChordDropdownFromInput populates dropdown', () => {
     updateSingleChordDropdownFromInput();
     const select = document.getElementById('singleChordSelect') as HTMLSelectElement;
@@ -157,5 +132,58 @@ describe('events module', () => {
 
   it('wireEventListeners does not throw', () => {
     expect(() => wireEventListeners()).not.toThrow();
+  });
+
+  describe('Query string & progression sharing', () => {
+    let writeTextMock: jest.Mock;
+
+    beforeEach(() => {
+      // Mock clipboard API
+      writeTextMock = jest.fn().mockImplementation(() => Promise.resolve());
+      Object.assign(navigator, {
+        clipboard: {
+          writeText: writeTextMock,
+        },
+      });
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('shareProgressionBtn click event copies URL-encoded progression to clipboard', () => {
+      wireEventListeners();
+      
+      const shareBtn = document.getElementById('shareProgressionBtn') as HTMLButtonElement;
+      expect(shareBtn).not.toBeNull();
+
+      // Trigger DOMContentLoaded
+      document.dispatchEvent(new Event('DOMContentLoaded'));
+
+      // Populate input value and click share
+      const input = document.getElementById('chordsInput') as HTMLInputElement;
+      input.value = "C Dm G7";
+      // Trigger input event to sync chordSetsData
+      input.dispatchEvent(new Event('input'));
+
+      shareBtn.click();
+
+      expect(writeTextMock).toHaveBeenCalled();
+      const copiedUrlString = writeTextMock.mock.calls[0][0];
+      const copiedUrl = new URL(copiedUrlString);
+      expect(copiedUrl.searchParams.get('p')).toBe('C Dm G7');
+    });
+
+    it('loads progression from URL query parameter p on DOMContentLoaded', () => {
+      // Change search parameter to test loading
+      window.history.pushState({}, '', '?p=E%20Am%3BD7%20G');
+
+      // Dispatch DOMContentLoaded
+      document.dispatchEvent(new Event('DOMContentLoaded'));
+
+      // Check if the input is set to the first set
+      const input = document.getElementById('chordsInput') as HTMLInputElement;
+      expect(input.value).toBe('E Am');
+    });
   });
 });

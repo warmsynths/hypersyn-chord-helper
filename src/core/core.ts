@@ -400,8 +400,18 @@ let _activeOscillators = [];
 let _activeGains = [];
 let _hypersynAudioCtx = null;
 let _hypersynReverb = null;
+let _loopTimeout = null;
+let _endTimeout = null;
 
 export function stopChordProgression() {
+  if (_loopTimeout) {
+    clearTimeout(_loopTimeout);
+    _loopTimeout = null;
+  }
+  if (_endTimeout) {
+    clearTimeout(_endTimeout);
+    _endTimeout = null;
+  }
   if (_activeOscillators && _activeOscillators.length) {
     _activeOscillators.forEach((osc) => {
       try {
@@ -428,34 +438,11 @@ export function stopChordProgression() {
  *
  * @returns {void}
  */
-export function playChordProgression() {
-  const input = (document.getElementById("chordsInput") as HTMLInputElement)
-    .value;
-  const chordNames = input.split(/\s|,/).filter((s) => s.length > 0);
-  const parsed = chordNames.map(parseChordName).filter((c) => c !== null);
-  if (parsed.length === 0) return;
-
-  // MIDI note numbers for C4 = 60
-  // MIDI note numbers for C3 = 48 (one octave lower)
-  const ROOTS = {
-    C: 48,
-    "C#": 49,
-    Db: 49,
-    D: 50,
-    "D#": 51,
-    Eb: 51,
-    E: 52,
-    F: 53,
-    "F#": 54,
-    Gb: 54,
-    G: 55,
-    "G#": 56,
-    Ab: 56,
-    A: 57,
-    "A#": 58,
-    Bb: 58,
-    B: 59,
-  };
+export function playChordProgression(chordNotesArray?: any[], loop = false, onEnd = null) {
+  if (!chordNotesArray || chordNotesArray.length === 0) {
+    if (onEnd) onEnd();
+    return;
+  }
 
   // Web Audio setup
   const ctx =
@@ -488,28 +475,14 @@ export function playChordProgression() {
   const chordDuration = 2.5; // slower pad, longer chords
 
   stopChordProgression(); // Stop any previous notes
-  const volume =
-    parseInt(
-      (document.getElementById("volumeSlider") as HTMLInputElement).value,
-      10
-    ) / 100;
+  
+  // Use a hardcoded volume of 0.05 since the slider is removed
+  const volume = 0.05;
   _activeOscillators = [];
   _activeGains = [];
-  // Get voicing from UI (default to 'closed')
-  const voicing =
-    typeof getSelectedVoicing === "function" ? getSelectedVoicing() : "closed";
-  parsed.forEach((chord) => {
-    let rootMidi = ROOTS[chord.root] || 60;
-    if (!isFinite(rootMidi)) rootMidi = 60;
-    let intervals = Array.isArray(chord.intervalOnly)
-      ? chord.intervalOnly.filter((x) => typeof x === "number" && isFinite(x))
-      : [];
-    intervals = applyVoicing(intervals, voicing);
-    if (intervals.length === 0) {
-      console.warn("No intervals for chord:", chord.chordName, chord);
-    }
-    intervals.forEach((semi) => {
-      let midi = rootMidi + semi;
+
+  chordNotesArray.forEach((notes) => {
+    notes.forEach((midi) => {
       if (!isFinite(midi)) return;
       let freq = 440 * Math.pow(2, (midi - 69) / 12);
       if (!isFinite(freq)) return;
@@ -540,6 +513,18 @@ export function playChordProgression() {
     });
     time += chordDuration;
   });
+
+  const totalDuration = chordDuration * chordNotesArray.length;
+
+  if (loop) {
+    _loopTimeout = setTimeout(() => {
+      playChordProgression(chordNotesArray, loop, onEnd);
+    }, totalDuration * 1000);
+  } else {
+    _endTimeout = setTimeout(() => {
+      if (onEnd) onEnd();
+    }, totalDuration * 1000);
+  }
 }
 
 /**
@@ -636,10 +621,34 @@ export function semitoneToHex(semitone) {
  * @returns {object|null} Object with chordName, root, type, rootBaked, intervalOnlyHex, intervalOnly; or null if invalid.
  */
 export function parseChordName(chordName) {
-  const rootMatch = chordName.match(/^[A-G][b#]?/);
+  if (typeof chordName !== "string") return null;
+  const trimmed = chordName.trim();
+  if (!trimmed) return null;
+  const rootMatch = trimmed.match(/^[A-Ga-g][bB#♭♯]?/);
   if (!rootMatch) return null;
-  const root = rootMatch[0];
-  let type = chordName.slice(root.length) || "maj";
+  const rootToken = rootMatch[0];
+
+  const letter = rootToken.charAt(0).toUpperCase();
+  const accidental = rootToken
+    .slice(1)
+    .replace(/♯/g, "#")
+    .replace(/♭/g, "b")
+    .replace(/B/g, "b");
+  const root = letter + accidental;
+  if (typeof notes[root] !== "number") return null;
+
+  let type = trimmed.slice(rootToken.length) || "maj";
+  type = type.trim().replace(/\s+/g, "");
+  type = type
+    .replace(/major/i, "major")
+    .replace(/minor/i, "minor")
+    .replace(/maj/i, "maj")
+    .replace(/min/i, "min")
+    .replace(/dim/i, "dim")
+    .replace(/aug/i, "aug")
+    .replace(/sus/i, "sus")
+    .replace(/add/i, "add");
+
   // Handle half-diminished: ø7
   if (type === "ø7") {
     type = "ø7";
@@ -660,7 +669,7 @@ export function parseChordName(chordName) {
   const intervalOnly = intervals.slice();
 
   return {
-    chordName,
+    chordName: trimmed,
     root,
     type,
     rootBaked,

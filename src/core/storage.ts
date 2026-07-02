@@ -1,6 +1,6 @@
 import { generateUUID } from "./utils";
 import { showToast } from "../ui/toast";
-import { updateSingleChordDropdownFromInput } from "../ui/events";
+import { updateSingleChordDropdownFromInput, chordSetsData, loadSetsData } from "../ui/events";
 
 /**
  * Retrieves all saved chord sets from localStorage.
@@ -8,9 +8,24 @@ import { updateSingleChordDropdownFromInput } from "../ui/events";
  * @returns {Array<object>} Array of saved chord set objects.
  */
 export const getSavedChordSets = () => {
-  const sets = localStorage.getItem("hypersynChordSets");
+  const setsStr = localStorage.getItem("hypersynChordSets");
   try {
-    return sets ? JSON.parse(sets) : [];
+    const sets = setsStr ? JSON.parse(setsStr) : [];
+    let needsSave = false;
+    
+    // Automatically migrate old schema projects to new format
+    sets.forEach(set => {
+      if (!set.chordSets || !Array.isArray(set.chordSets) || set.chordSets.length === 0) {
+        set.chordSets = [set.chords || ""];
+        needsSave = true;
+      }
+    });
+    
+    if (needsSave) {
+      localStorage.setItem("hypersynChordSets", JSON.stringify(sets));
+    }
+    
+    return sets;
   } catch {
     return [];
   }
@@ -47,6 +62,8 @@ export const updateSavedChordSetsDropdown = () => {
  */
 export const saveChordSet = () => {
   const input = (document.getElementById("chordsInput") as HTMLInputElement).value;
+  // Ensure the active set input is synced before saving
+  const dataToSave = [...chordSetsData];
   const nameInput = document.getElementById("chordSetNameInput") as HTMLInputElement;
   const name = nameInput.value.trim();
   if (!name) {
@@ -56,9 +73,10 @@ export const saveChordSet = () => {
   let sets = getSavedChordSets();
   const idx = sets.findIndex((s) => s.name === name);
   if (idx >= 0) {
-    sets[idx].chords = input;
+    sets[idx].chords = input; // legacy support
+    sets[idx].chordSets = dataToSave;
   } else {
-    sets.push({ name, chords: input, id: generateUUID() });
+    sets.push({ name, chords: input, chordSets: dataToSave, id: generateUUID() });
   }
   setSavedChordSets(sets);
   updateSavedChordSetsDropdown();
@@ -80,9 +98,7 @@ export const loadChordSet = () => {
   const sets = getSavedChordSets();
   const set = sets[parseInt(idx, 10)];
   if (set) {
-    (document.getElementById("chordsInput") as HTMLInputElement).value = set.chords;
-    if (typeof updateSingleChordDropdownFromInput === "function")
-      updateSingleChordDropdownFromInput();
+    loadSetsData(set.chordSets);
     showToast(`Chord set '${set.name}' loaded!`, "success");
   } else {
     showToast("Chord set not found.", "error");
@@ -169,6 +185,10 @@ export const importChordSets = (fileInput) => {
       let added = 0;
       importedSets.forEach((set) => {
         if (set && set.id && !existingIds.has(set.id)) {
+          // Migrate imported sets on the fly
+          if (!set.chordSets || !Array.isArray(set.chordSets) || set.chordSets.length === 0) {
+            set.chordSets = [set.chords || ""];
+          }
           sets.push(set);
           added++;
         }

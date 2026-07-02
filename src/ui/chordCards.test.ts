@@ -30,8 +30,8 @@ describe('chordCards module', () => {
     const mockUpdateDropdown = () => {};
     convertChordsUI(mockConvertChords, mockGetVoicing, mockUpdateDropdown);
     const output = document.getElementById('output');
-    expect(output?.innerHTML).toContain('C(maj7');
-    expect(output?.innerHTML).toContain('D(m7');
+    expect(output?.innerHTML).toContain('[Cmaj7]');
+    expect(output?.innerHTML).toContain('[Dm7]');
   });
 
   it('updateChordKeyboardViz does not throw', () => {
