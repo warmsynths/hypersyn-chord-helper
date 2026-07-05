@@ -48,7 +48,7 @@ To run the app locally, ensure you have Node.js installed.
 - To run unit tests (powered by Jest), use `npm run test` or `npm run test:watch`.
 
 ## License
-MIT
+GNU GPLv3
 
 ## Credits
 - Inspired by the M8 Tracker and synthwave aesthetics.
