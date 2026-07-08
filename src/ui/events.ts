@@ -452,18 +452,34 @@ export const wireEventListeners = (): void => {
 
     // ── Load progression from URL query string if present ──
     const params = new URLSearchParams(window.location.search);
-    let pParams = params.getAll('p');
-    if (pParams.length === 0) {
-      pParams = params.getAll('progression');
-    }
-    if (pParams.length > 0) {
-      const querySets: string[] = [];
-      pParams.forEach(param => {
-        const parts = param.split(';');
-        querySets.push(...parts);
-      });
-      if (querySets.length > 0 && querySets.some(s => s.trim() !== "")) {
-        loadSetsData(querySets);
+    const stateParam = params.get('state');
+
+    if (stateParam) {
+      import('human-engine').then(engine => {
+        try {
+          const sharedState = engine.decodeProgression(stateParam);
+          if (sharedState && sharedState.chords && sharedState.chords.length > 0) {
+            const chordStr = sharedState.chords.map((sc: any) => sc.symbol).join(' ');
+            loadSetsData([chordStr]);
+          }
+        } catch (e) {
+          console.error("Failed to decode shared state", e);
+        }
+      }).catch(err => console.warn('human-engine not available for decoding state', err));
+    } else {
+      let pParams = params.getAll('p');
+      if (pParams.length === 0) {
+        pParams = params.getAll('progression');
+      }
+      if (pParams.length > 0) {
+        const querySets: string[] = [];
+        pParams.forEach(param => {
+          const parts = param.split(';');
+          querySets.push(...parts);
+        });
+        if (querySets.length > 0 && querySets.some(s => s.trim() !== "")) {
+          loadSetsData(querySets);
+        }
       }
     }
   });

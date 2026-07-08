@@ -10,6 +10,7 @@ import {
   buildAllChordNotes,
   buildWindows,
 } from "./keyboardViz";
+import { CHORD_CORES, CHORD_MODIFIERS, getChordSuffix } from "human-engine";
 
 // ─── Module state ────────────────────────────────────────────────────
 let lastChordObjs: any[] = [];
@@ -233,21 +234,57 @@ export const convertChordsUI = (
       .join('');
 
     html += `
-      <div class="chord-row" id="chord-row-${i}">
-        <div class="chord-meta">
-          <span class="chord-label">CHORD ${chordNum}</span>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span class="chord-name-display">[${chord.root}${chord.type}]</span>
-            <button class="btn btn-muted chord-play-btn" data-chord-idx="${i}" title="Play Chord" style="padding:3px 6px; height:20px; display:flex; align-items:center; justify-content:center;">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-            </button>
+      <div class="chord-row-wrapper" style="display:flex; flex-direction:column; background:var(--panel); border: 1px solid var(--border); border-radius: 2px; overflow:hidden;">
+        <div class="chord-row" id="chord-row-${i}" style="border:none; border-radius:0;">
+          <div class="chord-meta">
+            <span class="chord-label">CHORD ${chordNum}</span>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="chord-name-display">[ ${chord.root}${chord.type} ]</span>
+              <button class="btn btn-muted chord-edit-toggle-btn" data-chord-idx="${i}" title="Edit Chord" style="padding:3px; height:20px; display:flex; align-items:center; justify-content:center;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+              </button>
+              <button class="btn btn-muted chord-play-btn" data-chord-idx="${i}" title="Play Chord" style="padding:3px 6px; height:20px; display:flex; align-items:center; justify-content:center;">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              </button>
+            </div>
+          </div>
+          <div class="chord-keyboard-wrap" id="kbdWrap${i}" data-chord-idx="${i}" title="Drag left/right to move through voicing positions">
+            <div id="chordKeyboardViz${i}"></div>
+          </div>
+          <div class="hex-boxes" id="hexBoxes${i}">${hexBoxes}</div>
+        </div>
+        
+        <div class="chord-edit-drawer" id="chord-edit-${i}" style="display:none; padding:12px; border-top:1px solid var(--border); background:var(--panel-alt);">
+          <div style="display:flex; flex-direction:column; gap:14px;">
+            <div>
+              <div class="chord-label" style="margin-bottom:6px;">CORE QUALITY</div>
+              <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                ${CHORD_CORES.map(c => {
+                  let isSelected = false;
+                  if (c.value === 'maj' && (chord.type === 'M' || chord.type === 'maj' || chord.type === '')) isSelected = true;
+                  else if (c.value === 'dim' && chord.type.startsWith('dim')) isSelected = true;
+                  else if (c.value === 'sus4' && chord.type.startsWith('sus')) isSelected = true;
+                  else if (c.value === 'm' && chord.type.startsWith('m') && !chord.type.startsWith('maj')) isSelected = true;
+                  return `<button class="btn ${isSelected ? 'btn-primary' : 'btn-muted'} chord-edit-btn" data-chord-idx="${i}" data-type="core" data-val="${c.value}">${c.label}</button>`;
+                }).join('')}
+              </div>
+            </div>
+            <div>
+              <div class="chord-label" style="margin-bottom:6px;">MODIFIER</div>
+              <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                ${CHORD_MODIFIERS.map(m => {
+                  let isSelected = false;
+                  if (m.value === '7' && chord.type.includes('7') && !chord.type.includes('maj7')) isSelected = true;
+                  else if (m.value === 'maj7' && chord.type.includes('maj7')) isSelected = true;
+                  else if (m.value === '9' && chord.type.includes('9')) isSelected = true;
+                  else if (m.value === '6' && chord.type.includes('6')) isSelected = true;
+                  else if (m.value === '' && (!chord.type.includes('7') && !chord.type.includes('9') && !chord.type.includes('6'))) isSelected = true;
+                  return `<button class="btn ${isSelected ? 'btn-primary' : 'btn-muted'} chord-edit-btn" data-chord-idx="${i}" data-type="mod" data-val="${m.value}">${m.label}</button>`;
+                }).join('')}
+              </div>
+            </div>
           </div>
         </div>
-        <div class="chord-keyboard-wrap" id="kbdWrap${i}" data-chord-idx="${i}"
-             title="Drag left/right to move through voicing positions">
-          <div id="chordKeyboardViz${i}"></div>
-        </div>
-        <div class="hex-boxes" id="hexBoxes${i}">${hexBoxes}</div>
       </div>`;
   });
 
@@ -263,30 +300,100 @@ export const convertChordsUI = (
     }
   });
 
-  // Delegated clicks for play and hex copy
-  document.getElementById('chord-list')?.addEventListener('click', (e: MouseEvent) => {
-    const t = e.target as HTMLElement;
+  // Delegated clicks for play, edit toggle, edit buttons, and hex copy
+  const listEl = document.getElementById('chord-list');
+  if (listEl) {
+    listEl.addEventListener('click', (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
 
-    // Play chord button
-    const playBtn = t.closest('.chord-play-btn') as HTMLElement;
-    if (playBtn) {
-      const idxStr = playBtn.dataset.chordIdx;
-      if (idxStr) {
-        const idx = parseInt(idxStr, 10);
-        const windowIdx = chordWindowIndices[idx] ?? 0;
-        const windows = chordWindows[idx] ?? [];
-        const notes = windows[windowIdx] ?? windows[0] ?? [];
-        playChordProgression([notes]);
+      // Edit toggle button
+      const editToggle = t.closest('.chord-edit-toggle-btn') as HTMLElement;
+      if (editToggle) {
+        const idxStr = editToggle.dataset.chordIdx;
+        if (idxStr) {
+          const drawer = document.getElementById(`chord-edit-${idxStr}`);
+          if (drawer) {
+            drawer.style.display = drawer.style.display === 'none' ? 'block' : 'none';
+          }
+        }
+        return;
       }
-      return;
-    }
 
-    if (t.classList.contains('hex-box') && t.dataset.copy) {
-      navigator.clipboard?.writeText(t.dataset.copy)
-        .then(() => showToast(`Copied ${t.dataset.copy}`, 'info'))
-        .catch(() => {});
-    }
-  });
+      // Edit drawer core/mod button
+      if (t.classList.contains('chord-edit-btn')) {
+        const idxStr = t.dataset.chordIdx;
+        const type = t.dataset.type; // 'core' or 'mod'
+        const val = t.dataset.val;
+        if (!idxStr || !type || val === undefined) return;
+        const idx = parseInt(idxStr, 10);
+
+        const drawer = document.getElementById(`chord-edit-${idx}`);
+        if (!drawer) return;
+        
+        let coreVal = "";
+        let modVal = "";
+        
+        // Update DOM classes to reflect the click instantly
+        const allSameType = drawer.querySelectorAll(`.chord-edit-btn[data-type="${type}"]`);
+        allSameType.forEach(b => {
+          b.classList.remove('btn-primary');
+          b.classList.add('btn-muted');
+        });
+        t.classList.remove('btn-muted');
+        t.classList.add('btn-primary');
+        
+        const activeCore = drawer.querySelector('.chord-edit-btn[data-type="core"].btn-primary') as HTMLElement;
+        const activeMod = drawer.querySelector('.chord-edit-btn[data-type="mod"].btn-primary') as HTMLElement;
+        
+        if (activeCore) coreVal = activeCore.dataset.val ?? "";
+        if (activeMod) modVal = activeMod.dataset.val ?? "";
+
+        const newSuffix = getChordSuffix(coreVal, modVal);
+        
+        const currentInput = (document.getElementById('chordsInput') as HTMLInputElement).value;
+        let chordNames = currentInput.split(/[\s,]+/).filter(s => s.length > 0);
+        
+        if (chordNames[idx]) {
+           const root = lastChordObjs[idx].root;
+           chordNames[idx] = root + newSuffix;
+           const newStr = chordNames.join(' ');
+           (document.getElementById('chordsInput') as HTMLInputElement).value = newStr;
+           
+           // We re-run convertChordsUI to update everything cleanly
+           const wasOpen = drawer.style.display !== 'none';
+           convertChordsUI(convertChords, _unused, updateSingleChordDropdown);
+           if (wasOpen) {
+             // Since DOM is recreated, wait a tick and re-open the drawer
+             setTimeout(() => {
+               const newDrawer = document.getElementById(`chord-edit-${idx}`);
+               if (newDrawer) newDrawer.style.display = 'block';
+             }, 0);
+           }
+        }
+        return;
+      }
+
+      // Play chord button
+      const playBtn = t.closest('.chord-play-btn') as HTMLElement;
+      if (playBtn) {
+        const idxStr = playBtn.dataset.chordIdx;
+        if (idxStr) {
+          const idx = parseInt(idxStr, 10);
+          const windowIdx = chordWindowIndices[idx] ?? 0;
+          const windows = chordWindows[idx] ?? [];
+          const notes = windows[windowIdx] ?? windows[0] ?? [];
+          playChordProgression([notes]);
+        }
+        return;
+      }
+
+      if (t.classList.contains('hex-box') && t.dataset.copy) {
+        navigator.clipboard?.writeText(t.dataset.copy)
+          .then(() => showToast(`Copied ${t.dataset.copy}`, 'info'))
+          .catch(() => {});
+      }
+    });
+  }
 };
 
 // ─── Legacy exports (still wired in events.ts) ───────────────────────

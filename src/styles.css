@@ -271,7 +271,7 @@ body {
 
 .chord-row {
   display: grid;
-  grid-template-columns: 130px 1fr 220px;
+  grid-template-columns: 260px 1fr 220px;
   align-items: stretch;
   background: var(--panel);
   border: 1px solid var(--border);
@@ -720,5 +720,44 @@ body.theme-synthwave #app-title {
     border-left: 1px solid var(--border);
     max-width: 320px;
     width: 85%;
+  }
+}
+
+/* ---- Mobile Responsiveness ---- */
+.chord-select-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+@media (max-width: 650px) {
+  .chord-row {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    min-height: auto;
+  }
+  
+  .chord-meta, .chord-keyboard-wrap, .hex-boxes {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .chord-meta {
+    align-items: center;
+  }
+
+  .hex-boxes {
+    border-bottom: none;
+    padding: 12px;
+  }
+
+  .controls-row {
+    justify-content: center;
+  }
+
+  .chord-select-group {
+    justify-content: center;
   }
 }
