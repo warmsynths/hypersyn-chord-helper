@@ -3,4 +3,7 @@ import { defineConfig } from "vite";
 export default defineConfig({
   build: { outDir: 'docs' },
   base: "/hypersyn-chord-helper/", // Use relative paths for all assets
+  server: {
+    port: 8802
+  }
 });
