@@ -5,7 +5,7 @@ import { showToast } from "./toast";
 
 // ─── Module state ────────────────────────────────────────────────────
 let lastChordObjs: any[] = [];
-let isIntervalOnly: boolean = false;
+let isIntervalOnly: boolean = true;
 
 /** Base (root-position, "closed") MIDI notes per chord. */
 let baseNotesByChord: number[][] = [];
