@@ -301,6 +301,7 @@ body {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  row-gap: 4px;
 }
 
 .chord-label {
@@ -316,7 +317,7 @@ body {
   font-weight: 700;
   font-size: 0.85rem;
   letter-spacing: 0.03em;
-  min-width: 64px;
+  min-width: 52px;
 }
 
 .voicing-chip {
@@ -739,17 +740,46 @@ body {
 .crt-content {
   position: relative;
   z-index: 1;
-  font-size: 13px;
+  font-size: clamp(12px, 3vw, 13px);
   line-height: 1.7;
-  min-height: 560px;
+  min-height: min(560px, 80vh);
   display: flex;
   flex-direction: column;
   color: var(--text);
 }
 
+.ascii-hdr {
+  margin: 0 0 12px;
+  color: var(--accent);
+  font-size: 9px;
+  line-height: 1.15;
+  text-shadow: 0 0 8px var(--accent-dim);
+  overflow-x: auto;
+}
+
+.ascii-hdr-sm {
+  display: none;
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+  text-shadow: 0 0 8px var(--accent-dim);
+}
+
+@media (max-width: 480px) {
+  .ascii-hdr {
+    display: none;
+  }
+
+  .ascii-hdr-sm {
+    display: block;
+  }
+}
+
 .boot-text {
   margin: 0 0 12px;
-  color: var(--text);
+  color: var(--text-dim);
   font-size: 11px;
   line-height: 1.5;
   white-space: pre-wrap;
@@ -758,12 +788,6 @@ body {
 
 .boot-text .dim {
   color: var(--text-dim);
-}
-
-.boot-brand {
-  color: var(--accent);
-  font-weight: 700;
-  text-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
 }
 
 .term-hint {
