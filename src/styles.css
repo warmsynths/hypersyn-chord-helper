@@ -775,6 +775,22 @@ body {
   .ascii-hdr-sm {
     display: block;
   }
+
+  .mode-hint,
+  .theme-hint,
+  .boot-line {
+    display: none;
+  }
+
+  .chord-row {
+    padding: 6px 4px;
+    font-size: 12px;
+    gap: 5px;
+  }
+
+  .chord-name-display {
+    min-width: 44px;
+  }
 }
 
 .boot-text {
