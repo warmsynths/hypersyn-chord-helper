@@ -111,11 +111,13 @@ describe('core module', () => {
       gainMock = { connect: jest.fn().mockReturnThis(), disconnect: jest.fn(), gain: { setValueAtTime: jest.fn(), linearRampToValueAtTime: jest.fn() } };
       filterMock = { connect: jest.fn().mockReturnThis(), type: '', frequency: { value: 0 }, Q: { value: 0 } };
       convolverMock = { connect: jest.fn().mockReturnThis(), buffer: null };
+      const delayMock = { connect: jest.fn().mockReturnThis(), delayTime: { value: 0 } };
       const ctxMock = {
         createOscillator: () => oscMock,
         createGain: () => gainMock,
         createBiquadFilter: () => filterMock,
         createConvolver: () => convolverMock,
+        createDelay: () => delayMock,
         createBuffer: () => ({ getChannelData: () => new Float32Array(10) }),
         sampleRate: 44100,
         currentTime: 0,
@@ -364,11 +366,13 @@ describe('core module', () => {
       gainMock = { connect: jest.fn().mockReturnThis(), disconnect: jest.fn(), gain: { setValueAtTime: jest.fn(), linearRampToValueAtTime: jest.fn() } };
       filterMock = { connect: jest.fn().mockReturnThis(), type: '', frequency: { value: 0 }, Q: { value: 0 } };
       convolverMock = { connect: jest.fn().mockReturnThis(), buffer: null };
+      const delayMock = { connect: jest.fn().mockReturnThis(), delayTime: { value: 0 } };
       const ctxMock = {
         createOscillator: () => oscMock,
         createGain: () => gainMock,
         createBiquadFilter: () => filterMock,
         createConvolver: () => convolverMock,
+        createDelay: () => delayMock,
         createBuffer: () => ({ getChannelData: () => new Float32Array(10) }),
         sampleRate: 44100,
         currentTime: 0,

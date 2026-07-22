@@ -202,7 +202,7 @@ export const initTerminal = (): void => {
   };
 
   const params = new URLSearchParams(window.location.search);
-  if (!params.get("state") && params.getAll("p").length === 0 && params.getAll("progression").length === 0) {
+  if (params.getAll("p").length === 0 && params.getAll("progression").length === 0) {
     boot();
   }
 };
