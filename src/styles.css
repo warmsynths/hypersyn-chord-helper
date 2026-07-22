@@ -670,38 +670,6 @@ input[type="range"]::-moz-range-thumb {
   gap: 4px;
 }
 
-@media (max-width: 650px) {
-  .chord-row {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
-    min-height: auto;
-  }
-  
-  .chord-meta, .chord-keyboard-wrap, .hex-boxes {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    width: 100%;
-    justify-content: center;
-  }
-  
-  .chord-meta {
-    align-items: center;
-  }
-
-  .hex-boxes {
-    border-bottom: none;
-    padding: 12px;
-  }
-
-  .controls-row {
-    justify-content: center;
-  }
-
-  .chord-select-group {
-    justify-content: center;
-  }
-}
-
 /* ============================================================
    HYPERSYN REDESIGN — CRT/terminal surface
    (JetBrains Mono is loaded via <link> in index.html)
