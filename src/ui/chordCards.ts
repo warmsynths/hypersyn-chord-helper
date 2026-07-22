@@ -1,149 +1,152 @@
 import * as Midi from "@tonaljs/midi";
-import {
-  getMidiRoot,
-  semitoneToHex,
-} from "../core/chords";
+import { semitoneToHex, getMidiRoot } from "../core/chords";
 import { playChordProgression } from "../core/core";
 import { showToast } from "./toast";
-import {
-  renderKeyboardSVG,
-  buildAllChordNotes,
-  buildWindows,
-} from "./keyboardViz";
-import { CHORD_CORES, CHORD_MODIFIERS, getChordSuffix } from "human-engine";
 
 // ─── Module state ────────────────────────────────────────────────────
 let lastChordObjs: any[] = [];
 let isIntervalOnly: boolean = false;
 
-/**
- * Per-chord: which window (4-note slice) is currently shown.
- * Index 0 = lowest available notes, max = highest.
- */
-let chordWindowIndices: number[] = [];
+/** Base (root-position, "closed") MIDI notes per chord. */
+let baseNotesByChord: number[][] = [];
 
-/**
- * Per-chord: pre-built list of 4-note windows for quick lookup.
- */
-let chordWindows: number[][][] = [];
+/** Currently selected voicing index per chord (into VOICINGS). */
+let voicingIdxByChord: number[] = [];
 
-// ─── Horizontal-drag / scroll interaction ────────────────────────────
+/** Note-diffs from the last voicing change per chord, for the expanded log view. */
+let diffsByChord: Record<number, { label: string; oldHex: string; newHex: string }[]> = {};
 
-/** Pixels of horizontal drag to advance one window step */
-const DRAG_PX = 18;
+/** Which chord row is currently expanded (only one at a time), or null. */
+let expandedIdx: number | null = null;
 
-/**
- * Attaches horizontal pointer-drag and scroll-wheel handlers to a keyboard
- * wrapper. Moving right → higher notes; moving left → lower notes.
- *
- * @param wrap       - The `.chord-keyboard-wrap` element.
- * @param idx        - Chord row index.
- * @param numWindows - Total available 4-note windows for this chord.
- */
-function attachHorizontalDrag(wrap: HTMLElement, idx: number, numWindows: number): void {
-  let startX   = 0;
-  let startWin = 0;
-  let active   = false;
+// ─── Fixed voicing set ────────────────────────────────────────────────
+// A small, common set of voicings applied as octave shifts over the
+// chord's base note stack — no drag/window interaction, just ↑/↓ to cycle.
+const VOICINGS: { label: string; fn: (notes: number[]) => number[] }[] = [
+  { label: "ROOT", fn: (n) => n.slice() },
+  { label: "INV 1", fn: (n) => n.map((v, i) => (i === 0 ? v + 12 : v)) },
+  { label: "INV 2", fn: (n) => n.map((v, i) => (i <= 1 ? v + 12 : v)) },
+  { label: "INV 3", fn: (n) => n.map((v, i) => (i <= 2 ? v + 12 : v)) },
+  { label: "DROP 2", fn: (n) => n.map((v, i) => (i === n.length - 2 ? v - 12 : v)) },
+  { label: "SPREAD", fn: (n) => n.map((v, i) => (i === 0 ? v - 12 : i === n.length - 1 ? v + 12 : v)) },
+];
 
-  wrap.addEventListener('pointerdown', (e: PointerEvent) => {
-    startX   = e.clientX;
-    startWin = chordWindowIndices[idx] ?? 0;
-    active   = true;
-    wrap.classList.add('dragging');
-    wrap.setPointerCapture(e.pointerId);
-  });
-
-  wrap.addEventListener('pointermove', (e: PointerEvent) => {
-    if (!active) return;
-    const delta = e.clientX - startX;
-    const steps = Math.round(delta / DRAG_PX);
-    const next  = clamp(startWin + steps, 0, numWindows - 1);
-    if (next !== (chordWindowIndices[idx] ?? 0)) {
-      chordWindowIndices[idx] = next;
-      _applyWindow(idx, next);
-    }
-  });
-
-  const end = () => { active = false; wrap.classList.remove('dragging'); };
-  wrap.addEventListener('pointerup',     end);
-  wrap.addEventListener('pointercancel', end);
-
-  // Scroll wheel: left/right or up/down both work
-  wrap.addEventListener('wheel', (e: WheelEvent) => {
-    e.preventDefault();
-    // deltaX for trackpad horizontal scroll, deltaY as fallback
-    const raw = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-    const dir  = raw > 0 ? 1 : -1;
-    const cur  = chordWindowIndices[idx] ?? 0;
-    const next = clamp(cur + dir, 0, numWindows - 1);
-    if (next !== cur) {
-      chordWindowIndices[idx] = next;
-      _applyWindow(idx, next);
-    }
-  }, { passive: false });
-}
-
-function clamp(v: number, lo: number, hi: number): number {
-  return Math.max(lo, Math.min(hi, v));
-}
-
-/**
- * Renders the keyboard and hex boxes for a given window index.
- */
-function _applyWindow(idx: number, windowIdx: number): void {
-  const chordObj = lastChordObjs[idx];
-  if (!chordObj) return;
-  const windows = chordWindows[idx] ?? [];
-  const notes   = windows[windowIdx] ?? windows[0] ?? [];
-
-  // Update keyboard SVG
-  const kbdDiv = document.getElementById('chordKeyboardViz' + idx);
-  if (kbdDiv) kbdDiv.innerHTML = renderKeyboardSVG(notes);
-
-
-  // Update hex boxes
-  const hexEl = document.getElementById('hexBoxes' + idx);
-  if (hexEl) {
-    hexEl.innerHTML = notes
-      .map((midi, j) => {
-        let hex = "";
-        let tooltip = "";
-        
-        if (isIntervalOnly) {
-          const interval = midi - (chordObj.midiRoot ?? 60);
-          hex = semitoneToHex(interval);
-          tooltip = `Interval ${interval} → ${hex}`;
-        } else {
-          hex = midi.toString(16).toUpperCase().padStart(2, '0');
-          tooltip = `MIDI ${midi} → ${hex}`;
-        }
-        
-        const noteName = Midi.midiToNoteName(midi);
-        const classNames = isIntervalOnly ? 'hex-box interval-mode' : 'hex-box';
-        
-        return `<div class="hex-col"><span class="${classNames}" title="${tooltip}" data-copy="${hex}">${hex}</span><span class="hex-note-name">${noteName}</span></div>`;
-      })
-      .join('');
+function hexForMidi(midi: number, midiRoot: number): { hex: string; tooltip: string } {
+  if (isIntervalOnly) {
+    const interval = midi - midiRoot;
+    const hex = semitoneToHex(interval);
+    return { hex, tooltip: `Interval ${interval} → ${hex}` };
   }
+  const hex = midi.toString(16).toUpperCase().padStart(2, "0");
+  return { hex, tooltip: `MIDI ${midi} → ${hex}` };
+}
+
+function renderHexBoxes(notes: number[], midiRoot: number): string {
+  return notes
+    .map((midi) => {
+      const { hex, tooltip } = hexForMidi(midi, midiRoot);
+      const noteName = Midi.midiToNoteName(midi);
+      const classNames = isIntervalOnly ? "hex-box interval-mode" : "hex-box";
+      return `<div class="hex-col"><span class="${classNames}" title="${tooltip}" data-copy="${hex}">${hex}</span><span class="hex-note-name">${noteName}</span></div>`;
+    })
+    .join("");
+}
+
+function currentNotesFor(idx: number): number[] {
+  const base = baseNotesByChord[idx];
+  if (!base) return [];
+  const voicing = VOICINGS[voicingIdxByChord[idx] ?? 0] ?? VOICINGS[0];
+  return voicing.fn(base);
+}
+
+/** Re-renders hex boxes + voicing chip + diff panel for one chord row. */
+function renderRow(idx: number): void {
+  const chord = lastChordObjs[idx];
+  if (!chord) return;
+  const notes = currentNotesFor(idx);
+
+  const hexEl = document.getElementById("hexBoxes" + idx);
+  if (hexEl) hexEl.innerHTML = renderHexBoxes(notes, chord.midiRoot ?? 60);
+
+  const chipEl = document.getElementById("voicingChip" + idx);
+  if (chipEl) {
+    const label = VOICINGS[voicingIdxByChord[idx] ?? 0]?.label ?? "ROOT";
+    chipEl.textContent = label;
+  }
+
+  const diffEl = document.getElementById("voicingDiffs" + idx);
+  if (diffEl) {
+    const diffs = diffsByChord[idx] ?? [];
+    diffEl.innerHTML = diffs
+      .map(
+        (d) =>
+          `<div class="voicing-diff-row"><span class="voicing-diff-old">~ ${d.label} <s>${d.oldHex}</s></span><span class="voicing-diff-arrow">-&gt;</span><span class="voicing-diff-new">${d.newHex}</span></div>`
+      )
+      .join("");
+  }
+}
+
+/** Cycles the voicing for the expanded chord row, plays it, and records the diff. */
+function cycleVoicing(idx: number, delta: number): void {
+  const base = baseNotesByChord[idx];
+  if (!base) return;
+  const total = VOICINGS.length;
+  const curIdx = voicingIdxByChord[idx] ?? 0;
+  const nextIdx = ((curIdx + delta) % total + total) % total;
+
+  const oldNotes = VOICINGS[curIdx].fn(base);
+  const newNotes = VOICINGS[nextIdx].fn(base);
+
+  const diffs: { label: string; oldHex: string; newHex: string }[] = [];
+  const midiRoot = lastChordObjs[idx]?.midiRoot ?? 60;
+  newNotes.forEach((midi, i) => {
+    const old = oldNotes[i];
+    if (old !== midi) {
+      diffs.push({
+        label: Midi.midiToNoteName(old),
+        oldHex: hexForMidi(old, midiRoot).hex,
+        newHex: hexForMidi(midi, midiRoot).hex,
+      });
+    }
+  });
+
+  voicingIdxByChord[idx] = nextIdx;
+  diffsByChord[idx] = diffs;
+  renderRow(idx);
+  playChordProgression([newNotes]);
+}
+
+function setExpanded(idx: number | null): void {
+  const prev = expandedIdx;
+  expandedIdx = expandedIdx === idx ? null : idx;
+
+  [prev, expandedIdx].forEach((i) => {
+    if (i === null || i === undefined) return;
+    const wrapper = document.getElementById("chord-row-wrapper" + i);
+    const drawer = document.getElementById("voicing-drawer" + i);
+    if (!wrapper || !drawer) return;
+    const isOpen = expandedIdx === i;
+    drawer.style.display = isOpen ? "block" : "none";
+    wrapper.classList.toggle("expanded", isOpen);
+    if (isOpen) wrapper.focus();
+  });
 }
 
 export const toggleIntervalMode = (): void => {
   isIntervalOnly = !isIntervalOnly;
-  
-  // Update button visual state
-  const btn = document.getElementById('intervalToggleBtn');
+
+  const btn = document.getElementById("intervalToggleBtn");
   if (btn) {
     if (isIntervalOnly) {
-      btn.classList.remove('btn-muted');
-      btn.classList.add('btn-primary');
+      btn.classList.remove("btn-muted");
+      btn.classList.add("btn-primary");
     } else {
-      btn.classList.remove('btn-primary');
-      btn.classList.add('btn-muted');
+      btn.classList.remove("btn-primary");
+      btn.classList.add("btn-muted");
     }
   }
 
-  // Re-render all current windows
-  lastChordObjs.forEach((_, i) => _applyWindow(i, chordWindowIndices[i] ?? 0));
+  lastChordObjs.forEach((_, i) => renderRow(i));
 };
 
 // ─── Public: convert chords → tracker rows ───────────────────────────
@@ -153,26 +156,26 @@ export const convertChordsUI = (
   _unused: Function,
   updateSingleChordDropdown: Function
 ): void => {
-  const outputBox = document.getElementById('outputBox')!;
-  const toggleBtn = document.getElementById('toggleOutputBoxBtn');
+  const outputBox = document.getElementById("outputBox")!;
+  const toggleBtn = document.getElementById("toggleOutputBoxBtn");
 
-  outputBox.style.display = 'block';
+  outputBox.style.display = "block";
   if (toggleBtn) {
-    toggleBtn.innerHTML = 'CHORDS ▼';
-    toggleBtn.setAttribute('aria-expanded', 'true');
-    toggleBtn.classList.remove('dimmed');
+    toggleBtn.innerHTML = "CHORDS ▼";
+    toggleBtn.setAttribute("aria-expanded", "true");
+    toggleBtn.classList.remove("dimmed");
   }
 
-  const input      = (document.getElementById('chordsInput') as HTMLInputElement).value;
-  const chordNames = input.split(/[\s,]+/).filter(s => s.length > 0);
+  const input = (document.getElementById("chordsInput") as HTMLInputElement).value;
+  const chordNames = input.split(/[\s,]+/).filter((s) => s.length > 0);
   updateSingleChordDropdown(chordNames);
 
-  const result = convertChords(input, 'closed');
+  const result = convertChords(input, "closed");
 
   if (!result.chords || result.chords.length === 0) {
-    document.getElementById('output')!.innerHTML =
+    document.getElementById("output")!.innerHTML =
       `<div style="padding:16px;color:var(--text-dim);font-size:0.8rem;">NO VALID CHORDS FOUND</div>`;
-    showToast('No valid chords found.', 'error');
+    showToast("No valid chords found.", "error");
     const pbControls = document.getElementById("playbackControls");
     if (pbControls) pbControls.style.display = "none";
     const intContainer = document.getElementById("intervalToggleContainer");
@@ -182,248 +185,111 @@ export const convertChordsUI = (
 
   const pbControls = document.getElementById("playbackControls");
   if (pbControls) pbControls.style.display = "flex";
-  
+
   const intContainer = document.getElementById("intervalToggleContainer");
   if (intContainer) intContainer.style.display = "flex";
 
-  lastChordObjs      = result.chords;
-  chordWindowIndices = result.chords.map(() => 0);
-  chordWindows       = [];
+  lastChordObjs = result.chords;
+  voicingIdxByChord = result.chords.map(() => 0);
+  diffsByChord = {};
+  expandedIdx = null;
+  baseNotesByChord = [];
 
   // Unique group → 2-digit hex label
   const chordNumMap: Record<string, string> = {};
   result.uniqueGroups.forEach((group: any, idx: number) => {
     group.chords.forEach((name: string) => {
-      chordNumMap[name] = idx.toString(16).toUpperCase().padStart(2, '0');
+      chordNumMap[name] = idx.toString(16).toUpperCase().padStart(2, "0");
     });
   });
 
-  // Pre-compute windows for every chord
   result.chords.forEach((chord: any) => {
     chord.midiRoot = getMidiRoot(chord.root);
-    const allNotes = buildAllChordNotes(chord.intervalOnly, chord.midiRoot);
-    chordWindows.push(buildWindows(allNotes));
+    baseNotesByChord.push((chord.intervalOnly ?? []).map((iv: number) => chord.midiRoot + iv));
   });
 
   // Build HTML
   let html = '<div id="chord-list">';
 
   result.chords.forEach((chord: any, i: number) => {
-    const chordNum  = chordNumMap[chord.chordName] ?? i.toString(16).toUpperCase().padStart(2, '0');
-    const initNotes = chordWindows[i]?.[0] ?? [];
-
-    // Initial 4 hex boxes
-    const hexBoxes = initNotes
-      .map(midi => {
-        let hex = "";
-        let tooltip = "";
-        
-        if (isIntervalOnly) {
-          const interval = midi - (chord.midiRoot ?? 60);
-          hex = semitoneToHex(interval);
-          tooltip = `Interval ${interval} → ${hex}`;
-        } else {
-          hex = midi.toString(16).toUpperCase().padStart(2, '0');
-          tooltip = `MIDI ${midi} → ${hex}`;
-        }
-        
-        const noteName = Midi.midiToNoteName(midi);
-        const classNames = isIntervalOnly ? 'hex-box interval-mode' : 'hex-box';
-        return `<div class="hex-col"><span class="${classNames}" title="${tooltip}" data-copy="${hex}">${hex}</span><span class="hex-note-name">${noteName}</span></div>`;
-      })
-      .join('');
+    const chordNum = chordNumMap[chord.chordName] ?? i.toString(16).toUpperCase().padStart(2, "0");
+    const notes = currentNotesFor(i);
+    const hexBoxes = renderHexBoxes(notes, chord.midiRoot ?? 60);
 
     html += `
-      <div class="chord-row-wrapper" style="display:flex; flex-direction:column; background:var(--panel); border: 1px solid var(--border); border-radius: 2px; overflow:hidden;">
-        <div class="chord-row" id="chord-row-${i}" style="border:none; border-radius:0;">
+      <div class="chord-row-wrapper" id="chord-row-wrapper${i}" data-chord-idx="${i}" tabindex="0">
+        <div class="chord-row" id="chord-row-${i}">
           <div class="chord-meta">
             <span class="chord-label">CHORD ${chordNum}</span>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span class="chord-name-display">[ ${chord.root}${chord.type} ]</span>
-              <button class="btn btn-muted chord-edit-toggle-btn" data-chord-idx="${i}" title="Edit Chord" style="padding:3px; height:20px; display:flex; align-items:center; justify-content:center;">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-              </button>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span class="chord-name-display">${chord.root}${chord.type}</span>
+              <span class="voicing-chip" id="voicingChip${i}">ROOT</span>
               <button class="btn btn-muted chord-play-btn" data-chord-idx="${i}" title="Play Chord" style="padding:3px 6px; height:20px; display:flex; align-items:center; justify-content:center;">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
               </button>
             </div>
           </div>
-          <div class="chord-keyboard-wrap" id="kbdWrap${i}" data-chord-idx="${i}" title="Drag left/right to move through voicing positions">
-            <div id="chordKeyboardViz${i}"></div>
-          </div>
           <div class="hex-boxes" id="hexBoxes${i}">${hexBoxes}</div>
         </div>
-        
-        <div class="chord-edit-drawer" id="chord-edit-${i}" style="display:none; padding:12px; border-top:1px solid var(--border); background:var(--panel-alt);">
-          <div style="display:flex; flex-direction:column; gap:14px;">
-            <div>
-              <div class="chord-label" style="margin-bottom:6px;">CORE QUALITY</div>
-              <div style="display:flex; flex-wrap:wrap; gap:6px;">
-                ${CHORD_CORES.map(c => {
-                  let isSelected = false;
-                  if (c.value === 'maj' && (chord.type === 'M' || chord.type === 'maj' || chord.type === '')) isSelected = true;
-                  else if (c.value === 'dim' && chord.type.startsWith('dim')) isSelected = true;
-                  else if (c.value === 'sus4' && chord.type.startsWith('sus')) isSelected = true;
-                  else if (c.value === 'm' && chord.type.startsWith('m') && !chord.type.startsWith('maj')) isSelected = true;
-                  return `<button class="btn ${isSelected ? 'btn-primary' : 'btn-muted'} chord-edit-btn" data-chord-idx="${i}" data-type="core" data-val="${c.value}">${c.label}</button>`;
-                }).join('')}
-              </div>
-            </div>
-            <div>
-              <div class="chord-label" style="margin-bottom:6px;">MODIFIER</div>
-              <div style="display:flex; flex-wrap:wrap; gap:6px;">
-                ${CHORD_MODIFIERS.map(m => {
-                  let isSelected = false;
-                  if (m.value === '7' && chord.type.includes('7') && !chord.type.includes('maj7')) isSelected = true;
-                  else if (m.value === 'maj7' && chord.type.includes('maj7')) isSelected = true;
-                  else if (m.value === '9' && chord.type.includes('9')) isSelected = true;
-                  else if (m.value === '6' && chord.type.includes('6')) isSelected = true;
-                  else if (m.value === '' && (!chord.type.includes('7') && !chord.type.includes('9') && !chord.type.includes('6'))) isSelected = true;
-                  return `<button class="btn ${isSelected ? 'btn-primary' : 'btn-muted'} chord-edit-btn" data-chord-idx="${i}" data-type="mod" data-val="${m.value}">${m.label}</button>`;
-                }).join('')}
-              </div>
-            </div>
-          </div>
+
+        <div class="voicing-drawer" id="voicing-drawer${i}" style="display:none;">
+          <div class="voicing-hint">&#8593;/&#8595; cycle voicing · plays on change</div>
+          <div class="voicing-diffs" id="voicingDiffs${i}"></div>
         </div>
       </div>`;
   });
 
-  html += '</div>';
-  document.getElementById('output')!.innerHTML = html;
+  html += "</div>";
+  document.getElementById("output")!.innerHTML = html;
 
-  // Render keyboards and attach drag handlers
-  result.chords.forEach((_: any, i: number) => {
-    _applyWindow(i, 0);
-    const wrap = document.getElementById(`kbdWrap${i}`) as HTMLElement;
-    if (wrap) {
-      attachHorizontalDrag(wrap, i, chordWindows[i]?.length ?? 1);
-    }
-  });
-
-  // Delegated clicks for play, edit toggle, edit buttons, and hex copy
-  const listEl = document.getElementById('chord-list');
+  // Delegated clicks and keydowns
+  const listEl = document.getElementById("chord-list");
   if (listEl) {
-    listEl.addEventListener('click', (e: MouseEvent) => {
+    listEl.addEventListener("click", (e: MouseEvent) => {
       const t = e.target as HTMLElement;
 
-      // Edit toggle button
-      const editToggle = t.closest('.chord-edit-toggle-btn') as HTMLElement;
-      if (editToggle) {
-        const idxStr = editToggle.dataset.chordIdx;
-        if (idxStr) {
-          const drawer = document.getElementById(`chord-edit-${idxStr}`);
-          if (drawer) {
-            drawer.style.display = drawer.style.display === 'none' ? 'block' : 'none';
-          }
-        }
-        return;
-      }
-
-      // Edit drawer core/mod button
-      if (t.classList.contains('chord-edit-btn')) {
-        const idxStr = t.dataset.chordIdx;
-        const type = t.dataset.type; // 'core' or 'mod'
-        const val = t.dataset.val;
-        if (!idxStr || !type || val === undefined) return;
-        const idx = parseInt(idxStr, 10);
-
-        const drawer = document.getElementById(`chord-edit-${idx}`);
-        if (!drawer) return;
-        
-        let coreVal = "";
-        let modVal = "";
-        
-        // Update DOM classes to reflect the click instantly
-        const allSameType = drawer.querySelectorAll(`.chord-edit-btn[data-type="${type}"]`);
-        allSameType.forEach(b => {
-          b.classList.remove('btn-primary');
-          b.classList.add('btn-muted');
-        });
-        t.classList.remove('btn-muted');
-        t.classList.add('btn-primary');
-        
-        const activeCore = drawer.querySelector('.chord-edit-btn[data-type="core"].btn-primary') as HTMLElement;
-        const activeMod = drawer.querySelector('.chord-edit-btn[data-type="mod"].btn-primary') as HTMLElement;
-        
-        if (activeCore) coreVal = activeCore.dataset.val ?? "";
-        if (activeMod) modVal = activeMod.dataset.val ?? "";
-
-        const newSuffix = getChordSuffix(coreVal, modVal);
-        
-        const currentInput = (document.getElementById('chordsInput') as HTMLInputElement).value;
-        let chordNames = currentInput.split(/[\s,]+/).filter(s => s.length > 0);
-        
-        if (chordNames[idx]) {
-           const root = lastChordObjs[idx].root;
-           chordNames[idx] = root + newSuffix;
-           const newStr = chordNames.join(' ');
-           (document.getElementById('chordsInput') as HTMLInputElement).value = newStr;
-           
-           // We re-run convertChordsUI to update everything cleanly
-           const wasOpen = drawer.style.display !== 'none';
-           convertChordsUI(convertChords, _unused, updateSingleChordDropdown);
-           if (wasOpen) {
-             // Since DOM is recreated, wait a tick and re-open the drawer
-             setTimeout(() => {
-               const newDrawer = document.getElementById(`chord-edit-${idx}`);
-               if (newDrawer) newDrawer.style.display = 'block';
-             }, 0);
-           }
-        }
-        return;
-      }
-
       // Play chord button
-      const playBtn = t.closest('.chord-play-btn') as HTMLElement;
+      const playBtn = t.closest(".chord-play-btn") as HTMLElement;
       if (playBtn) {
         const idxStr = playBtn.dataset.chordIdx;
         if (idxStr) {
-          const idx = parseInt(idxStr, 10);
-          const windowIdx = chordWindowIndices[idx] ?? 0;
-          const windows = chordWindows[idx] ?? [];
-          const notes = windows[windowIdx] ?? windows[0] ?? [];
-          playChordProgression([notes]);
+          playChordProgression([currentNotesFor(parseInt(idxStr, 10))]);
         }
         return;
       }
 
-      if (t.classList.contains('hex-box') && t.dataset.copy) {
+      if (t.classList.contains("hex-box") && t.dataset.copy) {
         navigator.clipboard?.writeText(t.dataset.copy)
-          .then(() => showToast(`Copied ${t.dataset.copy}`, 'info'))
+          .then(() => showToast(`Copied ${t.dataset.copy}`, "info"))
           .catch(() => {});
+        return;
       }
+
+      // Click a row (outside the play button / hex box) → expand/collapse it
+      const wrapper = t.closest(".chord-row-wrapper") as HTMLElement;
+      if (wrapper) {
+        const idxStr = wrapper.dataset.chordIdx;
+        if (idxStr) setExpanded(parseInt(idxStr, 10));
+      }
+    });
+
+    listEl.addEventListener("keydown", (e: KeyboardEvent) => {
+      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+      const wrapper = (e.target as HTMLElement).closest(".chord-row-wrapper") as HTMLElement;
+      if (!wrapper) return;
+      const idxStr = wrapper.dataset.chordIdx;
+      if (idxStr === undefined || parseInt(idxStr, 10) !== expandedIdx) return;
+      e.preventDefault();
+      cycleVoicing(parseInt(idxStr, 10), e.key === "ArrowUp" ? 1 : -1);
     });
   }
 };
 
-// ─── Legacy exports (still wired in events.ts) ───────────────────────
-
-export const updateChordKeyboardViz = (idx: number, _voicing: string, chordObj: any): void => {
-  // Re-render using the current window for this chord
-  const windowIdx = chordWindowIndices[idx] ?? 0;
-  const windows   = chordWindows[idx];
-  if (windows) {
-    _applyWindow(idx, windowIdx);
-  } else {
-    // Fallback: just render root-position notes
-    const midi = chordObj?.midiRoot ?? 60;
-    const notes = (chordObj?.intervalOnly ?? []).map((v: number) => midi + v);
-    const kbdDiv = document.getElementById('chordKeyboardViz' + idx);
-    if (kbdDiv) kbdDiv.innerHTML = renderKeyboardSVG(notes.slice(0, 4));
-  }
-};
-
-export const updateChordVoicing = (idx: number, _voicing: string, _label?: string): void => {
-  // In the new model voicing is driven by window position, not a type string.
-  // Calling this re-renders the current window.
-  const windowIdx = chordWindowIndices[idx] ?? 0;
-  _applyWindow(idx, windowIdx);
-};
-
 export const getCurrentProgressionNotes = (): number[][] => {
-  return lastChordObjs.map((_, idx) => {
-    const windowIdx = chordWindowIndices[idx] ?? 0;
-    const windows = chordWindows[idx] ?? [];
-    return windows[windowIdx] ?? windows[0] ?? [];
-  });
+  return lastChordObjs.map((_, idx) => currentNotesFor(idx));
 };
+
+export const getOutputModeLabel = (): string => (isIntervalOnly ? "INTERVALS" : "NOTES");
+export const getOutputModeHint = (): string =>
+  isIntervalOnly ? "(offsets from root — set root on device)" : "(literal note values)";
+export const isOutputIntervalOnly = (): boolean => isIntervalOnly;

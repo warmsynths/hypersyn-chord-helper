@@ -1,8 +1,4 @@
-import {
-  convertChordsUI,
-  updateChordKeyboardViz,
-  updateChordVoicing
-} from './chordCards';
+import { convertChordsUI, getCurrentProgressionNotes } from './chordCards';
 
 describe('chordCards module', () => {
   beforeEach(() => {
@@ -15,33 +11,34 @@ describe('chordCards module', () => {
     `;
   });
 
-  it('convertChordsUI renders chord cards', () => {
+  it('convertChordsUI renders chord log rows', () => {
     const mockConvertChords = (input, voicing) => ({
       chords: [
-        { root: 'C', type: 'maj7', chordName: 'Cmaj7', intervalOnly: [0,4,7,11], intervalOnlyHex: ['00','04','07','0B'], rootBaked: ['00','04','07','0B'] },
-        { root: 'D', type: 'm7', chordName: 'Dm7', intervalOnly: [0,3,7,10], intervalOnlyHex: ['00','03','07','0A'], rootBaked: ['02','05','09','0C'] }
+        { root: 'C', type: 'maj7', chordName: 'Cmaj7', intervalOnly: [0, 4, 7, 11], intervalOnlyHex: ['00', '04', '07', '0B'], rootBaked: ['00', '04', '07', '0B'] },
+        { root: 'D', type: 'm7', chordName: 'Dm7', intervalOnly: [0, 3, 7, 10], intervalOnlyHex: ['00', '03', '07', '0A'], rootBaked: ['02', '05', '09', '0C'] }
       ],
       uniqueGroups: [
-        { chords: ['Cmaj7'], intervalOnlyHex: ['00','04','07','0B'] },
-        { chords: ['Dm7'], intervalOnlyHex: ['00','03','07','0A'] }
+        { chords: ['Cmaj7'], intervalOnlyHex: ['00', '04', '07', '0B'] },
+        { chords: ['Dm7'], intervalOnlyHex: ['00', '03', '07', '0A'] }
       ]
     });
     const mockGetVoicing = () => 'closed';
     const mockUpdateDropdown = () => {};
     convertChordsUI(mockConvertChords, mockGetVoicing, mockUpdateDropdown);
     const output = document.getElementById('output');
-    expect(output?.innerHTML).toContain('[Cmaj7]');
-    expect(output?.innerHTML).toContain('[Dm7]');
+    expect(output?.innerHTML).toContain('Cmaj7');
+    expect(output?.innerHTML).toContain('Dm7');
+    expect(output?.innerHTML).toContain('voicing-chip');
   });
 
-  it('updateChordKeyboardViz does not throw', () => {
-    const div = document.createElement('div');
-    div.id = 'chordKeyboardViz0';
-    document.body.appendChild(div);
-    expect(() => updateChordKeyboardViz(0, 'closed', { intervalOnly: [0,4,7], midiRoot: 60 })).not.toThrow();
-  });
-
-  it('updateChordVoicing does not throw for missing chord', () => {
-    expect(() => updateChordVoicing(99, 'closed')).not.toThrow();
+  it('getCurrentProgressionNotes returns root-position notes by default', () => {
+    const mockConvertChords = () => ({
+      chords: [
+        { root: 'C', type: 'maj7', chordName: 'Cmaj7', intervalOnly: [0, 4, 7, 11], intervalOnlyHex: ['00', '04', '07', '0B'], rootBaked: ['00', '04', '07', '0B'] },
+      ],
+      uniqueGroups: [{ chords: ['Cmaj7'], intervalOnlyHex: ['00', '04', '07', '0B'] }],
+    });
+    convertChordsUI(mockConvertChords, () => 'closed', () => {});
+    expect(getCurrentProgressionNotes()).toEqual([[60, 64, 67, 71]]);
   });
 });

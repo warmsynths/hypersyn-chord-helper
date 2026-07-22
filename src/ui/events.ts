@@ -15,12 +15,9 @@ import {
 import { convertChords } from "../core/chords";
 import {
   convertChordsUI,
-  updateChordVoicing,
-  updateChordKeyboardViz,
   getCurrentProgressionNotes,
   toggleIntervalMode,
 } from "./chordCards";
-import { updateKeyboardViz } from "./keyboardViz";
 import { showToast } from "./toast";
 import { parseChordName } from "../core/chords";
 import { playSingleChordGlobal } from "../core/core";
@@ -446,9 +443,6 @@ export const wireEventListeners = (): void => {
     // ── Initialise dropdowns ──
     updateSingleChordDropdownFromInput();
     updateSavedChordSetsDropdown();
-
-    // ── Legacy keyboard viz (no-op in new UI) ──
-    updateKeyboardViz();
 
     // ── Load progression from URL query string if present ──
     const params = new URLSearchParams(window.location.search);
