@@ -15,14 +15,6 @@
     href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎹</text></svg>" />
   <style>
     /* Inline fast-load overrides */
-    #video-bg {
-      display: none;
-    }
-
-    #app-title {
-      display: none;
-    }
-
     .sidebar-toggle-fade {
       opacity: 0;
       pointer-events: none;
@@ -36,8 +28,8 @@
       display: none !important;
     }
   </style>
-  <script type="module" crossorigin src="/hypersyn-chord-helper/assets/index-CLaed290.js"></script>
-  <link rel="stylesheet" crossorigin href="/hypersyn-chord-helper/assets/index-CA6sZMwf.css">
+  <script type="module" crossorigin src="/hypersyn-chord-helper/assets/index-BwHF36FQ.js"></script>
+  <link rel="stylesheet" crossorigin href="/hypersyn-chord-helper/assets/index-DYgzPCYp.css">
 </head>
 
 <body class="theme-monokai">
@@ -79,6 +71,12 @@
             placeholder="type a chord progression or a command (try help)" autocomplete="off" />
         </form>
         <div id="cmdSuggestion" class="cmd-suggestion" style="display:none;"></div>
+
+        <div id="konamiTrack" class="konami-track" style="display:none;">
+          <div id="konamiDots" class="konami-dots"></div>
+          <div id="konamiPac" class="konami-pac"></div>
+        </div>
+        <div id="konamiDone" class="konami-done" style="display:none;">WAKA WAKA WAKA</div>
       </div>
       <div class="crt-scanlines"></div>
       <div class="crt-vignette"></div>
@@ -86,28 +84,6 @@
     <div class="terminal-footer">HYPERSYN CHORD HELPER &mdash; M8 HEX EXPORT</div>
    </div>
   </div>
-
-  <!-- =============================================
-         EASTER EGG: Synthwave video background
-         Hidden by default, restored by Konami code
-         ============================================= -->
-  <div id="video-bg" style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:-2;overflow:hidden;">
-    <video autoplay loop muted playsinline
-      style="width:100vw;height:100vh;object-fit:cover;filter:blur(8px) brightness(0.7) saturate(1.1);">
-      <source src="/hypersyn-chord-helper/assets/synthwave-Dbm8fxvT.mp4" type="video/mp4" />
-    </video>
-    <div
-      style="position:absolute;top:0;left:0;width:100vw;height:100vh;background:rgba(40,42,54,0.5);mix-blend-mode:soft-light;">
-    </div>
-  </div>
-
-  <!-- Synthwave header (easter egg only) -->
-  <h1 id="app-title" class="synthwave-header"
-    style="text-align:center;font-family:'Share Tech Mono',monospace;font-size:2.5rem;font-weight:900;color:#ff79c6;margin:16px 0 8px;letter-spacing:2px;">
-    Hypersyn Chord Helper
-  </h1>
-
-
 
   <!-- =============================================
          TRACKER NAV BAR

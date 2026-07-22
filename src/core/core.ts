@@ -134,20 +134,6 @@ export function importChordSets(fileInput) {
 }
 
 /**
- * Toggles the synthwave video background visibility.
- *
- * @public
- */
-export function toggleVideoBg() {
-  const videoBg = document.getElementById("video-bg");
-  const btn = document.getElementById("toggleVideoBtn");
-  if (!videoBg || !btn) return;
-  const isHidden = videoBg.style.display === "none";
-  videoBg.style.display = isHidden ? "block" : "none";
-  btn.textContent = isHidden ? "Hide Video" : "Show Video";
-}
-
-/**
  * Toast notification system (Tailwind styled).
  *
  * @param {string} message - The message to display.

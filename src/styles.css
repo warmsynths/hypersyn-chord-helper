@@ -614,69 +614,6 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* ============================================================
-   EASTER EGG — SYNTHWAVE / DRACULA THEME
-   Activated by Konami code (↑↑↓↓←→←→BA)
-   ============================================================ */
-body.theme-synthwave {
-  background-color: #282a36 !important;
-  background-image: none !important;
-  color: #f8f8f2 !important;
-}
-
-body.theme-synthwave #video-bg {
-  display: block !important;
-}
-
-body.theme-synthwave #tracker-nav {
-  background: rgba(40,42,54,0.92);
-  border-bottom-color: #44475a;
-}
-
-body.theme-synthwave .nav-item { color: #f8f8f2; border-color: #44475a; }
-body.theme-synthwave .nav-item.nav-action:hover { background: #44475a; color: #ff79c6; }
-body.theme-synthwave .nav-item.nav-highlight { background: #ff79c6; }
-body.theme-synthwave .nav-item.nav-bracketed { color: #8be9fd; }
-
-body.theme-synthwave #input-area { background: #1e1f29; border-color: #44475a; }
-body.theme-synthwave #input-area textarea { background: #1e1f29; color: #bd93f9; border-color: #44475a; }
-
-body.theme-synthwave .chord-row { background: rgba(40,42,54,0.85); border-color: #44475a; }
-body.theme-synthwave .chord-row:hover { background: rgba(68,71,90,0.85); }
-body.theme-synthwave .chord-meta { border-color: #44475a; }
-body.theme-synthwave .chord-keyboard-wrap { border-color: #44475a; }
-body.theme-synthwave .chord-label { color: #6272a4; }
-body.theme-synthwave .chord-name-display { color: #ff79c6; }
-body.theme-synthwave .voicing-label { color: #6272a4; }
-body.theme-synthwave .hex-box { background: #282a36; border-color: #44475a; color: #f1fa8c; }
-body.theme-synthwave .hex-box:hover { border-color: #ff79c6; }
-
-body.theme-synthwave .btn { background: #44475a; border-color: #44475a; color: #f8f8f2; }
-body.theme-synthwave .btn:hover { background: #6272a4; color: #ff79c6; }
-body.theme-synthwave .btn-primary { background: #ff79c6; border-color: #ff79c6; color: #282a36; }
-body.theme-synthwave .btn-primary:hover { background: #ffb8e2; box-shadow: 0 0 14px rgba(255,121,198,0.5); }
-
-body.theme-synthwave #step-strip { background: rgba(40,42,54,0.95); border-left-color: #44475a; }
-body.theme-synthwave .step-num { color: #44475a; border-color: #44475a; }
-body.theme-synthwave .step-num:hover { color: #ff79c6; }
-
-body.theme-synthwave .sidebar-title { color: #ff79c6; }
-body.theme-synthwave .sidebar-section-title { color: #ff79c6; border-color: #44475a; }
-body.theme-synthwave .sidebar-divider { border-color: #44475a; }
-body.theme-synthwave .sidebar-input { background: #282a36; border-color: #44475a; color: #f8f8f2; }
-body.theme-synthwave .sidebar-select { background: #282a36; border-color: #44475a; color: #8be9fd; }
-body.theme-synthwave input[type="range"] { background: #44475a; accent-color: #ff79c6; }
-body.theme-synthwave input[type="range"]::-webkit-slider-thumb { background: #ff79c6; }
-
-/* Synthwave header glow (used in easter egg mode) */
-body.theme-synthwave #app-title {
-  font-family: var(--label-font);
-  letter-spacing: 2px;
-  text-shadow: 0 2px 8px #ff79c6, 0 0px 32px #8be9fd;
-  color: #ff79c6 !important;
-  display: block !important;
-}
-
-/* ============================================================
    DISK MODAL
    ============================================================ */
 .disk-modal {
@@ -920,6 +857,44 @@ body {
 
 .cmd-suggestion-full {
   color: var(--accent);
+}
+
+/* Konami code easter egg: a little Pac-Man sweep across the prompt */
+.konami-track {
+  position: relative;
+  height: 26px;
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+}
+
+.konami-dot {
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: #ffb8ae;
+}
+
+.konami-pac {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  margin-top: -10px;
+  border-radius: 50%;
+  background: #ffea00;
+}
+
+.konami-done {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 8px;
+  text-shadow: 0 0 8px var(--accent-dim);
 }
 
 .crt-scanlines {

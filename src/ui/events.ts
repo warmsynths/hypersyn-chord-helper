@@ -1,6 +1,5 @@
 
 import {
-  toggleVideoBg,
   playChordProgression,
   stopChordProgression,
 } from "../core/core";
@@ -207,49 +206,12 @@ export const playSingleChord = (): void => {
   playSingleChordGlobal(parsed);
 };
 
-// ─── Konami Code Easter Egg ─────────────────────────────────────────
-
-const KONAMI_SEQUENCE = [
-  "ArrowUp", "ArrowUp",
-  "ArrowDown", "ArrowDown",
-  "ArrowLeft", "ArrowRight",
-  "ArrowLeft", "ArrowRight",
-  "b", "a",
-];
-
-let konamiBuffer: string[] = [];
-
-function handleKonamiKey(e: KeyboardEvent): void {
-  konamiBuffer.push(e.key);
-  if (konamiBuffer.length > KONAMI_SEQUENCE.length) {
-    konamiBuffer.shift();
-  }
-  if (konamiBuffer.join(",") === KONAMI_SEQUENCE.join(",")) {
-    konamiBuffer = [];
-    const body    = document.body;
-    const isOn    = body.classList.toggle("theme-synthwave");
-    const videoBg = document.getElementById("video-bg");
-    const appTitle = document.getElementById("app-title");
-
-    if (videoBg)  videoBg.style.display  = isOn ? "block" : "none";
-    if (appTitle) appTitle.style.display = isOn ? "block" : "none";
-
-    showToast(
-      isOn ? "🎮 Synthwave easter egg activated!" : "🎮 Back to tracker mode",
-      isOn ? "success" : "info"
-    );
-  }
-}
-
 // ─── Wire all event listeners ───────────────────────────────────────
 
 /**
  * Wires up all DOM event listeners for the app UI.
  */
 export const wireEventListeners = (): void => {
-
-  // Konami code — works any time
-  document.addEventListener("keydown", handleKonamiKey);
 
 
 
@@ -375,9 +337,6 @@ export const wireEventListeners = (): void => {
     });
 
 
-
-    // ── Video toggle (legacy — now hidden in sidebar info section) ──
-    document.getElementById("toggleVideoBtn")?.addEventListener("click", toggleVideoBg);
 
     // ── Convert / Clear / Single Chord ──
     document.getElementById("convertChordsBtn")?.addEventListener("click", () => {

@@ -113,6 +113,70 @@ const renderSuggestion = (raw: string): void => {
   el.innerHTML = `&#8677; tab -&gt; <span class="cmd-suggestion-full">${escapeHtml(s.full)}</span> &mdash; ${escapeHtml(s.desc)}`;
 };
 
+// ─── Konami code easter egg (Pac-Man sweep) ──────────────────────────
+const KONAMI_SEQ = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "b", "a"];
+const PACMAN_STEPS = 22;
+const PACMAN_DOTS = 20;
+let konamiIdx = 0;
+let konamiRunning = false;
+
+const pacmanMouthClip = (pos: number): string =>
+  pos % 2 === 0
+    ? "polygon(50% 50%, 100% 8%, 100% 0%, 0% 0%, 0% 100%, 100% 100%, 100% 92%)"
+    : "circle(50%)";
+
+const renderKonamiDots = (pos: number): void => {
+  const dotsEl = document.getElementById("konamiDots");
+  if (!dotsEl) return;
+  let html = "";
+  for (let i = 0; i < PACMAN_DOTS; i++) {
+    if (i > pos * (PACMAN_DOTS / PACMAN_STEPS)) {
+      html += `<div class="konami-dot" style="left:${(6 + i * 4.4).toFixed(1)}%;"></div>`;
+    }
+  }
+  dotsEl.innerHTML = html;
+};
+
+const runKonamiAnimation = (): void => {
+  if (konamiRunning) return;
+  konamiRunning = true;
+  const track = document.getElementById("konamiTrack");
+  const pac = document.getElementById("konamiPac");
+  const done = document.getElementById("konamiDone");
+  if (done) done.style.display = "none";
+  if (track) track.style.display = "flex";
+
+  let pos = 0;
+  const tick = () => {
+    if (pos <= PACMAN_STEPS) {
+      renderKonamiDots(pos);
+      if (pac) {
+        pac.style.left = ((pos / PACMAN_STEPS) * 92).toFixed(1) + "%";
+        pac.style.clipPath = pacmanMouthClip(pos);
+      }
+      pos++;
+      setTimeout(tick, 220);
+    } else {
+      if (track) track.style.display = "none";
+      if (done) done.style.display = "block";
+      konamiRunning = false;
+      setTimeout(() => {
+        if (done) done.style.display = "none";
+      }, 1200);
+    }
+  };
+  tick();
+};
+
+const handleKonamiKey = (key: string): void => {
+  const want = KONAMI_SEQ[konamiIdx];
+  konamiIdx = key === want ? konamiIdx + 1 : key === KONAMI_SEQ[0] ? 1 : 0;
+  if (konamiIdx === KONAMI_SEQ.length) {
+    konamiIdx = 0;
+    runKonamiAnimation();
+  }
+};
+
 const loadProgression = (raw: string): void => {
   const input = document.getElementById("chordsInput") as HTMLInputElement | null;
   if (input) {
@@ -184,6 +248,18 @@ export const initTerminal = (): void => {
   input?.addEventListener("input", () => renderSuggestion(input.value));
 
   input?.addEventListener("keydown", (e: KeyboardEvent) => {
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleKonamiKey(e.key);
+      return;
+    }
+    const lowerKey = e.key.toLowerCase();
+    if ((lowerKey === "b" || lowerKey === "a") && konamiIdx >= 8) {
+      e.stopPropagation();
+      handleKonamiKey(lowerKey);
+      return;
+    }
     if (e.key === "Tab") {
       const s = getSuggestion(input.value);
       if (s) {
