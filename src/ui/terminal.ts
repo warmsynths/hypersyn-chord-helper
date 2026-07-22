@@ -53,7 +53,7 @@ const helpText = [
 const aboutText = [
   "01  type a progression      e.g. Am7 Dm9 G13 Cmaj7 — press enter to load",
   "02  read the hex            each chord line prints hex codes ready for Hypersyn on M8",
-  "03  click a chord line      expands it — up/down cycles voicings, plays each one",
+  "03  click a chord line      expands it — up/down (or tap ▲▼) cycles voicings, plays each one",
   "04  mode notes|intervals    notes = hex bakes in the root, paste straight into Hypersyn",
   "                            intervals = chord shape only — you set the root on the device",
 ].join("\n");
@@ -269,6 +269,46 @@ export const initTerminal = (): void => {
       }
     }
   });
+
+  // Touch equivalent of the Konami sequence — no arrow keys on mobile, so a
+  // swipe stands in for each arrow direction, and a tap (once all four swipe
+  // pairs match) stands in for the trailing "b"/"a" key presses.
+  const crtBox = document.getElementById("crt-box");
+  const SWIPE_THRESHOLD = 40;
+  let touchStartX = 0;
+  let touchStartY = 0;
+
+  crtBox?.addEventListener(
+    "touchstart",
+    (e: TouchEvent) => {
+      const t = e.touches[0];
+      touchStartX = t.clientX;
+      touchStartY = t.clientY;
+    },
+    { passive: true }
+  );
+
+  crtBox?.addEventListener(
+    "touchend",
+    (e: TouchEvent) => {
+      const t = e.changedTouches[0];
+      const dx = t.clientX - touchStartX;
+      const dy = t.clientY - touchStartY;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+
+      if (Math.max(absDx, absDy) >= SWIPE_THRESHOLD) {
+        const dir = absDx > absDy ? (dx > 0 ? "ArrowRight" : "ArrowLeft") : dy > 0 ? "ArrowDown" : "ArrowUp";
+        handleKonamiKey(dir);
+      } else if (konamiIdx >= 8) {
+        const target = e.target as HTMLElement;
+        if (!target.closest("button, input, a, .hex-box")) {
+          handleKonamiKey(konamiIdx === 8 ? "b" : "a");
+        }
+      }
+    },
+    { passive: true }
+  );
 
   const boot = () => {
     const initInput = document.getElementById("chordsInput") as HTMLInputElement | null;

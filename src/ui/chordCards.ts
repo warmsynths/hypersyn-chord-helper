@@ -224,7 +224,7 @@ export const convertChordsUI = (
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
               <span class="chord-name-display">${chord.root}${chord.type}</span>
               <span class="voicing-chip" id="voicingChip${i}">ROOT</span>
-              <button class="btn btn-muted chord-play-btn" data-chord-idx="${i}" title="Play Chord" style="padding:3px 6px; height:20px; display:flex; align-items:center; justify-content:center;">
+              <button class="chord-play-btn" data-chord-idx="${i}" title="Play Chord">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
               </button>
             </div>
@@ -233,7 +233,13 @@ export const convertChordsUI = (
         </div>
 
         <div class="voicing-drawer" id="voicing-drawer${i}" style="display:none;">
-          <div class="voicing-hint">&#8593;/&#8595; cycle voicing · plays on change</div>
+          <div class="voicing-hint">
+            <span class="voicing-hint-text">&#8593;/&#8595; cycle voicing · plays on change</span>
+            <span class="voicing-nudge-btns">
+              <button class="voicing-nudge-btn" data-chord-idx="${i}" data-dir="1" title="Previous voicing">&#9650;</button>
+              <button class="voicing-nudge-btn" data-chord-idx="${i}" data-dir="-1" title="Next voicing">&#9660;</button>
+            </span>
+          </div>
           <div class="voicing-diffs" id="voicingDiffs${i}"></div>
         </div>
       </div>`;
@@ -254,6 +260,17 @@ export const convertChordsUI = (
         const idxStr = playBtn.dataset.chordIdx;
         if (idxStr) {
           playChordProgression([currentNotesFor(parseInt(idxStr, 10))]);
+        }
+        return;
+      }
+
+      // Voicing nudge buttons (touch-friendly equivalent of ↑/↓)
+      const nudgeBtn = t.closest(".voicing-nudge-btn") as HTMLElement;
+      if (nudgeBtn) {
+        const idxStr = nudgeBtn.dataset.chordIdx;
+        const dir = nudgeBtn.dataset.dir;
+        if (idxStr && dir) {
+          cycleVoicing(parseInt(idxStr, 10), parseInt(dir, 10));
         }
         return;
       }

@@ -335,6 +335,29 @@ body {
   display: inline-block;
 }
 
+.chord-play-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border-hi);
+  border-radius: 2px;
+  color: var(--accent);
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.chord-play-btn:hover,
+.chord-play-btn:active {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+}
+
 /* Voicing drawer: hint + note diffs shown while a row is expanded */
 .voicing-drawer {
   margin: 0 0 4px 24px;
@@ -343,9 +366,40 @@ body {
 }
 
 .voicing-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   color: var(--text-dim);
   font-size: 0.68rem;
   margin-bottom: 4px;
+}
+
+.voicing-nudge-btns {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.voicing-nudge-btn {
+  font-family: var(--label-font);
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 3px 8px;
+  background: transparent;
+  border: 1px solid var(--border-hi);
+  border-radius: 2px;
+  color: var(--accent);
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.voicing-nudge-btn:hover,
+.voicing-nudge-btn:active {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
 }
 
 .voicing-diff-row {
