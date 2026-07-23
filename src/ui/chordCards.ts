@@ -19,9 +19,6 @@ let diffsByChord: Record<number, { label: string; oldHex: string; newHex: string
 /** Which chord row is currently expanded (only one at a time), or null. */
 let expandedIdx: number | null = null;
 
-/** Set right after a swipe-driven voicing change, to swallow the click a touchend also fires. */
-let suppressNextRowClick = false;
-
 // ─── Fixed voicing set ────────────────────────────────────────────────
 // A small, common set of voicings applied as octave shifts over the
 // chord's base note stack — no drag/window interaction, just ↑/↓ to cycle.
@@ -224,18 +221,16 @@ export const convertChordsUI = (
             <span class="chord-arrow">-&gt;</span>
           </div>
           <div class="hex-boxes" id="hexBoxes${i}">${hexBoxes}</div>
-        </div>
-
-        <div class="voicing-drawer" id="voicing-drawer${i}" style="display:none;">
-          <div class="voicing-info">
-            <div class="voicing-hint voicing-hint-desktop">&#8593;/&#8595; cycle voicing · plays on change</div>
-            <div class="voicing-hint voicing-hint-mobile">swipe or tap &#9650;&#9660; · plays on change</div>
-            <div class="voicing-diffs" id="voicingDiffs${i}"></div>
-          </div>
           <div class="voicing-taps">
             <button class="voicing-tap-btn" data-chord-idx="${i}" data-dir="1" title="Previous voicing">&#9650;</button>
             <button class="voicing-tap-btn" data-chord-idx="${i}" data-dir="-1" title="Next voicing">&#9660;</button>
           </div>
+        </div>
+
+        <div class="voicing-drawer" id="voicing-drawer${i}" style="display:none;">
+          <div class="voicing-hint voicing-hint-desktop">&#8593;/&#8595; cycle voicing · plays on change</div>
+          <div class="voicing-hint voicing-hint-mobile">tap &#9650;&#9660; to cycle · plays on change</div>
+          <div class="voicing-diffs" id="voicingDiffs${i}"></div>
         </div>
       </div>`;
   });
@@ -267,14 +262,12 @@ export const convertChordsUI = (
         return;
       }
 
-      // Click a row (outside the tap buttons / hex box) → expand/collapse it,
-      // unless a swipe on this row just handled a voicing change.
+      // Clicking the expanded drawer's hint/diffs text shouldn't collapse the row.
+      if (t.closest(".voicing-drawer")) return;
+
+      // Click a row (outside the tap buttons / hex box / drawer) → expand/collapse it.
       const wrapper = t.closest(".chord-row-wrapper") as HTMLElement;
       if (wrapper) {
-        if (suppressNextRowClick) {
-          suppressNextRowClick = false;
-          return;
-        }
         const idxStr = wrapper.dataset.chordIdx;
         if (idxStr) setExpanded(parseInt(idxStr, 10));
       }
@@ -289,41 +282,6 @@ export const convertChordsUI = (
       e.preventDefault();
       cycleVoicing(parseInt(idxStr, 10), e.key === "ArrowUp" ? 1 : -1);
     });
-
-    // Swipe up/down on an expanded row cycles voicing (no arrow keys on mobile).
-    let touchStartY: number | null = null;
-
-    listEl.addEventListener(
-      "touchstart",
-      (e: TouchEvent) => {
-        touchStartY = e.touches[0].clientY;
-      },
-      { passive: true }
-    );
-
-    listEl.addEventListener(
-      "touchend",
-      (e: TouchEvent) => {
-        const wrapper = (e.target as HTMLElement).closest(".chord-row-wrapper") as HTMLElement;
-        const idxStr = wrapper?.dataset.chordIdx;
-        if (!wrapper || idxStr === undefined || touchStartY === null) {
-          touchStartY = null;
-          return;
-        }
-        const idx = parseInt(idxStr, 10);
-        if (idx !== expandedIdx) {
-          touchStartY = null;
-          return;
-        }
-        const dy = e.changedTouches[0].clientY - touchStartY;
-        touchStartY = null;
-        if (Math.abs(dy) > 20) {
-          suppressNextRowClick = true;
-          cycleVoicing(idx, dy < 0 ? 1 : -1);
-        }
-      },
-      { passive: true }
-    );
   }
 };
 
