@@ -338,6 +338,7 @@ body {
   letter-spacing: 0.05em;
   padding: 1px 6px;
   border-radius: 2px;
+  touch-action: manipulation;
 }
 
 .chord-row-wrapper.expanded .voicing-chip {
@@ -357,12 +358,15 @@ body {
   margin-bottom: 4px;
 }
 
-.voicing-hint-mobile,
-.voicing-taps {
+.voicing-hint-label {
+  color: var(--accent);
+}
+
+.voicing-hint-mobile {
   display: none;
 }
 
-@media (hover: none) and (pointer: coarse) {
+@media (max-width: 480px) {
   .voicing-hint-desktop {
     display: none;
   }
@@ -371,37 +375,9 @@ body {
     display: block;
   }
 
-  .chord-row-wrapper.expanded .voicing-taps {
-    display: flex;
+  .voicing-chip {
+    cursor: pointer;
   }
-}
-
-/* Tap ▲▼ buttons — inline in the row itself, shown only while expanded (touch only) */
-.voicing-taps {
-  gap: 2px;
-  flex-shrink: 0;
-  margin-left: auto;
-}
-
-.voicing-tap-btn {
-  width: 36px;
-  height: 36px;
-  background: transparent;
-  border: none;
-  color: var(--accent);
-  font-family: var(--label-font);
-  font-size: 13px;
-  line-height: 1;
-  cursor: pointer;
-  touch-action: manipulation;
-  opacity: 0.85;
-  transition: opacity 120ms ease-out;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.voicing-tap-btn:active {
-  opacity: 1;
 }
 
 .voicing-diff-row {

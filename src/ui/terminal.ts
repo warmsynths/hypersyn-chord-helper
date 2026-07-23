@@ -53,7 +53,7 @@ const helpText = [
 const aboutText = [
   "01  type a progression      e.g. Am7 Dm9 G13 Cmaj7 — press enter to load",
   "02  read the hex            each chord line prints hex codes ready for Hypersyn on M8",
-  "03  click a chord line      expands it — up/down (or tap ▲▼) cycles voicings, plays each one",
+  "03  click a chord line      expands it — up/down cycles voicings, plays each one",
   "04  mode notes|intervals    notes = hex bakes in the root, paste straight into Hypersyn",
   "                            intervals = chord shape only — you set the root on the device",
 ].join("\n");

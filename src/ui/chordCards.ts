@@ -67,11 +67,12 @@ function renderRow(idx: number): void {
   const hexEl = document.getElementById("hexBoxes" + idx);
   if (hexEl) hexEl.innerHTML = renderHexBoxes(notes, chord.midiRoot ?? 60);
 
+  const label = VOICINGS[voicingIdxByChord[idx] ?? 0]?.label ?? "ROOT";
   const chipEl = document.getElementById("voicingChip" + idx);
-  if (chipEl) {
-    const label = VOICINGS[voicingIdxByChord[idx] ?? 0]?.label ?? "ROOT";
-    chipEl.textContent = label;
-  }
+  if (chipEl) chipEl.textContent = label;
+
+  const hintLabelEl = document.getElementById("voicingHintLabel" + idx);
+  if (hintLabelEl) hintLabelEl.textContent = label;
 
   const rootHintEl = document.getElementById("rootHint" + idx);
   if (rootHintEl) rootHintEl.style.display = isIntervalOnly ? "inline" : "none";
@@ -221,15 +222,11 @@ export const convertChordsUI = (
             <span class="chord-arrow">-&gt;</span>
           </div>
           <div class="hex-boxes" id="hexBoxes${i}">${hexBoxes}</div>
-          <div class="voicing-taps">
-            <button class="voicing-tap-btn" data-chord-idx="${i}" data-dir="1" title="Previous voicing">&#9650;</button>
-            <button class="voicing-tap-btn" data-chord-idx="${i}" data-dir="-1" title="Next voicing">&#9660;</button>
-          </div>
         </div>
 
         <div class="voicing-drawer" id="voicing-drawer${i}" style="display:none;">
           <div class="voicing-hint voicing-hint-desktop">&#8593;/&#8595; cycle voicing · plays on change</div>
-          <div class="voicing-hint voicing-hint-mobile">tap &#9650;&#9660; to cycle · plays on change</div>
+          <div class="voicing-hint voicing-hint-mobile">tap <span class="voicing-hint-label" id="voicingHintLabel${i}">ROOT</span> to cycle · plays on change</div>
           <div class="voicing-diffs" id="voicingDiffs${i}"></div>
         </div>
       </div>`;
@@ -244,14 +241,12 @@ export const convertChordsUI = (
     listEl.addEventListener("click", (e: MouseEvent) => {
       const t = e.target as HTMLElement;
 
-      // Voicing tap buttons (touch-friendly equivalent of ↑/↓)
-      const tapBtn = t.closest(".voicing-tap-btn") as HTMLElement;
-      if (tapBtn) {
-        const idxStr = tapBtn.dataset.chordIdx;
-        const dir = tapBtn.dataset.dir;
-        if (idxStr && dir) {
-          cycleVoicing(parseInt(idxStr, 10), parseInt(dir, 10));
-        }
+      // Tapping/clicking the voicing badge cycles forward (works on any device).
+      const chip = t.closest(".voicing-chip") as HTMLElement;
+      if (chip) {
+        const wrapperEl = chip.closest(".chord-row-wrapper") as HTMLElement;
+        const idxStr = wrapperEl?.dataset.chordIdx;
+        if (idxStr) cycleVoicing(parseInt(idxStr, 10), 1);
         return;
       }
 
