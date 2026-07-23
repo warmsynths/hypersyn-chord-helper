@@ -320,6 +320,15 @@ body {
   min-width: 52px;
 }
 
+.chord-root-hint {
+  color: var(--text-dim);
+  font-size: 0.68rem;
+}
+
+.chord-arrow {
+  color: var(--text-dim);
+}
+
 .voicing-chip {
   display: none;
   color: #000;
@@ -456,20 +465,6 @@ body {
   pointer-events: none;
 }
 
-/* ---- Output toggle area ---- */
-.hex-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-}
-
-.hex-note-name {
-  color: var(--text-dim);
-  font-size: 0.6rem;
-  letter-spacing: 0.05em;
-  font-family: var(--label-font);
-}
 
 #output-toggle-row {
   display: flex;

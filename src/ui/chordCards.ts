@@ -48,9 +48,8 @@ function renderHexBoxes(notes: number[], midiRoot: number): string {
   return notes
     .map((midi) => {
       const { hex, tooltip } = hexForMidi(midi, midiRoot);
-      const noteName = Midi.midiToNoteName(midi);
       const classNames = isIntervalOnly ? "hex-box interval-mode" : "hex-box";
-      return `<div class="hex-col"><span class="${classNames}" title="${tooltip}" data-copy="${hex}">${hex}</span><span class="hex-note-name">${noteName}</span></div>`;
+      return `<span class="${classNames}" title="${tooltip}" data-copy="${hex}">${hex}</span>`;
     })
     .join("");
 }
@@ -76,6 +75,9 @@ function renderRow(idx: number): void {
     const label = VOICINGS[voicingIdxByChord[idx] ?? 0]?.label ?? "ROOT";
     chipEl.textContent = label;
   }
+
+  const rootHintEl = document.getElementById("rootHint" + idx);
+  if (rootHintEl) rootHintEl.style.display = isIntervalOnly ? "inline" : "none";
 
   const diffEl = document.getElementById("voicingDiffs" + idx);
   if (diffEl) {
@@ -198,14 +200,6 @@ export const convertChordsUI = (
   expandedIdx = null;
   baseNotesByChord = [];
 
-  // Unique group → 2-digit hex label
-  const chordNumMap: Record<string, string> = {};
-  result.uniqueGroups.forEach((group: any, idx: number) => {
-    group.chords.forEach((name: string) => {
-      chordNumMap[name] = idx.toString(16).toUpperCase().padStart(2, "0");
-    });
-  });
-
   result.chords.forEach((chord: any) => {
     chord.midiRoot = getMidiRoot(chord.root);
     baseNotesByChord.push((chord.intervalOnly ?? []).map((iv: number) => chord.midiRoot + iv));
@@ -215,7 +209,7 @@ export const convertChordsUI = (
   let html = '<div id="chord-list">';
 
   result.chords.forEach((chord: any, i: number) => {
-    const chordNum = chordNumMap[chord.chordName] ?? i.toString(16).toUpperCase().padStart(2, "0");
+    const idxLabel = String(i).padStart(2, "0");
     const notes = currentNotesFor(i);
     const hexBoxes = renderHexBoxes(notes, chord.midiRoot ?? 60);
 
@@ -223,9 +217,11 @@ export const convertChordsUI = (
       <div class="chord-row-wrapper" id="chord-row-wrapper${i}" data-chord-idx="${i}" tabindex="0">
         <div class="chord-row" id="chord-row-${i}">
           <div class="chord-meta">
-            <span class="chord-label">CHORD ${chordNum}</span>
+            <span class="chord-label">${idxLabel}</span>
             <span class="chord-name-display">${chord.root}${chord.type}</span>
             <span class="voicing-chip" id="voicingChip${i}">ROOT</span>
+            <span class="chord-root-hint" id="rootHint${i}" style="display:${isIntervalOnly ? "inline" : "none"};">root ${chord.root}</span>
+            <span class="chord-arrow">-&gt;</span>
           </div>
           <div class="hex-boxes" id="hexBoxes${i}">${hexBoxes}</div>
         </div>
