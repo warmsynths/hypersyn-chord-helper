@@ -11,7 +11,6 @@ describe('core module', () => {
     expect(typeof core.generateUUID).toBe('function');
     expect(typeof core.exportChordSets).toBe('function');
     expect(typeof core.importChordSets).toBe('function');
-    expect(typeof core.toggleVideoBg).toBe('function');
     expect(typeof core.showToast).toBe('function');
     expect(typeof core.getSavedChordSets).toBe('function');
     expect(typeof core.setSavedChordSets).toBe('function');
@@ -111,11 +110,13 @@ describe('core module', () => {
       gainMock = { connect: jest.fn().mockReturnThis(), disconnect: jest.fn(), gain: { setValueAtTime: jest.fn(), linearRampToValueAtTime: jest.fn() } };
       filterMock = { connect: jest.fn().mockReturnThis(), type: '', frequency: { value: 0 }, Q: { value: 0 } };
       convolverMock = { connect: jest.fn().mockReturnThis(), buffer: null };
+      const delayMock = { connect: jest.fn().mockReturnThis(), delayTime: { value: 0 } };
       const ctxMock = {
         createOscillator: () => oscMock,
         createGain: () => gainMock,
         createBiquadFilter: () => filterMock,
         createConvolver: () => convolverMock,
+        createDelay: () => delayMock,
         createBuffer: () => ({ getChannelData: () => new Float32Array(10) }),
         sampleRate: 44100,
         currentTime: 0,
@@ -300,8 +301,6 @@ describe('core module', () => {
     beforeEach(() => {
       document.body.innerHTML = `
         <div id="toastContainer"></div>
-        <div id="video-bg" style="display:block"></div>
-        <button id="toggleVideoBtn"></button>
         <select id="savedChordSetsSelect"></select>
         <input id="chordsInput" value="Cmaj7 Dm7 G7" />
         <input id="chordSetNameInput" value="TestSet" />
@@ -315,16 +314,6 @@ describe('core module', () => {
         key: jest.fn(() => null),
         get length() { return 0; }
       } as unknown as Storage;
-    });
-    it('toggleVideoBg toggles display', () => {
-      const btn = document.getElementById('toggleVideoBtn');
-      const video = document.getElementById('video-bg');
-      btn.textContent = 'Hide Video';
-      video.style.display = 'block';
-      core.toggleVideoBg();
-      expect(video.style.display).toBe('none');
-      core.toggleVideoBg();
-      expect(video.style.display).toBe('block');
     });
     it('updateSavedChordSetsDropdown populates select', () => {
       core.setSavedChordSets([{name:'Set1', chords:'Cmaj7', id:'1'}]);
@@ -364,11 +353,13 @@ describe('core module', () => {
       gainMock = { connect: jest.fn().mockReturnThis(), disconnect: jest.fn(), gain: { setValueAtTime: jest.fn(), linearRampToValueAtTime: jest.fn() } };
       filterMock = { connect: jest.fn().mockReturnThis(), type: '', frequency: { value: 0 }, Q: { value: 0 } };
       convolverMock = { connect: jest.fn().mockReturnThis(), buffer: null };
+      const delayMock = { connect: jest.fn().mockReturnThis(), delayTime: { value: 0 } };
       const ctxMock = {
         createOscillator: () => oscMock,
         createGain: () => gainMock,
         createBiquadFilter: () => filterMock,
         createConvolver: () => convolverMock,
+        createDelay: () => delayMock,
         createBuffer: () => ({ getChannelData: () => new Float32Array(10) }),
         sampleRate: 44100,
         currentTime: 0,

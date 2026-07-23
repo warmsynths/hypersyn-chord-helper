@@ -1,6 +1,5 @@
 
 import {
-  toggleVideoBg,
   playChordProgression,
   stopChordProgression,
 } from "../core/core";
@@ -15,12 +14,9 @@ import {
 import { convertChords } from "../core/chords";
 import {
   convertChordsUI,
-  updateChordVoicing,
-  updateChordKeyboardViz,
   getCurrentProgressionNotes,
   toggleIntervalMode,
 } from "./chordCards";
-import { updateKeyboardViz } from "./keyboardViz";
 import { showToast } from "./toast";
 import { parseChordName } from "../core/chords";
 import { playSingleChordGlobal } from "../core/core";
@@ -210,49 +206,12 @@ export const playSingleChord = (): void => {
   playSingleChordGlobal(parsed);
 };
 
-// ─── Konami Code Easter Egg ─────────────────────────────────────────
-
-const KONAMI_SEQUENCE = [
-  "ArrowUp", "ArrowUp",
-  "ArrowDown", "ArrowDown",
-  "ArrowLeft", "ArrowRight",
-  "ArrowLeft", "ArrowRight",
-  "b", "a",
-];
-
-let konamiBuffer: string[] = [];
-
-function handleKonamiKey(e: KeyboardEvent): void {
-  konamiBuffer.push(e.key);
-  if (konamiBuffer.length > KONAMI_SEQUENCE.length) {
-    konamiBuffer.shift();
-  }
-  if (konamiBuffer.join(",") === KONAMI_SEQUENCE.join(",")) {
-    konamiBuffer = [];
-    const body    = document.body;
-    const isOn    = body.classList.toggle("theme-synthwave");
-    const videoBg = document.getElementById("video-bg");
-    const appTitle = document.getElementById("app-title");
-
-    if (videoBg)  videoBg.style.display  = isOn ? "block" : "none";
-    if (appTitle) appTitle.style.display = isOn ? "block" : "none";
-
-    showToast(
-      isOn ? "🎮 Synthwave easter egg activated!" : "🎮 Back to tracker mode",
-      isOn ? "success" : "info"
-    );
-  }
-}
-
 // ─── Wire all event listeners ───────────────────────────────────────
 
 /**
  * Wires up all DOM event listeners for the app UI.
  */
 export const wireEventListeners = (): void => {
-
-  // Konami code — works any time
-  document.addEventListener("keydown", handleKonamiKey);
 
 
 
@@ -379,9 +338,6 @@ export const wireEventListeners = (): void => {
 
 
 
-    // ── Video toggle (legacy — now hidden in sidebar info section) ──
-    document.getElementById("toggleVideoBtn")?.addEventListener("click", toggleVideoBg);
-
     // ── Convert / Clear / Single Chord ──
     document.getElementById("convertChordsBtn")?.addEventListener("click", () => {
       if (!hasConverted) {
@@ -447,39 +403,20 @@ export const wireEventListeners = (): void => {
     updateSingleChordDropdownFromInput();
     updateSavedChordSetsDropdown();
 
-    // ── Legacy keyboard viz (no-op in new UI) ──
-    updateKeyboardViz();
-
     // ── Load progression from URL query string if present ──
     const params = new URLSearchParams(window.location.search);
-    const stateParam = params.get('state');
-
-    if (stateParam) {
-      import('human-engine').then(engine => {
-        try {
-          const sharedState = engine.decodeProgression(stateParam);
-          if (sharedState && sharedState.chords && sharedState.chords.length > 0) {
-            const chordStr = sharedState.chords.map((sc: any) => sc.symbol).join(' ');
-            loadSetsData([chordStr]);
-          }
-        } catch (e) {
-          console.error("Failed to decode shared state", e);
-        }
-      }).catch(err => console.warn('human-engine not available for decoding state', err));
-    } else {
-      let pParams = params.getAll('p');
-      if (pParams.length === 0) {
-        pParams = params.getAll('progression');
-      }
-      if (pParams.length > 0) {
-        const querySets: string[] = [];
-        pParams.forEach(param => {
-          const parts = param.split(';');
-          querySets.push(...parts);
-        });
-        if (querySets.length > 0 && querySets.some(s => s.trim() !== "")) {
-          loadSetsData(querySets);
-        }
+    let pParams = params.getAll('p');
+    if (pParams.length === 0) {
+      pParams = params.getAll('progression');
+    }
+    if (pParams.length > 0) {
+      const querySets: string[] = [];
+      pParams.forEach(param => {
+        const parts = param.split(';');
+        querySets.push(...parts);
+      });
+      if (querySets.length > 0 && querySets.some(s => s.trim() !== "")) {
+        loadSetsData(querySets);
       }
     }
   });

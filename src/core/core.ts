@@ -134,20 +134,6 @@ export function importChordSets(fileInput) {
 }
 
 /**
- * Toggles the synthwave video background visibility.
- *
- * @public
- */
-export function toggleVideoBg() {
-  const videoBg = document.getElementById("video-bg");
-  const btn = document.getElementById("toggleVideoBtn");
-  if (!videoBg || !btn) return;
-  const isHidden = videoBg.style.display === "none";
-  videoBg.style.display = isHidden ? "block" : "none";
-  btn.textContent = isHidden ? "Hide Video" : "Show Video";
-}
-
-/**
  * Toast notification system (Tailwind styled).
  *
  * @param {string} message - The message to display.
@@ -399,9 +385,109 @@ export function applyVoicing(intervals, voicing) {
 let _activeOscillators = [];
 let _activeGains = [];
 let _hypersynAudioCtx = null;
-let _hypersynReverb = null;
+let _hypersynFxBus = null;
 let _loopTimeout = null;
 let _endTimeout = null;
+
+/**
+ * Builds (once per AudioContext) the shared Juno-60-style pad effects bus:
+ * a chorus (LFO-modulated delay, dry/wet mixed) feeding a short plate-style
+ * reverb. Every voice's amp envelope connects into `bus.input`.
+ *
+ * @param {AudioContext} ctx
+ * @returns {{ input: GainNode }}
+ */
+function getJuno60FxBus(ctx) {
+  if (_hypersynFxBus && _hypersynFxBus.ctx === ctx) return _hypersynFxBus;
+
+  const input = ctx.createGain();
+  input.gain.value = 1;
+
+  // --- Chorus: classic Juno-style LFO-modulated short delay, dry/wet mixed ---
+  const chorusDelay = ctx.createDelay(0.05);
+  chorusDelay.delayTime.value = 0.014;
+  const chorusLfo = ctx.createOscillator();
+  chorusLfo.type = "sine";
+  chorusLfo.frequency.value = 0.4;
+  const chorusDepth = ctx.createGain();
+  chorusDepth.gain.value = 0.004; // seconds of delay-time modulation
+  chorusLfo.connect(chorusDepth).connect(chorusDelay.delayTime);
+  chorusLfo.start();
+
+  const chorusWet = ctx.createGain();
+  chorusWet.gain.value = 0.35;
+
+  const dryWetMix = ctx.createGain(); // sums dry + chorused signal
+  input.connect(dryWetMix); // dry
+  input.connect(chorusDelay);
+  chorusDelay.connect(chorusWet).connect(dryWetMix);
+
+  // --- A little reverb: short exponential-decay impulse, mixed in lightly ---
+  const reverbLength = Math.floor(ctx.sampleRate * 1.4);
+  const impulse = ctx.createBuffer(2, reverbLength, ctx.sampleRate);
+  for (let c = 0; c < 2; c++) {
+    const channel = impulse.getChannelData(c);
+    for (let i = 0; i < reverbLength; i++) {
+      channel[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / reverbLength, 3);
+    }
+  }
+  const convolver = ctx.createConvolver();
+  convolver.buffer = impulse;
+
+  const reverbWet = ctx.createGain();
+  reverbWet.gain.value = 0.16;
+
+  dryWetMix.connect(ctx.destination);
+  dryWetMix.connect(convolver).connect(reverbWet).connect(ctx.destination);
+
+  _hypersynFxBus = { ctx, input };
+  return _hypersynFxBus;
+}
+
+/**
+ * Starts one Juno-60-style pad voice (two slightly detuned sawtooth DCOs
+ * through a warm lowpass) for a single MIDI note, with a short, snappy
+ * attack so notes speak immediately, routed into the shared chorus+reverb bus.
+ *
+ * @param {AudioContext} ctx
+ * @param {number} midi
+ * @param {number} time - AudioContext time to start at
+ * @param {number} duration - total voice duration in seconds
+ * @param {number} volume - peak gain
+ * @param {GainNode} fxInput - shared chorus/reverb bus input
+ * @returns {{ oscillators: OscillatorNode[], gain: GainNode }}
+ */
+function playJuno60PadVoice(ctx, midi, time, duration, volume, fxInput) {
+  const freq = 440 * Math.pow(2, (midi - 69) / 12);
+  const gain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = 2200; // midrange warmth — not dark, not bright
+  filter.Q.value = 0.7;
+
+  const attack = 0.04; // snappy — notes speak immediately
+  const release = 1.2;
+  gain.gain.setValueAtTime(0.0, time);
+  gain.gain.linearRampToValueAtTime(volume, time + attack);
+  gain.gain.setValueAtTime(volume, time + duration - release);
+  gain.gain.linearRampToValueAtTime(0.0, time + duration);
+
+  filter.connect(gain).connect(fxInput);
+
+  // Two detuned sawtooth DCOs per note for Juno-style unison thickness.
+  const oscillators = [-7, 7].map((detune) => {
+    const osc = ctx.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.value = freq;
+    osc.detune.value = detune;
+    osc.connect(filter);
+    osc.start(time);
+    osc.stop(time + duration);
+    return osc;
+  });
+
+  return { oscillators, gain };
+}
 
 export function stopChordProgression() {
   if (_loopTimeout) {
@@ -433,8 +519,8 @@ export function stopChordProgression() {
 /**
  * Plays the input chord progression as block chords using the Web Audio API.
  *
- * Each chord is played for 2.5 seconds as a synth pad. Uses the current value of #chordsInput and #volumeSlider.
- * Handles audio context setup, reverb, and applies the selected voicing to each chord.
+ * Each chord is played for 2.5 seconds through a Juno-60-style pad voice
+ * (detuned dual-saw + lowpass, chorus, a little reverb).
  *
  * @returns {void}
  */
@@ -454,28 +540,13 @@ export function playChordProgression(chordNotesArray?: any[], loop = false, onEn
     ctx.resume();
   }
 
-  // --- Simple Reverb Setup ---
-  if (!_hypersynReverb) {
-    // Create impulse response for reverb (simple exponential decay)
-    const length = ctx.sampleRate * 2.5; // 2.5s reverb tail
-    const impulse = ctx.createBuffer(2, length, ctx.sampleRate);
-    for (let c = 0; c < 2; c++) {
-      const channel = impulse.getChannelData(c);
-      for (let i = 0; i < length; i++) {
-        channel[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2.5);
-      }
-    }
-    const convolver = ctx.createConvolver();
-    convolver.buffer = impulse;
-    _hypersynReverb = convolver;
-  }
-  const reverb = _hypersynReverb;
+  const fxBus = getJuno60FxBus(ctx);
 
   let time = ctx.currentTime;
   const chordDuration = 2.5; // slower pad, longer chords
 
   stopChordProgression(); // Stop any previous notes
-  
+
   // Use a hardcoded volume of 0.05 since the slider is removed
   const volume = 0.05;
   _activeOscillators = [];
@@ -484,32 +555,9 @@ export function playChordProgression(chordNotesArray?: any[], loop = false, onEn
   chordNotesArray.forEach((notes) => {
     notes.forEach((midi) => {
       if (!isFinite(midi)) return;
-      let freq = 440 * Math.pow(2, (midi - 69) / 12);
-      if (!isFinite(freq)) return;
-      let osc = ctx.createOscillator();
-      let gain = ctx.createGain();
-      let filter = ctx.createBiquadFilter();
-      osc.type = "triangle";
-      osc.frequency.value = freq;
-      osc.detune.value = Math.random() * 10 - 5;
-      filter.type = "lowpass";
-      filter.frequency.value = 220;
-      filter.Q.value = 1.4;
-      const attack = 1.0;
-      const release = 1.2;
-      gain.gain.setValueAtTime(0.0, time);
-      gain.gain.linearRampToValueAtTime(volume, time + attack);
-      gain.gain.setValueAtTime(volume, time + chordDuration - release);
-      gain.gain.linearRampToValueAtTime(0.0, time + chordDuration);
-      osc
-        .connect(filter)
-        .connect(gain)
-        .connect(reverb)
-        .connect(ctx.destination);
-      osc.start(time);
-      osc.stop(time + chordDuration);
-      _activeOscillators.push(osc);
-      _activeGains.push(gain);
+      const voice = playJuno60PadVoice(ctx, midi, time, chordDuration, volume, fxBus.input);
+      _activeOscillators.push(...voice.oscillators);
+      _activeGains.push(voice.gain);
     });
     time += chordDuration;
   });
@@ -811,27 +859,10 @@ export function playSingleChordGlobal(chord) {
   if (ctx.state === "suspended") {
     ctx.resume();
   }
-  // --- Simple Reverb Setup ---
-  if (!_hypersynReverb) {
-    const length = ctx.sampleRate * 2.5;
-    const impulse = ctx.createBuffer(2, length, ctx.sampleRate);
-    for (let c = 0; c < 2; c++) {
-      const channel = impulse.getChannelData(c);
-      for (let i = 0; i < length; i++) {
-        channel[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2.5);
-      }
-    }
-    const convolver = ctx.createConvolver();
-    convolver.buffer = impulse;
-    _hypersynReverb = convolver;
-  }
-  const reverb = _hypersynReverb;
+  const fxBus = getJuno60FxBus(ctx);
   stopChordProgression();
-  const volume =
-    parseInt(
-      (document.getElementById("volumeSlider") as HTMLInputElement).value,
-      10
-    ) / 100;
+  // Use a hardcoded volume of 0.05 since the slider is removed
+  const volume = 0.05;
   _activeOscillators = [];
   _activeGains = [];
   let rootMidi = ROOTS[chord.root] || 60;
@@ -843,32 +874,13 @@ export function playSingleChordGlobal(chord) {
     (x) => typeof x === "number" && isFinite(x)
   );
   intervals = applyVoicing(intervals, voicing);
+  const time = ctx.currentTime;
+  const chordDuration = 2.5;
   intervals.forEach((semi) => {
     let midi = rootMidi + semi;
     if (!isFinite(midi)) return;
-    let freq = 440 * Math.pow(2, (midi - 69) / 12);
-    if (!isFinite(freq)) return;
-    let osc = ctx.createOscillator();
-    let gain = ctx.createGain();
-    let filter = ctx.createBiquadFilter();
-    osc.type = "triangle";
-    osc.frequency.value = freq;
-    osc.detune.value = Math.random() * 10 - 5;
-    filter.type = "lowpass";
-    filter.frequency.value = 220;
-    filter.Q.value = 1.4;
-    const time = ctx.currentTime;
-    const attack = 1.0;
-    const chordDuration = 2.5;
-    const release = 1.2;
-    gain.gain.setValueAtTime(0.0, time);
-    gain.gain.linearRampToValueAtTime(volume, time + attack);
-    gain.gain.setValueAtTime(volume, time + chordDuration - release);
-    gain.gain.linearRampToValueAtTime(0.0, time + chordDuration);
-    osc.connect(filter).connect(gain).connect(reverb).connect(ctx.destination);
-    osc.start(time);
-    osc.stop(time + chordDuration);
-    _activeOscillators.push(osc);
-    _activeGains.push(gain);
+    const voice = playJuno60PadVoice(ctx, midi, time, chordDuration, volume, fxBus.input);
+    _activeOscillators.push(...voice.oscillators);
+    _activeGains.push(voice.gain);
   });
 }

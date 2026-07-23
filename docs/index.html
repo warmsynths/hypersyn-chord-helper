@@ -8,51 +8,91 @@
   <meta name="description"
     content="Convert chord progressions to Hypersyn hex codes for the M8 Tracker. Tracker-style interface with interactive piano keyboard voicing." />
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap"
+    rel="stylesheet" />
   <link rel="icon"
-    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎹</text></svg>" />
+    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎹</text></svg>" />
   <style>
     /* Inline fast-load overrides */
-    #video-bg {
-      display: none;
-    }
-
-    #app-title {
-      display: none;
-    }
-
     .sidebar-toggle-fade {
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.3s ease;
     }
+
+    /* Legacy controls stay in the DOM (wired functionality kept for later)
+       but are not part of the terminal-redesign surface. */
+    #tracker-nav,
+    #app-container {
+      display: none !important;
+    }
   </style>
-  <script type="module" crossorigin src="/hypersyn-chord-helper/assets/index-DAdfqDF_.js"></script>
-  <link rel="stylesheet" crossorigin href="/hypersyn-chord-helper/assets/index-Dnpsjqtr.css">
+  <script type="module" crossorigin src="/hypersyn-chord-helper/assets/index-ebv1VJ1Q.js"></script>
+  <link rel="stylesheet" crossorigin href="/hypersyn-chord-helper/assets/index-Bs-2xc8V.css">
 </head>
 
-<body>
+<body class="theme-monokai">
 
   <!-- =============================================
-         EASTER EGG: Synthwave video background
-         Hidden by default, restored by Konami code
+         HYPERSYN TERMINAL — the redesigned surface
          ============================================= -->
-  <div id="video-bg" style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:-2;overflow:hidden;">
-    <video autoplay loop muted playsinline
-      style="width:100vw;height:100vh;object-fit:cover;filter:blur(8px) brightness(0.7) saturate(1.1);">
-      <source src="/hypersyn-chord-helper/assets/synthwave-Dbm8fxvT.mp4" type="video/mp4" />
-    </video>
-    <div
-      style="position:absolute;top:0;left:0;width:100vw;height:100vh;background:rgba(40,42,54,0.5);mix-blend-mode:soft-light;">
+  <div id="terminal-shell">
+   <div id="terminal-column">
+    <div id="crt-box" tabindex="0">
+      <div class="crt-content">
+        <pre class="ascii-hdr"> __ __  __ __  ____   ___  ____    _____ __ __  ____
+|  |  ||  |  ||    \ /  _]|    \  / ___/|  |  ||    \
+|  |  ||  |  ||  o  )  [_ |  D  )(   \_ |  |  ||  _  |
+|  _  ||  ~  ||   _/    _]|    /  \__  ||  ~  ||  |  |
+|  |  ||___, ||  | |   [_ |    \  /  \ ||___, ||  |  |
+|  |  ||     ||  | |     ||  .  \ \    ||     ||  |  |
+|__|__||____/ |__| |_____||__|\_|  \___||____/ |__|__|</pre>
+        <div class="ascii-hdr-sm" id="asciiHdrSm">&gt;_ HYPERSYN</div>
+        <pre class="boot-text boot-line"><span class="dim">[boot]</span> chord helper v1.0
+<span class="dim">[ ok ]</span> m8 hex output ready</pre>
+
+        <div class="term-hint voicing-hint-desktop">click a line to expand &middot; &#8593;/&#8595; cycles voicing &middot; type <span class="hint-strong">help</span> below</div>
+        <div class="term-hint voicing-hint-mobile">tap a line to expand &middot; tap ROOT to cycle voicing &middot; type <span class="hint-strong">help</span> below</div>
+
+        <div class="term-status-row">
+          <span class="status-label">MODE</span>
+          <span class="status-chip" id="modeChip">INTERVALS</span>
+          <span class="status-hint mode-hint" id="modeHint">(offsets from root — set root on device)</span>
+        </div>
+        <div class="term-status-row">
+          <span class="status-label">THEME</span>
+          <span class="status-chip" id="themeChip">Monokai</span>
+          <span class="status-hint theme-hint">type theme &lt;name&gt; to switch</span>
+        </div>
+
+        <div id="outputBox" style="display:none;">
+          <div id="output" aria-live="polite"></div>
+        </div>
+
+        <div class="term-spacer"></div>
+
+        <div id="cmdHistory" class="cmd-history"></div>
+
+        <form id="cmdForm" class="cmd-input-row" autocomplete="off">
+          <span class="cmd-prompt">&gt;</span>
+          <input id="cmdInput" class="cmd-input" type="text"
+            placeholder="type a chord progression or a command (try help)" autocomplete="off" />
+        </form>
+        <div id="cmdSuggestion" class="cmd-suggestion" style="display:none;"></div>
+
+        <div id="konamiTrack" class="konami-track" style="display:none;">
+          <div id="konamiDots" class="konami-dots"></div>
+          <div id="konamiPac" class="konami-pac"></div>
+        </div>
+        <div id="konamiDone" class="konami-done" style="display:none;">WAKA WAKA WAKA</div>
+      </div>
+      <div class="crt-scanlines"></div>
+      <div class="crt-vignette"></div>
     </div>
+    <div class="terminal-footer">HYPERSYN CHORD HELPER &mdash; M8 HEX EXPORT</div>
+   </div>
   </div>
-
-  <!-- Synthwave header (easter egg only) -->
-  <h1 id="app-title" class="synthwave-header"
-    style="text-align:center;font-family:'Share Tech Mono',monospace;font-size:2.5rem;font-weight:900;color:#ff79c6;margin:16px 0 8px;letter-spacing:2px;">
-    Hypersyn Chord Helper
-  </h1>
-
-
 
   <!-- =============================================
          TRACKER NAV BAR
@@ -113,11 +153,6 @@
           </span>
         </div>
       </section>
-
-      <!-- Chord list output -->
-      <div id="outputBox" style="display:none;">
-        <div id="output" aria-live="polite"></div>
-      </div>
 
     </main>
 
@@ -209,7 +244,7 @@
       </div>
     </div>
   </dialog>
-
+
 
 </body>
 
