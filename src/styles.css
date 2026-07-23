@@ -335,68 +335,70 @@ body {
   display: inline-block;
 }
 
-.chord-play-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  background: transparent;
-  border: 1px solid var(--border-hi);
-  border-radius: 2px;
-  color: var(--accent);
-  cursor: pointer;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.chord-play-btn:hover,
-.chord-play-btn:active {
-  background: var(--accent);
-  color: #000;
-  border-color: var(--accent);
-}
-
-/* Voicing drawer: hint + note diffs shown while a row is expanded */
+/* Voicing drawer: hint + note diffs (left) and tap ▲▼ buttons (right, touch only) */
 .voicing-drawer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
   margin: 0 0 4px 24px;
   padding-left: 10px;
   border-left: 1px dashed var(--border);
 }
 
+.voicing-info {
+  flex: 1;
+  min-width: 0;
+}
+
 .voicing-hint {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
   color: var(--text-dim);
   font-size: 0.68rem;
   margin-bottom: 4px;
 }
 
-.voicing-nudge-btns {
-  display: flex;
+.voicing-hint-mobile,
+.voicing-taps {
+  display: none;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .voicing-hint-desktop {
+    display: none;
+  }
+
+  .voicing-hint-mobile {
+    display: block;
+  }
+
+  .voicing-taps {
+    display: flex;
+  }
+}
+
+.voicing-taps {
+  flex-direction: column;
   gap: 4px;
   flex-shrink: 0;
 }
 
-.voicing-nudge-btn {
-  font-family: var(--label-font);
-  font-size: 0.7rem;
-  line-height: 1;
-  padding: 3px 8px;
+.voicing-tap-btn {
+  width: 44px;
+  height: 32px;
   background: transparent;
-  border: 1px solid var(--border-hi);
-  border-radius: 2px;
+  border: 1px solid var(--text-dim);
   color: var(--accent);
+  font-size: 14px;
+  line-height: 1;
+  border-radius: 4px;
   cursor: pointer;
+  touch-action: manipulation;
   -webkit-appearance: none;
   appearance: none;
 }
 
-.voicing-nudge-btn:hover,
-.voicing-nudge-btn:active {
+.voicing-tap-btn:hover,
+.voicing-tap-btn:active {
   background: var(--accent);
   color: #000;
   border-color: var(--accent);
@@ -787,6 +789,7 @@ body {
   letter-spacing: 2px;
   margin-bottom: 12px;
   text-shadow: 0 0 8px var(--accent-dim);
+  user-select: none;
 }
 
 @media (max-width: 480px) {

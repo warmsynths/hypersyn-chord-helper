@@ -270,45 +270,25 @@ export const initTerminal = (): void => {
     }
   });
 
-  // Touch equivalent of the Konami sequence — no arrow keys on mobile, so a
-  // swipe stands in for each arrow direction, and a tap (once all four swipe
-  // pairs match) stands in for the trailing "b"/"a" key presses.
-  const crtBox = document.getElementById("crt-box");
-  const SWIPE_THRESHOLD = 40;
-  let touchStartX = 0;
-  let touchStartY = 0;
+  // Mobile easter-egg trigger — no arrow keys on mobile, so tapping the
+  // compact ">_ HYPERSYN" header 5 times within 1.2s runs the Pac-Man
+  // animation directly, bypassing the arrow/b/a sequence entirely.
+  const asciiHdrSm = document.getElementById("asciiHdrSm");
+  let mobileTapCount = 0;
+  let mobileTapTimeout: ReturnType<typeof setTimeout> | undefined;
 
-  crtBox?.addEventListener(
-    "touchstart",
-    (e: TouchEvent) => {
-      const t = e.touches[0];
-      touchStartX = t.clientX;
-      touchStartY = t.clientY;
-    },
-    { passive: true }
-  );
-
-  crtBox?.addEventListener(
-    "touchend",
-    (e: TouchEvent) => {
-      const t = e.changedTouches[0];
-      const dx = t.clientX - touchStartX;
-      const dy = t.clientY - touchStartY;
-      const absDx = Math.abs(dx);
-      const absDy = Math.abs(dy);
-
-      if (Math.max(absDx, absDy) >= SWIPE_THRESHOLD) {
-        const dir = absDx > absDy ? (dx > 0 ? "ArrowRight" : "ArrowLeft") : dy > 0 ? "ArrowDown" : "ArrowUp";
-        handleKonamiKey(dir);
-      } else if (konamiIdx >= 8) {
-        const target = e.target as HTMLElement;
-        if (!target.closest("button, input, a, .hex-box")) {
-          handleKonamiKey(konamiIdx === 8 ? "b" : "a");
-        }
-      }
-    },
-    { passive: true }
-  );
+  asciiHdrSm?.addEventListener("click", () => {
+    clearTimeout(mobileTapTimeout);
+    mobileTapCount++;
+    if (mobileTapCount >= 5) {
+      mobileTapCount = 0;
+      runKonamiAnimation();
+      return;
+    }
+    mobileTapTimeout = setTimeout(() => {
+      mobileTapCount = 0;
+    }, 1200);
+  });
 
   const boot = () => {
     const initInput = document.getElementById("chordsInput") as HTMLInputElement | null;
