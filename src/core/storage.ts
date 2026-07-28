@@ -1,209 +1,141 @@
 import { generateUUID } from "./utils";
-import { showToast } from "../ui/toast";
-import { updateSingleChordDropdownFromInput, chordSetsData, loadSetsData } from "../ui/events";
+
+export interface ChordSet {
+  id: string;
+  name: string;
+  chords?: string;
+  chordSets: string[];
+}
 
 /**
- * Retrieves all saved chord sets from localStorage.
- *
- * @returns {Array<object>} Array of saved chord set objects.
+ * Retrieves all saved chord sets from localStorage, automatically migrating old schema presets.
  */
-export const getSavedChordSets = () => {
+export const getSavedChordSets = (): ChordSet[] => {
   const setsStr = localStorage.getItem("hypersynChordSets");
   try {
-    const sets = setsStr ? JSON.parse(setsStr) : [];
+    const sets: ChordSet[] = setsStr ? JSON.parse(setsStr) : [];
     let needsSave = false;
-    
+
     // Automatically migrate old schema projects to new format
-    sets.forEach(set => {
+    sets.forEach((set) => {
       if (!set.chordSets || !Array.isArray(set.chordSets) || set.chordSets.length === 0) {
         set.chordSets = [set.chords || ""];
         needsSave = true;
       }
     });
-    
+
     if (needsSave) {
       localStorage.setItem("hypersynChordSets", JSON.stringify(sets));
     }
-    
+
     return sets;
   } catch {
     return [];
   }
-}
-
-/**
- * Saves the provided chord sets array to localStorage.
- *
- * @param {Array<object>} sets - Array of chord set objects to save.
- */
-export const setSavedChordSets = (sets) => {
-  localStorage.setItem("hypersynChordSets", JSON.stringify(sets));
-}
-
-/**
- * Updates the saved chord sets dropdown in the UI with current sets from localStorage.
- *
- * @returns {void}
- */
-export const updateSavedChordSetsDropdown = () => {
-  const select = document.getElementById("savedChordSetsSelect");
-  if (!select) return;
-  const sets = getSavedChordSets();
-  select.innerHTML = '<option value="">Load saved set...</option>';
-  sets.forEach((set, idx) => {
-    select.innerHTML += `<option value="${idx}">${set.name}</option>`;
-  });
-}
-
-/**
- * Saves the current chord set from the UI to localStorage, updating if the name exists.
- *
- * @returns {void}
- */
-export const saveChordSet = () => {
-  const input = (document.getElementById("chordsInput") as HTMLInputElement).value;
-  // Ensure the active set input is synced before saving
-  const dataToSave = [...chordSetsData];
-  const nameInput = document.getElementById("chordSetNameInput") as HTMLInputElement;
-  const name = nameInput.value.trim();
-  if (!name) {
-    showToast("Please enter a name for the chord set.", "error");
-    return;
-  }
-  let sets = getSavedChordSets();
-  const idx = sets.findIndex((s) => s.name === name);
-  if (idx >= 0) {
-    sets[idx].chords = input; // legacy support
-    sets[idx].chordSets = dataToSave;
-  } else {
-    sets.push({ name, chords: input, chordSets: dataToSave, id: generateUUID() });
-  }
-  setSavedChordSets(sets);
-  updateSavedChordSetsDropdown();
-  showToast(`Chord set saved as '${name}'.`, "success");
-}
-
-/**
- * Loads the selected chord set from the dropdown into the UI.
- *
- * @returns {void}
- */
-export const loadChordSet = () => {
-  const select = document.getElementById("savedChordSetsSelect") as HTMLSelectElement;
-  const idx = select.value;
-  if (!idx || isNaN(Number(idx))) {
-    showToast("Please select a saved chord set to load.", "error");
-    return;
-  }
-  const sets = getSavedChordSets();
-  const set = sets[parseInt(idx, 10)];
-  if (set) {
-    loadSetsData(set.chordSets);
-    showToast(`Chord set '${set.name}' loaded!`, "success");
-  } else {
-    showToast("Chord set not found.", "error");
-  }
-}
-
-/**
- * Deletes the selected chord set from localStorage and updates the dropdown.
- *
- * @returns {void}
- */
-export const deleteChordSet = () => {
-  const select = document.getElementById("savedChordSetsSelect") as HTMLSelectElement;
-  const idx = select.value;
-  if (!idx || isNaN(Number(idx))) {
-    showToast("Please select a saved chord set to delete.", "error");
-    return;
-  }
-  let sets = getSavedChordSets();
-  const set = sets[parseInt(idx, 10)];
-  if (set) {
-    sets.splice(parseInt(idx, 10), 1);
-    setSavedChordSets(sets);
-    updateSavedChordSetsDropdown();
-    showToast("Chord set deleted.", "success");
-  } else {
-    showToast("Chord set not found.", "error");
-  }
-}
-
-/**
- * Exports all saved chord sets as a downloadable JSON file.
- *
- * @returns {void}
- */
-export const exportChordSets = () => {
-  const sets = getSavedChordSets();
-  const dataStr = JSON.stringify(sets, null, 2);
-  const blob = new Blob([dataStr], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  // Try to use the selected set name for the filename
-  let filename = "hypersyn-chord-sets.json";
-  const select = document.getElementById("savedChordSetsSelect") as HTMLSelectElement | null;
-  if (select && select.value && !isNaN(Number(select.value))) {
-    const idx = parseInt(select.value, 10);
-    const setsArr = Array.isArray(sets) ? sets : [];
-    if (setsArr[idx] && setsArr[idx].name) {
-      let base = setsArr[idx].name.toLowerCase().replace(/[^a-z0-9]/g, "");
-      if (base.length > 0) {
-        filename = `hypersyn-${base}.json`;
-      }
-    }
-  }
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast(`Chord sets exported as ${filename}.`, "success");
 };
 
 /**
- * Imports chord sets from a JSON file input, only adding new sets by unique id.
- *
- * @param {HTMLInputElement} fileInput - The file input element containing the JSON file.
- * @returns {void}
+ * Saves the provided chord sets array to localStorage.
  */
-export const importChordSets = (fileInput) => {
-  if (!fileInput.files || !fileInput.files[0]) {
-    showToast("No file selected.", "error");
-    return;
+export const setSavedChordSets = (sets: ChordSet[]): void => {
+  localStorage.setItem("hypersynChordSets", JSON.stringify(sets));
+};
+
+/**
+ * Saves a chord set by name and sequence array, replacing any existing set with the same name.
+ */
+export const saveChordSetByName = (
+  name: string,
+  chordSetsData: string[]
+): { sets: ChordSet[]; savedSet: ChordSet } => {
+  const trimmedName = name.trim();
+  if (!trimmedName) {
+    throw new Error("Please enter a name for the chord set.");
   }
-  const file = fileInput.files[0];
-  const reader = new FileReader();
-  reader.onload = function (e) {
-    try {
-      const resultStr = typeof e.target.result === "string" ? e.target.result : "";
-      const importedSets = JSON.parse(resultStr);
-      if (!Array.isArray(importedSets)) throw new Error("Invalid format");
-      let sets = getSavedChordSets();
-      const existingIds = new Set(sets.map((s) => s.id));
-      let added = 0;
-      importedSets.forEach((set) => {
-        if (set && set.id && !existingIds.has(set.id)) {
-          // Migrate imported sets on the fly
-          if (!set.chordSets || !Array.isArray(set.chordSets) || set.chordSets.length === 0) {
-            set.chordSets = [set.chords || ""];
-          }
-          sets.push(set);
-          added++;
-        }
-      });
-      setSavedChordSets(sets);
-      updateSavedChordSetsDropdown();
-      if (added > 0) {
-        showToast(`Imported ${added} new chord set(s).`, "success");
-      } else {
-        showToast("No new chord sets to import.", "info");
-      }
-    } catch {
-      showToast("Failed to import chord sets.", "error");
+  const sets = getSavedChordSets();
+  const idx = sets.findIndex((s) => s.name === trimmedName);
+  let savedSet: ChordSet;
+
+  if (idx >= 0) {
+    sets[idx].chords = chordSetsData[0] || ""; // legacy field
+    sets[idx].chordSets = [...chordSetsData];
+    savedSet = sets[idx];
+  } else {
+    savedSet = {
+      id: generateUUID(),
+      name: trimmedName,
+      chords: chordSetsData[0] || "",
+      chordSets: [...chordSetsData],
+    };
+    sets.push(savedSet);
+  }
+
+  setSavedChordSets(sets);
+  return { sets, savedSet };
+};
+
+/**
+ * Deletes a chord set at the specified index.
+ */
+export const deleteChordSetByIndex = (
+  index: number
+): { sets: ChordSet[]; deletedSet: ChordSet | null } => {
+  const sets = getSavedChordSets();
+  if (index < 0 || index >= sets.length) {
+    return { sets, deletedSet: null };
+  }
+  const [deletedSet] = sets.splice(index, 1);
+  setSavedChordSets(sets);
+  return { sets, deletedSet };
+};
+
+/**
+ * Prepares JSON export string and filename for downloadable preset export.
+ */
+export const exportChordSetsJson = (
+  sets: ChordSet[],
+  selectedIndex?: number
+): { filename: string; json: string } => {
+  const dataStr = JSON.stringify(sets, null, 2);
+  let filename = "hypersyn-chord-sets.json";
+
+  if (typeof selectedIndex === "number" && sets[selectedIndex] && sets[selectedIndex].name) {
+    const base = sets[selectedIndex].name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (base.length > 0) {
+      filename = `hypersyn-${base}.json`;
     }
-    fileInput.value = "";
-  };
-  reader.readAsText(file);
-}
+  }
+
+  return { filename, json: dataStr };
+};
+
+/**
+ * Imports chord sets from a JSON string, avoiding duplicate IDs and applying schema migrations.
+ */
+export const importChordSetsJson = (
+  jsonString: string
+): { addedCount: number; updatedSets: ChordSet[] } => {
+  const importedSets = JSON.parse(jsonString);
+  if (!Array.isArray(importedSets)) {
+    throw new Error("Invalid format");
+  }
+  const sets = getSavedChordSets();
+  const existingIds = new Set(sets.map((s) => s.id));
+  let addedCount = 0;
+
+  importedSets.forEach((set) => {
+    if (set && set.id && !existingIds.has(set.id)) {
+      if (!set.chordSets || !Array.isArray(set.chordSets) || set.chordSets.length === 0) {
+        set.chordSets = [set.chords || ""];
+      }
+      sets.push(set);
+      addedCount++;
+    }
+  });
+
+  if (addedCount > 0) {
+    setSavedChordSets(sets);
+  }
+
+  return { addedCount, updatedSets: sets };
+};

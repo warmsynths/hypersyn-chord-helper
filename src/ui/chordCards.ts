@@ -1,6 +1,6 @@
 import * as Midi from "@tonaljs/midi";
 import { semitoneToHex, getMidiRoot } from "../core/chords";
-import { playChordProgression } from "../core/core";
+import { playChordProgression } from "../core/audio";
 import { showToast } from "./toast";
 
 // ─── Module state ────────────────────────────────────────────────────
@@ -87,7 +87,7 @@ function renderRow(idx: number): void {
     diffEl.innerHTML = diffs
       .map(
         (d) =>
-          `<div class="voicing-diff-row"><span class="voicing-diff-old">~ ${d.label} <s>${d.oldHex}</s></span><span class="voicing-diff-arrow">-&gt;</span><span class="voicing-diff-new">${d.newHex}</span></div>`
+          `<div class="voicing-diff-row"><span class="voicing-diff-old">~ ${d.label} <s>${d.oldHex}</s></span><span class="voicing-diff-arrow">-&gt; </span><span class="voicing-diff-new">${d.newHex}</span></div>`
       )
       .join("");
   }
@@ -236,7 +236,7 @@ export const convertChordsUI = (
             <span class="chord-name-display">${chord.root}${chord.type}</span>
             <span class="voicing-chip" id="voicingChip${i}">ROOT</span>
             <span class="chord-root-hint" id="rootHint${i}" style="display:${isIntervalOnly ? "inline" : "none"};">${chord.root} ${intId}</span>
-            <span class="chord-arrow">-&gt;</span>
+            <span class="chord-arrow">-&gt; </span>
           </div>
           <div class="hex-boxes" id="hexBoxes${i}">${hexBoxes}</div>
         </div>

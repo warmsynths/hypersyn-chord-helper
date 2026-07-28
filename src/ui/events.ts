@@ -1,62 +1,57 @@
-
 import {
   playChordProgression,
   stopChordProgression,
-} from "../core/core";
+  playSingleChordGlobal,
+} from "../core/audio";
 import {
-  saveChordSet,
-  loadChordSet,
-  deleteChordSet,
-  exportChordSets,
-  importChordSets,
-  updateSavedChordSetsDropdown,
+  getSavedChordSets,
+  setSavedChordSets,
+  saveChordSetByName,
+  deleteChordSetByIndex,
+  exportChordSetsJson,
+  importChordSetsJson,
 } from "../core/storage";
-import { convertChords } from "../core/chords";
+import { convertChords, parseChordName } from "../core/chords";
 import {
   convertChordsUI,
   getCurrentProgressionNotes,
   toggleIntervalMode,
 } from "./chordCards";
 import { showToast } from "./toast";
-import { parseChordName } from "../core/chords";
-import { playSingleChordGlobal } from "../core/core";
+import { trackerStore } from "./trackerStore";
 
-// ─── Voicing select (legacy global — returns "closed" in new UI) ────
-
-/**
- * Returns the currently selected voicing type.
- * In the new tracker UI, per-chord voicing is controlled via drag; this
- * returns "closed" as the default for initial rendering.
- *
- * @returns {string} "closed"
- */
+// ─── Voicing select ─────────────────────────────────────────────────
 export const getSelectedVoicing = (): string => "closed";
 
-// ─── Volume label ───────────────────────────────────────────────────
+// ─── State delegation & backward compatibility ──────────────────────
+export const getChordSetsData = (): string[] => trackerStore.getSetsData();
+export const getActiveSetIndex = (): number => trackerStore.getActiveIndex();
+export const getHasConverted = (): boolean => trackerStore.getHasConverted();
 
-// (Volume slider removed)
+export let chordSetsData = trackerStore.getSetsData();
+export let activeSetIndex = trackerStore.getActiveIndex();
+export let hasConverted = trackerStore.getHasConverted();
 
-// ─── Chord Sets State ───────────────────────────────────────────────
-export let chordSetsData: string[] = [""];
-export let activeSetIndex = 0;
-export let hasConverted = false;
+// Subscribe to store updates to keep legacy exported references in sync
+trackerStore.subscribe(() => {
+  chordSetsData = trackerStore.getSetsData();
+  activeSetIndex = trackerStore.getActiveIndex();
+  hasConverted = trackerStore.getHasConverted();
+});
 
-export const setHasConverted = (val: boolean) => { hasConverted = val; };
+export const setHasConverted = (val: boolean) => {
+  trackerStore.setHasConverted(val);
+};
 
 export const loadSetsData = (sets: string[]) => {
-  if (!sets || sets.length === 0) sets = [""];
-  chordSetsData.length = 0;
-  chordSetsData.push(...sets);
-  activeSetIndex = 0;
-  
+  trackerStore.loadSetsData(sets);
+
   const input = document.getElementById("chordsInput") as HTMLInputElement;
-  if (input) input.value = chordSetsData[0];
-  
+  if (input) input.value = trackerStore.getActiveSet();
+
   updateSingleChordDropdownFromInput();
-  
-  hasConverted = true;
   renderStepStrip();
-  
+
   document.getElementById("convertChordsBtn")?.click();
 };
 
@@ -65,11 +60,14 @@ export const renderStepStrip = (): void => {
   if (!strip) return;
   strip.innerHTML = "";
 
-  if (!hasConverted) return;
+  if (!trackerStore.getHasConverted()) return;
 
-  chordSetsData.forEach((_, i) => {
+  const currentSets = trackerStore.getSetsData();
+  const currentActive = trackerStore.getActiveIndex();
+
+  currentSets.forEach((_, i) => {
     const el = document.createElement("div");
-    el.className = "step-num" + (i === activeSetIndex ? " active" : "");
+    el.className = "step-num" + (i === currentActive ? " active" : "");
     el.textContent = (i + 1).toString();
     el.style.cursor = "pointer";
     el.addEventListener("click", () => switchSet(i));
@@ -86,46 +84,33 @@ export const renderStepStrip = (): void => {
 
   const removeBtn = document.getElementById("removeSetBtn");
   if (removeBtn) {
-    removeBtn.style.display = chordSetsData.length > 1 ? "inline-block" : "none";
+    removeBtn.style.display = currentSets.length > 1 ? "inline-block" : "none";
   }
 };
 
 const addSet = (): void => {
-  chordSetsData.push(""); // new empty set
-  switchSet(chordSetsData.length - 1);
+  const newIdx = trackerStore.addSet();
+  switchSet(newIdx);
 };
 
 const removeSet = (): void => {
-  if (chordSetsData.length <= 1) return;
-  
-  // Remove the current set
-  chordSetsData.splice(activeSetIndex, 1);
-  
-  // Adjust active index if it was the last one
-  if (activeSetIndex >= chordSetsData.length) {
-    activeSetIndex = chordSetsData.length - 1;
-  }
-  
-  // Force update by bypassing the check in switchSet
-  const newIndex = activeSetIndex;
-  activeSetIndex = -1; 
+  const currentSets = trackerStore.getSetsData();
+  if (currentSets.length <= 1) return;
+  const newIndex = trackerStore.removeSet();
   switchSet(newIndex);
 };
 
 const switchSet = (index: number): void => {
-  if (index < 0 || index >= chordSetsData.length) return;
-  activeSetIndex = index;
-  
+  if (!trackerStore.switchSet(index)) return;
+
+  const activeContent = trackerStore.getActiveSet();
   const input = document.getElementById("chordsInput") as HTMLInputElement;
-  if (input) input.value = chordSetsData[activeSetIndex];
-  
+  if (input) input.value = activeContent;
+
   updateSingleChordDropdownFromInput();
-  
-  // Update step strip active state visually
   renderStepStrip();
-  
-  // Hide output box if empty set, or trigger conversion if not empty
-  if (chordSetsData[activeSetIndex].trim() === "") {
+
+  if (activeContent.trim() === "") {
     const outputBox = document.getElementById("outputBox");
     if (outputBox) outputBox.style.display = "none";
     const toggleBtn = document.getElementById("toggleOutputBoxBtn");
@@ -139,18 +124,119 @@ const switchSet = (index: number): void => {
   }
 };
 
-// ─── Clear input ────────────────────────────────────────────────────
+// ─── Storage UI Handlers ───────────────────────────────────────────
+export const saveChordSet = (): void => {
+  const input = (document.getElementById("chordsInput") as HTMLInputElement | null)?.value || "";
+  trackerStore.updateActiveSet(input);
 
-/**
- * Clears the chords input field.
- */
+  const nameInput = document.getElementById("chordSetNameInput") as HTMLInputElement | null;
+  const name = nameInput?.value.trim() || "";
+
+  try {
+    const { savedSet } = saveChordSetByName(name, trackerStore.getSetsData());
+    updateSavedChordSetsDropdown();
+    showToast(`Chord set saved as '${savedSet.name}'.`, "success");
+  } catch (err: any) {
+    showToast(err.message || "Please enter a name for the chord set.", "error");
+  }
+};
+
+export const loadChordSet = (): void => {
+  const select = document.getElementById("savedChordSetsSelect") as HTMLSelectElement | null;
+  const idxStr = select?.value;
+  if (!idxStr || isNaN(Number(idxStr))) {
+    showToast("Please select a saved chord set to load.", "error");
+    return;
+  }
+  const sets = getSavedChordSets();
+  const set = sets[parseInt(idxStr, 10)];
+  if (set) {
+    loadSetsData(set.chordSets);
+    showToast(`Chord set '${set.name}' loaded!`, "success");
+  } else {
+    showToast("Chord set not found.", "error");
+  }
+};
+
+export const deleteChordSet = (): void => {
+  const select = document.getElementById("savedChordSetsSelect") as HTMLSelectElement | null;
+  const idxStr = select?.value;
+  if (!idxStr || isNaN(Number(idxStr))) {
+    showToast("Please select a saved chord set to delete.", "error");
+    return;
+  }
+  const idx = parseInt(idxStr, 10);
+  const { deletedSet } = deleteChordSetByIndex(idx);
+  if (deletedSet) {
+    updateSavedChordSetsDropdown();
+    showToast("Chord set deleted.", "success");
+  } else {
+    showToast("Chord set not found.", "error");
+  }
+};
+
+export const updateSavedChordSetsDropdown = (): void => {
+  const select = document.getElementById("savedChordSetsSelect") as HTMLSelectElement | null;
+  if (!select) return;
+  const sets = getSavedChordSets();
+  select.innerHTML = '<option value="">Load saved set...</option>';
+  sets.forEach((set, idx) => {
+    select.innerHTML += `<option value="${idx}">${set.name}</option>`;
+  });
+};
+
+export const exportChordSets = (): void => {
+  const sets = getSavedChordSets();
+  const select = document.getElementById("savedChordSetsSelect") as HTMLSelectElement | null;
+  const selectedIdx = select && select.value && !isNaN(Number(select.value)) ? parseInt(select.value, 10) : undefined;
+  
+  const { filename, json } = exportChordSetsJson(sets, selectedIdx);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast(`Chord sets exported as ${filename}.`, "success");
+};
+
+export const importChordSets = (e: Event): void => {
+  const fileInput = e.target as HTMLInputElement | null;
+  if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+    showToast("No file selected.", "error");
+    return;
+  }
+  const file = fileInput.files[0];
+  const reader = new FileReader();
+  reader.onload = function (event) {
+    try {
+      const resultStr = typeof event.target?.result === "string" ? event.target.result : "";
+      const { addedCount } = importChordSetsJson(resultStr);
+      updateSavedChordSetsDropdown();
+      if (addedCount > 0) {
+        showToast(`Imported ${addedCount} new chord set(s).`, "success");
+      } else {
+        showToast("No new chord sets to import.", "info");
+      }
+    } catch {
+      showToast("Failed to import chord sets.", "error");
+    }
+    fileInput.value = "";
+  };
+  reader.readAsText(file);
+};
+
+// ─── Clear input ────────────────────────────────────────────────────
 export const clearInput = (): void => {
   const input = document.getElementById("chordsInput") as HTMLInputElement | null;
   if (input) {
     input.value = "";
-    chordSetsData[activeSetIndex] = "";
+    trackerStore.updateActiveSet("");
     updateSingleChordDropdownFromInput();
-    
+
     const outputBox = document.getElementById("outputBox");
     if (outputBox) outputBox.style.display = "none";
     const toggleBtn = document.getElementById("toggleOutputBoxBtn");
@@ -163,16 +249,12 @@ export const clearInput = (): void => {
 };
 
 // ─── Single chord dropdown ──────────────────────────────────────────
-
-/**
- * Populates the single chord dropdown with unique chord names from the input field.
- */
 export const updateSingleChordDropdownFromInput = (): void => {
-  const input  = document.getElementById("chordsInput")  as HTMLInputElement  | null;
+  const input = document.getElementById("chordsInput") as HTMLInputElement | null;
   const select = document.getElementById("singleChordSelect") as HTMLSelectElement | null;
   if (!input || !select) return;
 
-  const chordNames  = input.value.split(/\s|,/).map((s) => s.trim()).filter(Boolean);
+  const chordNames = input.value.split(/\s|,/).map((s) => s.trim()).filter(Boolean);
   const uniqueChords = Array.from(new Set(chordNames));
 
   select.innerHTML = "";
@@ -193,11 +275,6 @@ export const updateSingleChordDropdownFromInput = (): void => {
   }
 };
 
-// ─── Play single chord ──────────────────────────────────────────────
-
-/**
- * Plays the currently selected chord from the single chord dropdown.
- */
 export const playSingleChord = (): void => {
   const select = document.getElementById("singleChordSelect") as HTMLSelectElement | null;
   if (!select || !select.value) return;
@@ -207,19 +284,11 @@ export const playSingleChord = (): void => {
 };
 
 // ─── Wire all event listeners ───────────────────────────────────────
-
-/**
- * Wires up all DOM event listeners for the app UI.
- */
 export const wireEventListeners = (): void => {
-
-
-
   document.addEventListener("DOMContentLoaded", () => {
-    // Initialise first set with HTML textarea default
     const inputInit = document.getElementById("chordsInput") as HTMLInputElement | null;
     if (inputInit) {
-      chordSetsData[0] = inputInit.value;
+      trackerStore.updateActiveSet(inputInit.value);
     }
 
     // ── Playback ──
@@ -277,8 +346,8 @@ export const wireEventListeners = (): void => {
     });
 
     // ── Chord set management ──
-    document.getElementById("saveChordSetBtn")?.addEventListener("click",   saveChordSet);
-    document.getElementById("loadChordSetBtn")?.addEventListener("click",   loadChordSet);
+    document.getElementById("saveChordSetBtn")?.addEventListener("click", saveChordSet);
+    document.getElementById("loadChordSetBtn")?.addEventListener("click", loadChordSet);
     document.getElementById("deleteChordSetBtn")?.addEventListener("click", deleteChordSet);
     document.getElementById("exportChordSetsBtn")?.addEventListener("click", exportChordSets);
     document.getElementById("importChordSetsInput")?.addEventListener("change", importChordSets);
@@ -291,7 +360,6 @@ export const wireEventListeners = (): void => {
     document.getElementById("helpModalCloseBtn")?.addEventListener("click", () => {
       if (helpModal) helpModal.close();
     });
-    // Close modal on click outside
     helpModal?.addEventListener("click", (e) => {
       if (e.target === helpModal) {
         helpModal.close();
@@ -306,7 +374,6 @@ export const wireEventListeners = (): void => {
     document.getElementById("diskModalCloseBtn")?.addEventListener("click", () => {
       if (diskModal) diskModal.close();
     });
-    // Close modal on click outside
     diskModal?.addEventListener("click", (e) => {
       if (e.target === diskModal) {
         diskModal.close();
@@ -315,9 +382,7 @@ export const wireEventListeners = (): void => {
 
     // ── Disk Modal: New Project ──
     document.getElementById("newProjectBtn")?.addEventListener("click", () => {
-      chordSetsData = [""];
-      activeSetIndex = 0;
-      hasConverted = false;
+      trackerStore.reset();
       renderStepStrip();
 
       const input = document.getElementById("chordsInput") as HTMLInputElement;
@@ -336,12 +401,10 @@ export const wireEventListeners = (): void => {
       showToast("New project started.", "info");
     });
 
-
-
     // ── Convert / Clear / Single Chord ──
     document.getElementById("convertChordsBtn")?.addEventListener("click", () => {
-      if (!hasConverted) {
-        hasConverted = true;
+      if (!trackerStore.getHasConverted()) {
+        trackerStore.setHasConverted(true);
         renderStepStrip();
       }
 
@@ -356,7 +419,7 @@ export const wireEventListeners = (): void => {
     document.getElementById("clearInputBtn")?.addEventListener("click", clearInput);
     document.getElementById("removeSetBtn")?.addEventListener("click", removeSet);
     document.getElementById("shareProgressionBtn")?.addEventListener("click", () => {
-      const activeSets = chordSetsData.map(s => s.trim()).filter(Boolean);
+      const activeSets = trackerStore.getSetsData().map((s) => s.trim()).filter(Boolean);
       if (activeSets.length === 0) {
         showToast("No chords to share!", "error");
         return;
@@ -364,7 +427,7 @@ export const wireEventListeners = (): void => {
       const serialized = activeSets.join(";");
       const url = new URL(window.location.href);
       url.searchParams.set("p", serialized);
-      
+
       navigator.clipboard.writeText(url.toString())
         .then(() => {
           showToast("Shareable link copied to clipboard!", "success");
@@ -375,10 +438,10 @@ export const wireEventListeners = (): void => {
     });
     document.getElementById("playSingleChordBtn")?.addEventListener("click", playSingleChord);
 
-    // ── Chords input → update single chord dropdown and state ──
+    // ── Chords input → update single chord dropdown and store ──
     document.getElementById("chordsInput")?.addEventListener("input", (e) => {
       const target = e.target as HTMLInputElement;
-      chordSetsData[activeSetIndex] = target.value;
+      trackerStore.updateActiveSet(target.value);
       updateSingleChordDropdownFromInput();
     });
 
@@ -390,14 +453,8 @@ export const wireEventListeners = (): void => {
       const isOpen = box.style.display !== "none" && box.style.display !== "";
       box.style.display = isOpen ? "none" : "block";
       btn.setAttribute("aria-expanded", String(!isOpen));
-      if (isOpen) {
-        btn.innerHTML = "CHORDS ▶";
-      } else {
-        btn.innerHTML = "CHORDS ▼";
-      }
+      btn.innerHTML = isOpen ? "CHORDS ▶" : "CHORDS ▼";
     });
-
-    // ── Step strip rendering is now dynamic ──
 
     // ── Initialise dropdowns ──
     updateSingleChordDropdownFromInput();
@@ -405,17 +462,17 @@ export const wireEventListeners = (): void => {
 
     // ── Load progression from URL query string if present ──
     const params = new URLSearchParams(window.location.search);
-    let pParams = params.getAll('p');
+    let pParams = params.getAll("p");
     if (pParams.length === 0) {
-      pParams = params.getAll('progression');
+      pParams = params.getAll("progression");
     }
     if (pParams.length > 0) {
       const querySets: string[] = [];
-      pParams.forEach(param => {
-        const parts = param.split(';');
+      pParams.forEach((param) => {
+        const parts = param.split(";");
         querySets.push(...parts);
       });
-      if (querySets.length > 0 && querySets.some(s => s.trim() !== "")) {
+      if (querySets.length > 0 && querySets.some((s) => s.trim() !== "")) {
         loadSetsData(querySets);
       }
     }

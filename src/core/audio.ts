@@ -1,27 +1,125 @@
-/**
- * Module-scoped audio state for managing active oscillators, gain nodes, audio context, and reverb.
- * These are used to control playback and ensure proper cleanup between plays.
- */
-let _activeOscillators = [];
-let _activeGains = [];
-let _hypersynAudioCtx = null;
-let _hypersynReverb = null;
-
-import { parseChordName, applyVoicing } from "./chords";
-import { getSelectedVoicing } from "../ui/events";
+import { parseChordName, applyVoicing, getMidiRoot } from "./chords";
 
 /**
- * Stops all currently playing oscillators and disconnects gain nodes.
- *
- * This function is called before starting new playback to ensure no overlapping notes.
- * It safely stops and disconnects all active oscillators and gain nodes, and clears their arrays.
+ * Module-scoped audio state for managing active oscillators, gain nodes, audio context, and FX.
  */
-export const stopChordProgression = () => {
+let _activeOscillators: OscillatorNode[] = [];
+let _activeGains: GainNode[] = [];
+let _hypersynAudioCtx: AudioContext | null = null;
+let _hypersynFxBus: { ctx: AudioContext; input: GainNode } | null = null;
+let _loopTimeout: any = null;
+let _endTimeout: any = null;
+
+/**
+ * Builds (once per AudioContext) the shared Juno-60-style pad effects bus:
+ * a chorus (LFO-modulated delay, dry/wet mixed) feeding a short plate-style
+ * reverb. Every voice's amp envelope connects into `bus.input`.
+ */
+function getJuno60FxBus(ctx: AudioContext): { ctx: AudioContext; input: GainNode } {
+  if (_hypersynFxBus && _hypersynFxBus.ctx === ctx) return _hypersynFxBus;
+
+  const input = ctx.createGain();
+  input.gain.value = 1;
+
+  // --- Chorus: classic Juno-style LFO-modulated short delay, dry/wet mixed ---
+  const chorusDelay = ctx.createDelay(0.05);
+  chorusDelay.delayTime.value = 0.014;
+  const chorusLfo = ctx.createOscillator();
+  chorusLfo.type = "sine";
+  chorusLfo.frequency.value = 0.4;
+  const chorusDepth = ctx.createGain();
+  chorusDepth.gain.value = 0.004; // seconds of delay-time modulation
+  chorusLfo.connect(chorusDepth).connect(chorusDelay.delayTime);
+  chorusLfo.start();
+
+  const chorusWet = ctx.createGain();
+  chorusWet.gain.value = 0.35;
+
+  const dryWetMix = ctx.createGain();
+  input.connect(dryWetMix);
+  input.connect(chorusDelay);
+  chorusDelay.connect(chorusWet).connect(dryWetMix);
+
+  // --- Reverb: short exponential-decay impulse ---
+  const reverbLength = Math.floor(ctx.sampleRate * 1.4);
+  const impulse = ctx.createBuffer(2, reverbLength, ctx.sampleRate);
+  for (let c = 0; c < 2; c++) {
+    const channel = impulse.getChannelData(c);
+    for (let i = 0; i < reverbLength; i++) {
+      channel[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / reverbLength, 3);
+    }
+  }
+  const convolver = ctx.createConvolver();
+  convolver.buffer = impulse;
+
+  const reverbWet = ctx.createGain();
+  reverbWet.gain.value = 0.16;
+
+  dryWetMix.connect(ctx.destination);
+  dryWetMix.connect(convolver).connect(reverbWet).connect(ctx.destination);
+
+  _hypersynFxBus = { ctx, input };
+  return _hypersynFxBus;
+}
+
+/**
+ * Starts one Juno-60-style pad voice (two detuned sawtooth oscillators + lowpass filter).
+ */
+function playJuno60PadVoice(
+  ctx: AudioContext,
+  midi: number,
+  time: number,
+  duration: number,
+  volume: number,
+  fxInput: GainNode
+): { oscillators: OscillatorNode[]; gain: GainNode } {
+  const freq = 440 * Math.pow(2, (midi - 69) / 12);
+  const gain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = 2200;
+  filter.Q.value = 0.7;
+
+  const attack = 0.04;
+  const release = 1.2;
+  gain.gain.setValueAtTime(0.0, time);
+  gain.gain.linearRampToValueAtTime(volume, time + attack);
+  gain.gain.setValueAtTime(volume, time + duration - release);
+  gain.gain.linearRampToValueAtTime(0.0, time + duration);
+
+  filter.connect(gain).connect(fxInput);
+
+  const oscillators = [-7, 7].map((detune) => {
+    const osc = ctx.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.value = freq;
+    osc.detune.value = detune;
+    osc.connect(filter);
+    osc.start(time);
+    osc.stop(time + duration);
+    return osc;
+  });
+
+  return { oscillators, gain };
+}
+
+/**
+ * Stops all active audio playback and clears timeouts.
+ */
+export const stopChordProgression = (): void => {
+  if (_loopTimeout) {
+    clearTimeout(_loopTimeout);
+    _loopTimeout = null;
+  }
+  if (_endTimeout) {
+    clearTimeout(_endTimeout);
+    _endTimeout = null;
+  }
   if (_activeOscillators && _activeOscillators.length) {
     _activeOscillators.forEach((osc) => {
       try {
         osc.stop();
-      } catch (e) {}
+      } catch {}
     });
     _activeOscillators = [];
   }
@@ -29,247 +127,142 @@ export const stopChordProgression = () => {
     _activeGains.forEach((gain) => {
       try {
         gain.disconnect();
-      } catch (e) {}
+      } catch {}
     });
     _activeGains = [];
   }
 };
 
+export const stopAllAudio = stopChordProgression;
+
 /**
- * Plays the input chord progression as block chords using the Web Audio API.
- *
- * Each chord is played for 2.5 seconds as a synth pad. Uses the current value of #chordsInput and #volumeSlider.
- * Handles audio context setup, reverb, and applies the selected voicing to each chord.
- *
- * @returns {void}
+ * Plays a chord progression.
+ * Accepts either an array of MIDI note arrays (`number[][]`) or a raw chord string.
  */
-export const playChordProgression = () => {
-  console.log("Play button clicked");
-  const input = (document.getElementById("chordsInput") as HTMLInputElement)
-    .value;
-  console.log("Chord input value:", input);
-  const chordNames = input.split(/\s|,/).filter((s) => s.length > 0);
-  const parsed = chordNames.map(parseChordName).filter((c) => c !== null);
-  if (parsed.length === 0) {
-    console.warn("No valid chords parsed from input.");
+export const playChordProgression = (
+  input?: number[][] | string | null,
+  loop = false,
+  onEnd: (() => void) | null = null,
+  voicing = "closed"
+): void => {
+  if (!input) {
+    if (onEnd) onEnd();
     return;
   }
 
-  /**
-   * Mapping of note names to MIDI numbers for C3 = 48 (one octave below middle C).
-   * Used to determine the root note for each chord.
-   */
-  const ROOTS = {
-    C: 48,
-    "C#": 49,
-    Db: 49,
-    D: 50,
-    "D#": 51,
-    Eb: 51,
-    E: 52,
-    F: 53,
-    "F#": 54,
-    Gb: 54,
-    G: 55,
-    "G#": 56,
-    Ab: 56,
-    A: 57,
-    "A#": 58,
-    Bb: 58,
-    B: 59,
-  };
+  let chordNotesArray: number[][] = [];
 
-  // --- Web Audio setup ---
+  if (typeof input === "string") {
+    console.log("Play button clicked");
+    console.log("Chord input value:", input);
+    const chordNames = input.split(/\s|,/).filter((s) => s.length > 0);
+    const parsed = chordNames.map(parseChordName).filter((c) => c !== null);
+    if (parsed.length === 0) {
+      console.warn("No valid chords parsed from input.");
+      if (onEnd) onEnd();
+      return;
+    }
+
+    chordNotesArray = parsed.map((chord) => {
+      const rootMidi = getMidiRoot(chord.root);
+      const intervals = applyVoicing(chord.intervalOnly || [], voicing, chord);
+      return intervals.map((semi) => rootMidi + semi);
+    });
+  } else if (Array.isArray(input)) {
+    chordNotesArray = input;
+  }
+
+  if (chordNotesArray.length === 0) {
+    if (onEnd) onEnd();
+    return;
+  }
+
   const ctx =
     _hypersynAudioCtx ||
-    new (globalThis.AudioContext || globalThis.webkitAudioContext)();
+    new (globalThis.AudioContext || (globalThis as any).webkitAudioContext)();
   _hypersynAudioCtx = ctx;
-  // iOS fix: resume context if suspended
+
   if (ctx.state === "suspended") {
     ctx.resume();
   }
 
-  // --- Simple Reverb Setup ---
-  if (!_hypersynReverb) {
-    // Create impulse response for reverb (simple exponential decay)
-    const length = ctx.sampleRate * 2.5; // 2.5s reverb tail
-    const impulse = ctx.createBuffer(2, length, ctx.sampleRate);
-    for (let c = 0; c < 2; c++) {
-      const channel = impulse.getChannelData(c);
-      for (let i = 0; i < length; i++) {
-        channel[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2.5);
-      }
-    }
-    const convolver = ctx.createConvolver();
-    convolver.buffer = impulse;
-    _hypersynReverb = convolver;
-  }
-  const reverb = _hypersynReverb;
-
+  const fxBus = getJuno60FxBus(ctx);
   let time = ctx.currentTime;
-  /**
-   * Duration (in seconds) for each chord in the progression.
-   * Longer duration gives a pad-like feel.
-   */
   const chordDuration = 2.5;
 
-  // Stop any previous notes before starting new playback
   stopChordProgression();
-  const volume =
-    parseInt(
-      (document.getElementById("volumeSlider") as HTMLInputElement).value,
-      10
-    ) / 100;
+
+  const volume = 0.05;
   _activeOscillators = [];
   _activeGains = [];
-  // Get voicing from UI (default to 'closed')
-  const voicing =
-    typeof getSelectedVoicing === "function" ? getSelectedVoicing() : "closed";
-  parsed.forEach((chord) => {
-    let rootMidi = ROOTS[chord.root] || 60;
-    if (!isFinite(rootMidi)) rootMidi = 60;
-    let intervals = Array.isArray(chord.intervalOnly)
-      ? chord.intervalOnly.filter((x) => typeof x === "number" && isFinite(x))
-      : [];
-    intervals = applyVoicing(intervals, voicing, chord);
-    if (intervals.length === 0) {
-      console.warn("No intervals for chord:", chord.chordName, chord);
-    }
-    intervals.forEach((semi) => {
-      let midi = rootMidi + semi;
+
+  chordNotesArray.forEach((notes) => {
+    notes.forEach((midi) => {
       if (!isFinite(midi)) return;
-      let freq = 440 * Math.pow(2, (midi - 69) / 12);
-      if (!isFinite(freq)) return;
-      console.log("Oscillator created", { freq, midi, chord: chord.chordName });
-      let osc = ctx.createOscillator();
-      let gain = ctx.createGain();
-      let filter = ctx.createBiquadFilter();
-      osc.type = "triangle";
-      osc.frequency.value = freq;
-      osc.detune.value = Math.random() * 10 - 5;
-      filter.type = "lowpass";
-      filter.frequency.value = 220;
-      filter.Q.value = 1.4;
-      const attack = 1.0;
-      const release = 1.2;
-      gain.gain.setValueAtTime(0.0, time);
-      gain.gain.linearRampToValueAtTime(volume, time + attack);
-      gain.gain.setValueAtTime(volume, time + chordDuration - release);
-      gain.gain.linearRampToValueAtTime(0.0, time + chordDuration);
-      osc
-        .connect(filter)
-        .connect(gain)
-        .connect(reverb)
-        .connect(ctx.destination);
-      osc.start(time);
-      osc.stop(time + chordDuration);
-      _activeOscillators.push(osc);
-      _activeGains.push(gain);
+      console.log("Oscillator created", { freq: 440 * Math.pow(2, (midi - 69) / 12), midi });
+      const voice = playJuno60PadVoice(ctx, midi, time, chordDuration, volume, fxBus.input);
+      _activeOscillators.push(...voice.oscillators);
+      _activeGains.push(voice.gain);
     });
     time += chordDuration;
   });
+
+  const totalDuration = chordDuration * chordNotesArray.length;
+
+  if (loop) {
+    _loopTimeout = setTimeout(() => {
+      playChordProgression(chordNotesArray, loop, onEnd, voicing);
+    }, totalDuration * 1000);
+  } else {
+    _endTimeout = setTimeout(() => {
+      if (onEnd) onEnd();
+    }, totalDuration * 1000);
+  }
 };
 
 /**
- * Plays a single chord object (from parseChordName) as a block chord using the Web Audio API.
- *
- * This is used for the single chord preview feature. It applies the selected voicing,
- * sets up the audio context and reverb if needed, and plays the chord as a short pad.
- *
- * @param {object} chord - Parsed chord object from parseChordName.
- * @returns {void}
+ * Plays a single chord object or array of MIDI notes.
  */
-export const playSingleChordGlobal = (chord) => {
-  if (!chord || !Array.isArray(chord.intervalOnly)) return;
-  /**
-   * Mapping of note names to MIDI numbers for C3 = 48 (one octave below middle C).
-   * Used to determine the root note for the chord.
-   */
-  const ROOTS = {
-    C: 48,
-    "C#": 49,
-    Db: 49,
-    D: 50,
-    "D#": 51,
-    Eb: 51,
-    E: 52,
-    F: 53,
-    "F#": 54,
-    Gb: 54,
-    G: 55,
-    "G#": 56,
-    Ab: 56,
-    A: 57,
-    "A#": 58,
-    Bb: 58,
-    B: 59,
-  };
+export const playSingleChordGlobal = (
+  chord: any,
+  voicing = "closed"
+): void => {
+  if (!chord) return;
+  let notes: number[] = [];
+
+  if (Array.isArray(chord)) {
+    notes = chord;
+  } else if (chord.root && Array.isArray(chord.intervalOnly)) {
+    const rootMidi = getMidiRoot(chord.root);
+    const intervals = applyVoicing(chord.intervalOnly, voicing, chord);
+    notes = intervals.map((semi) => rootMidi + semi);
+  }
+
+  if (notes.length === 0) return;
+
   const ctx =
     _hypersynAudioCtx ||
-    new (globalThis.AudioContext || globalThis.webkitAudioContext)();
+    new (globalThis.AudioContext || (globalThis as any).webkitAudioContext)();
   _hypersynAudioCtx = ctx;
-  // iOS fix: resume context if suspended
+
   if (ctx.state === "suspended") {
     ctx.resume();
   }
-  // --- Simple Reverb Setup ---
-  if (!_hypersynReverb) {
-    const length = ctx.sampleRate * 2.5;
-    const impulse = ctx.createBuffer(2, length, ctx.sampleRate);
-    for (let c = 0; c < 2; c++) {
-      const channel = impulse.getChannelData(c);
-      for (let i = 0; i < length; i++) {
-        channel[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2.5);
-      }
-    }
-    const convolver = ctx.createConvolver();
-    convolver.buffer = impulse;
-    _hypersynReverb = convolver;
-  }
-  const reverb = _hypersynReverb;
+
+  const fxBus = getJuno60FxBus(ctx);
   stopChordProgression();
-  const volume =
-    parseInt(
-      (document.getElementById("volumeSlider") as HTMLInputElement).value,
-      10
-    ) / 100;
+
+  const volume = 0.05;
+  const time = ctx.currentTime;
+  const chordDuration = 2.5;
+
   _activeOscillators = [];
   _activeGains = [];
-  let rootMidi = ROOTS[chord.root] || 60;
-  if (!isFinite(rootMidi)) rootMidi = 60;
-  // Get voicing from UI (default to 'closed')
-  const voicing =
-    typeof getSelectedVoicing === "function" ? getSelectedVoicing() : "closed";
-  let intervals = chord.intervalOnly.filter(
-    (x) => typeof x === "number" && isFinite(x)
-  );
-  intervals = applyVoicing(intervals, voicing, chord);
-  intervals.forEach((semi) => {
-    let midi = rootMidi + semi;
+
+  notes.forEach((midi) => {
     if (!isFinite(midi)) return;
-    let freq = 440 * Math.pow(2, (midi - 69) / 12);
-    if (!isFinite(freq)) return;
-    let osc = ctx.createOscillator();
-    let gain = ctx.createGain();
-    let filter = ctx.createBiquadFilter();
-    osc.type = "triangle";
-    osc.frequency.value = freq;
-    osc.detune.value = Math.random() * 10 - 5;
-    filter.type = "lowpass";
-    filter.frequency.value = 220;
-    filter.Q.value = 1.4;
-    const time = ctx.currentTime;
-    const attack = 1.0;
-    const chordDuration = 2.5;
-    const release = 1.2;
-    gain.gain.setValueAtTime(0.0, time);
-    gain.gain.linearRampToValueAtTime(volume, time + attack);
-    gain.gain.setValueAtTime(volume, time + chordDuration - release);
-    gain.gain.linearRampToValueAtTime(0.0, time + chordDuration);
-    osc.connect(filter).connect(gain).connect(reverb).connect(ctx.destination);
-    osc.start(time);
-    osc.stop(time + chordDuration);
-    _activeOscillators.push(osc);
-    _activeGains.push(gain);
+    const voice = playJuno60PadVoice(ctx, midi, time, chordDuration, volume, fxBus.input);
+    _activeOscillators.push(...voice.oscillators);
+    _activeGains.push(voice.gain);
   });
 };

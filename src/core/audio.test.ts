@@ -1,12 +1,12 @@
-// Mock AudioContext for Jest (Node/jsdom)
 const mockNode = {
   connect: function () { return this; },
   start: () => {},
   stop: () => {},
   type: "",
-  frequency: { value: 0 },
-  detune: { value: 0 },
-  gain: { setValueAtTime: () => {}, linearRampToValueAtTime: () => {} },
+  frequency: { value: 0, setValueAtTime: () => {}, linearRampToValueAtTime: () => {} },
+  detune: { value: 0, setValueAtTime: () => {}, linearRampToValueAtTime: () => {} },
+  delayTime: { value: 0, setValueAtTime: () => {}, linearRampToValueAtTime: () => {} },
+  gain: { value: 0, setValueAtTime: () => {}, linearRampToValueAtTime: () => {} },
   Q: { value: 0 },
   buffer: null,
   disconnect: () => {},
@@ -19,22 +19,16 @@ beforeAll(() => {
     resume() {}
     createOscillator() { return Object.create(mockNode); }
     createGain() { return Object.create(mockNode); }
+    createDelay() { return Object.create(mockNode); }
     createBiquadFilter() { return Object.create(mockNode); }
     createConvolver() { return Object.create(mockNode); }
-    createBuffer() { return { getChannelData: () => new Float32Array(1) }; }
+    createBuffer() { return { getChannelData: () => new Float32Array(10) }; }
     get currentTime() { return 0; }
     get sampleRate() { return 44100; }
     get destination() { return Object.create(mockNode); }
   } as any;
-  // Optionally: global.webkitAudioContext = global.AudioContext;
 });
 
-beforeEach(() => {
-  document.body.innerHTML = `
-    <input id="chordsInput" value="C" />
-    <input id="volumeSlider" value="50" />
-  `;
-});
 import * as audio from './audio';
 
 describe('audio module', () => {
@@ -48,11 +42,15 @@ describe('audio module', () => {
     expect(() => audio.stopChordProgression()).not.toThrow();
   });
 
-  it('playChordProgression does not throw', () => {
-    expect(() => audio.playChordProgression()).not.toThrow();
+  it('playChordProgression accepts string input and plays without error', () => {
+    expect(() => audio.playChordProgression('Cmaj7 Dm7 G7')).not.toThrow();
   });
 
-  it('playSingleChordGlobal does not throw with minimal input', () => {
-    expect(() => audio.playSingleChordGlobal({ root: 'C', intervalOnly: [0, 4, 7], chordName: 'Cmaj' })).not.toThrow();
+  it('playChordProgression accepts MIDI note arrays directly', () => {
+    expect(() => audio.playChordProgression([[60, 64, 67, 71], [62, 65, 69, 72]])).not.toThrow();
+  });
+
+  it('playSingleChordGlobal handles chord object correctly', () => {
+    expect(() => audio.playSingleChordGlobal({ root: 'C', intervalOnly: [0, 4, 7], chordName: 'C' })).not.toThrow();
   });
 });

@@ -179,8 +179,79 @@ const tryApplyTonalVoicing = (intervals, voicing, chordMeta) => {
   return intervalsFromTonalNotes(voicedNotes, chordMeta.root);
 };
 
-/**
- * Transforms chord intervals according to the selected voicing.
+const applyFallbackVoicing = (intervals: number[], voicing: string): number[] => {
+  if (!Array.isArray(intervals)) return intervals;
+  const sorted = [...intervals].sort((a, b) => a - b);
+  function isDominant(ints: number[]) {
+    return ints.includes(4) && ints.includes(10);
+  }
+  switch (voicing) {
+    case "drop2":
+      if (sorted.length >= 2) {
+        const idx = sorted.length - 2;
+        sorted[idx] -= 12;
+      }
+      return sorted.slice().sort((a, b) => a - b);
+    case "open-triad":
+      if (sorted.length === 3) {
+        const open = [sorted[0], sorted[2], sorted[1] + 12];
+        return open.sort((a, b) => a - b);
+      }
+      return sorted;
+    case "drop3":
+      if (sorted.length >= 3) {
+        const idx = sorted.length - 3;
+        sorted[idx] -= 12;
+      }
+      return sorted.slice().sort((a, b) => a - b);
+    case "spread":
+      return sorted.map((v, i) => (i % 2 === 1 ? v + 12 : v));
+    case "octave":
+      const doubled = [...sorted];
+      if (doubled.length > 0) doubled.push(doubled[0] + 12);
+      if (doubled.length > 2) doubled.push(doubled[2] + 12);
+      return doubled;
+    case "first-inversion":
+      if (sorted.length > 1) {
+        const inv = [...sorted];
+        inv[0] += 12;
+        return inv.slice(1).concat(inv[0]).sort((a, b) => a - b);
+      }
+      return sorted;
+    case "second-inversion":
+      if (sorted.length > 2) {
+        const inv = [...sorted];
+        inv[0] += 12;
+        inv[1] += 12;
+        return inv.slice(2).concat(inv[0], inv[1]).sort((a, b) => a - b);
+      }
+      return sorted;
+    case "third-inversion":
+      if (sorted.length > 3) {
+        const inv = [...sorted];
+        inv[0] += 12;
+        inv[1] += 12;
+        inv[2] += 12;
+        return inv.slice(3).concat(inv[0], inv[1], inv[2]).sort((a, b) => a - b);
+      }
+      return sorted;
+    case "shell-dominant":
+      if (isDominant(sorted)) {
+        return sorted.filter((v) => v === 0 || v === 4 || v === 10);
+      }
+      return sorted;
+    case "altered-dominant":
+      if (isDominant(sorted)) {
+        const base: number[] = sorted.filter((v) => v === 0 || v === 4 || v === 10);
+        return base.concat([1, 5, 6, 8]).sort((a, b) => a - b);
+      }
+      return sorted;
+    case "closed":
+    default:
+      return intervals;
+  }
+};
+
 /**
  * Returns an array of intervals transformed by the selected voicing.
  *
@@ -188,15 +259,16 @@ const tryApplyTonalVoicing = (intervals, voicing, chordMeta) => {
  *
  * @param {number[]} intervals - The chord intervals.
  * @param {string} voicing - The voicing type to apply.
+ * @param {object|null} chordMeta - Optional metadata about the chord.
  * @returns {number[]} The transformed intervals.
  */
-export const applyVoicing = (intervals, voicing, chordMeta = null) => {
+export const applyVoicing = (intervals: number[], voicing: string, chordMeta: any = null): number[] => {
   const tonalVoiced = tryApplyTonalVoicing(intervals, voicing, chordMeta);
   if (Array.isArray(tonalVoiced) && tonalVoiced.length > 0) {
     return tonalVoiced;
   }
-  return intervals;
-}
+  return applyFallbackVoicing(intervals, voicing);
+};
 
 /**
  * Converts a semitone value to a 2-digit hexadecimal string (modulo 12).

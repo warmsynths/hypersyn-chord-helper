@@ -1,26 +1,22 @@
 import {
   getSavedChordSets,
   setSavedChordSets,
-  updateSavedChordSetsDropdown,
-  saveChordSet,
-  loadChordSet,
-  deleteChordSet,
-  exportChordSets,
-  importChordSets
+  saveChordSetByName,
+  deleteChordSetByIndex,
+  exportChordSetsJson,
+  importChordSetsJson,
 } from './storage';
 
 describe('storage module', () => {
   beforeEach(() => {
     localStorage.clear();
-    document.body.innerHTML = `
-      <select id="savedChordSetsSelect"></select>
-      <input id="chordsInput" />
-      <input id="chordSetNameInput" />
-    `;
   });
 
-  it('getSavedChordSets returns an array', () => {
-    expect(Array.isArray(getSavedChordSets())).toBe(true);
+  it('getSavedChordSets returns an array and migrates legacy schema', () => {
+    localStorage.setItem("hypersynChordSets", JSON.stringify([{ id: "1", name: "Legacy", chords: "C Dm" }]));
+    const sets = getSavedChordSets();
+    expect(Array.isArray(sets)).toBe(true);
+    expect(sets[0].chordSets).toEqual(["C Dm"]);
   });
 
   it('setSavedChordSets and getSavedChordSets work together', () => {
@@ -29,39 +25,35 @@ describe('storage module', () => {
     expect(getSavedChordSets()).toEqual(sets);
   });
 
-  it('updateSavedChordSetsDropdown populates select', () => {
-    setSavedChordSets([{ name: 'Set1', chords: 'C', id: '1' }]);
-    updateSavedChordSetsDropdown();
-    const select = document.getElementById('savedChordSetsSelect');
-    expect(select?.children.length).toBeGreaterThan(0);
-  });
-
-  it('saveChordSet adds a new set', () => {
-    (document.getElementById('chordsInput') as HTMLInputElement).value = 'C Dm';
-    (document.getElementById('chordSetNameInput') as HTMLInputElement).value = 'MySet';
-    saveChordSet();
-    const sets = getSavedChordSets();
+  it('saveChordSetByName adds a new set', () => {
+    const { savedSet, sets } = saveChordSetByName('MySet', ['C Dm']);
+    expect(savedSet.name).toBe('MySet');
     expect(sets.some(s => s.name === 'MySet')).toBe(true);
   });
 
-  it('loadChordSet loads the correct set', () => {
-    setSavedChordSets([{ name: 'LoadMe', chords: 'C', chordSets: ['C'], id: '1' }]);
-    updateSavedChordSetsDropdown();
-    const select = document.getElementById('savedChordSetsSelect') as HTMLSelectElement;
-    select.value = '0';
-    loadChordSet();
-    expect((document.getElementById('chordsInput') as HTMLInputElement).value).toBe('C');
-  });
-
-  it('deleteChordSet removes a set', () => {
+  it('deleteChordSetByIndex removes a set', () => {
     setSavedChordSets([{ name: 'DelMe', chords: 'C', chordSets: ['C'], id: '1' }]);
-    updateSavedChordSetsDropdown();
-    const select = document.getElementById('savedChordSetsSelect') as HTMLSelectElement;
-    select.value = '0';
-    deleteChordSet();
-    expect(getSavedChordSets().length).toBe(0);
+    const { sets, deletedSet } = deleteChordSetByIndex(0);
+    expect(deletedSet?.name).toBe('DelMe');
+    expect(sets.length).toBe(0);
   });
 
-  // exportChordSets and importChordSets involve file and DOM operations,
-  // so they are best tested with integration or manual tests.
+  it('exportChordSetsJson formats filename and JSON payload', () => {
+    const sets = [{ name: 'Jazz Prog', chords: 'Cmaj7', chordSets: ['Cmaj7'], id: '1' }];
+    const { filename, json } = exportChordSetsJson(sets, 0);
+    expect(filename).toBe('hypersyn-jazzprog.json');
+    expect(json).toContain('Cmaj7');
+  });
+
+  it('importChordSetsJson parses new presets without duplicating existing IDs', () => {
+    setSavedChordSets([{ name: 'Existing', chords: 'C', chordSets: ['C'], id: '1' }]);
+    const newJson = JSON.stringify([
+      { id: '1', name: 'Existing Duplicate', chords: 'C', chordSets: ['C'] },
+      { id: '2', name: 'New Set', chords: 'F', chordSets: ['F'] }
+    ]);
+    const { addedCount, updatedSets } = importChordSetsJson(newJson);
+    expect(addedCount).toBe(1);
+    expect(updatedSets.length).toBe(2);
+    expect(updatedSets.some(s => s.id === '2')).toBe(true);
+  });
 });
