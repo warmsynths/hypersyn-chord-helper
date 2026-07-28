@@ -90,4 +90,14 @@ describe('chords module', () => {
     const result = convertChords('cmin7 CΔ7 Bø7 C♯m7 nope', 'closed');
     expect(result.chords.length).toBe(4);
   });
+
+  it('convertChords assigns matching intervalId to chords with identical interval shapes', () => {
+    const result = convertChords('Am7 Dm7 G7 Am7', 'closed');
+    expect(result.chords[0].intervalId).toBe('00');
+    expect(result.chords[1].intervalId).toBe('00');
+    expect(result.chords[2].intervalId).toBe('01');
+    expect(result.chords[3].intervalId).toBe('00');
+    expect(result.uniqueGroups[0].intervalId).toBe('00');
+    expect(result.uniqueGroups[1].intervalId).toBe('01');
+  });
 });

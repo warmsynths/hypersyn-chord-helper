@@ -75,7 +75,11 @@ function renderRow(idx: number): void {
   if (hintLabelEl) hintLabelEl.textContent = label;
 
   const rootHintEl = document.getElementById("rootHint" + idx);
-  if (rootHintEl) rootHintEl.style.display = isIntervalOnly ? "inline" : "none";
+  if (rootHintEl) {
+    rootHintEl.style.display = isIntervalOnly ? "inline" : "none";
+    const intId = chord.intervalId ?? "00";
+    rootHintEl.textContent = `${chord.root} ${intId}`;
+  }
 
   const diffEl = document.getElementById("voicingDiffs" + idx);
   if (diffEl) {
@@ -198,9 +202,21 @@ export const convertChordsUI = (
   expandedIdx = null;
   baseNotesByChord = [];
 
+  const uniqueKeys: string[] = [];
   result.chords.forEach((chord: any) => {
     chord.midiRoot = getMidiRoot(chord.root);
     baseNotesByChord.push((chord.intervalOnly ?? []).map((iv: number) => chord.midiRoot + iv));
+
+    if (!chord.intervalId) {
+      const key = (chord.intervalOnly ?? []).join("-");
+      let idx = uniqueKeys.indexOf(key);
+      if (idx === -1) {
+        uniqueKeys.push(key);
+        idx = uniqueKeys.length - 1;
+      }
+      chord.intervalIndex = idx;
+      chord.intervalId = String(idx).padStart(2, "0");
+    }
   });
 
   // Build HTML
@@ -210,6 +226,7 @@ export const convertChordsUI = (
     const idxLabel = String(i).padStart(2, "0");
     const notes = currentNotesFor(i);
     const hexBoxes = renderHexBoxes(notes, chord.midiRoot ?? 60);
+    const intId = chord.intervalId ?? "00";
 
     html += `
       <div class="chord-row-wrapper" id="chord-row-wrapper${i}" data-chord-idx="${i}" tabindex="0">
@@ -218,7 +235,7 @@ export const convertChordsUI = (
             <span class="chord-label">${idxLabel}</span>
             <span class="chord-name-display">${chord.root}${chord.type}</span>
             <span class="voicing-chip" id="voicingChip${i}">ROOT</span>
-            <span class="chord-root-hint" id="rootHint${i}" style="display:${isIntervalOnly ? "inline" : "none"};">root ${chord.root}</span>
+            <span class="chord-root-hint" id="rootHint${i}" style="display:${isIntervalOnly ? "inline" : "none"};">${chord.root} ${intId}</span>
             <span class="chord-arrow">-&gt;</span>
           </div>
           <div class="hex-boxes" id="hexBoxes${i}">${hexBoxes}</div>

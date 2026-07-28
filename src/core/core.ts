@@ -793,16 +793,29 @@ export function convertChords(input, voicing) {
 
   // Defensive: filter out chords with undefined chordName
   const validParsed = parsed.filter((c) => typeof c.chordName === "string");
-  let result =
-    validParsed.length > 0
-      ? validParsed.map((c) => c.chordName).join(" ") + "\n\n"
-      : "No valid chords found.\n\n";
 
-  // Group by interval shape (with voicing applied)
-  const uniqueGroups = getUniqueChordTypes(validParsed);
+  // Group by interval shape (with voicing applied) and assign unique interval numbers
+  const uniqueKeys: string[] = [];
+  const validParsedWithIds = validParsed.map((chord) => {
+    const key = chord.intervalOnly.join("-");
+    let idx = uniqueKeys.indexOf(key);
+    if (idx === -1) {
+      uniqueKeys.push(key);
+      idx = uniqueKeys.length - 1;
+    }
+    const intervalId = String(idx).padStart(2, "0");
+    return {
+      ...chord,
+      intervalIndex: idx,
+      intervalId,
+    };
+  });
+
+  const uniqueGroups = getUniqueChordTypes(validParsedWithIds);
   let details = uniqueGroups.map((group, idx) => {
     return {
       index: idx,
+      intervalId: String(idx).padStart(2, "0"),
       chords: Array.isArray(group.chords) ? group.chords : [],
       interval: Array.isArray(group.intervalOnlyHex)
         ? group.intervalOnlyHex
@@ -812,10 +825,10 @@ export function convertChords(input, voicing) {
 
   // Return structured result for UI rendering
   return {
-    inputChordNames: validParsed.map((c) => c.chordName),
+    inputChordNames: validParsedWithIds.map((c) => c.chordName),
     uniqueGroups: details,
     voicing,
-    chords: validParsed,
+    chords: validParsedWithIds,
   };
 }
 

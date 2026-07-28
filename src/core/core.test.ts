@@ -268,6 +268,7 @@ describe('core module', () => {
       const res = core.convertChords('Cmaj7 Dm7 G7', 'closed');
       expect(res.inputChordNames).toContain('Cmaj7');
       expect(Array.isArray(res.uniqueGroups)).toBe(true);
+      expect(res.chords[0].intervalId).toBe('00');
     });
     it('returns no valid chords for garbage', () => {
       const res = core.convertChords('ZZZ', 'closed');
