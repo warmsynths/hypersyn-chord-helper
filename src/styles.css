@@ -803,36 +803,7 @@ body {
   color: var(--text);
 }
 
-.term-status-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 6px;
-  flex-wrap: wrap;
-}
 
-.term-status-row:last-of-type {
-  margin-bottom: 14px;
-}
-
-.status-label {
-  color: var(--text-dim);
-  font-size: 11px;
-}
-
-.status-chip {
-  color: #000;
-  background: var(--accent);
-  font-weight: 700;
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 2px;
-}
-
-.status-hint {
-  color: var(--text-dim);
-  font-size: 11px;
-}
 
 .term-spacer {
   flex: 1;

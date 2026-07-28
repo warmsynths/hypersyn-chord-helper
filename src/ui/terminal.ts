@@ -43,6 +43,7 @@ const updateModeChips = (): void => {
 // ─── Command text ─────────────────────────────────────────────────────
 const helpText = [
   "help              show this list",
+  "status            show current mode and theme",
   "about             what this tool does",
   "mode notes        hex = literal note value (absolute pitch, for M8 entry as-is)",
   "mode intervals    hex = semitone offset from chord root (00-0B); set the root on the device",
@@ -60,6 +61,7 @@ const aboutText = [
 
 const commandList: { cmd: string; desc: string }[] = [
   { cmd: "help", desc: "show available commands" },
+  { cmd: "status", desc: "show current mode and theme" },
   { cmd: "about", desc: "what this tool does" },
   { cmd: "mode notes", desc: "output literal note hex" },
   { cmd: "mode intervals", desc: "output semitone offsets from root" },
@@ -68,14 +70,17 @@ const commandList: { cmd: string; desc: string }[] = [
 ];
 
 // ─── Command history log ──────────────────────────────────────────────
-type HistoryEntry = { text: string; color: string };
+type HistoryEntry = { text: string; color: string; isHtml?: boolean };
 let cmdHistory: HistoryEntry[] = [];
 
 const renderHistory = (): void => {
   const el = document.getElementById("cmdHistory");
   if (!el) return;
   el.innerHTML = cmdHistory
-    .map((h) => `<div class="cmd-history-line" style="color:${h.color};">${escapeHtml(h.text)}</div>`)
+    .map((h) => {
+      const content = h.isHtml ? h.text : escapeHtml(h.text);
+      return `<div class="cmd-history-line" style="color:${h.color};">${content}</div>`;
+    })
     .join("");
   el.scrollTop = el.scrollHeight;
 };
@@ -86,9 +91,9 @@ function escapeHtml(s: string): string {
   return div.innerHTML;
 }
 
-const pushHistory = (raw: string, out: string, color: string): void => {
+const pushHistory = (raw: string, out: string, color: string, isHtml: boolean = false): void => {
   cmdHistory.push({ text: "> " + raw, color: "var(--text-dim)" });
-  cmdHistory.push({ text: out, color });
+  cmdHistory.push({ text: out, color, isHtml });
   cmdHistory = cmdHistory.slice(-16);
   renderHistory();
 };
@@ -197,6 +202,7 @@ const handleSubmit = (): void => {
   const parts = raw.toLowerCase().split(/\s+/);
   let out = "";
   let color = "var(--text-dim)";
+  let isHtml = false;
 
   if (rawParts.every((p) => parseChordName(p))) {
     loadProgression(raw);
@@ -204,6 +210,13 @@ const handleSubmit = (): void => {
     color = "var(--accent-green, #7CFF6B)";
   } else if (parts[0] === "help") {
     out = helpText;
+  } else if (parts[0] === "status") {
+    const modeVal = escapeHtml(getOutputModeLabel());
+    const modeHint = escapeHtml(getOutputModeHint());
+    const themeVal = escapeHtml(THEMES[currentTheme]);
+    out = `MODE   <span style="color:var(--accent);">${modeVal}</span>  ${modeHint}\nTHEME  <span style="color:var(--accent);">${themeVal}</span>  type theme &lt;name&gt; to switch`;
+    color = "var(--text-dim)";
+    isHtml = true;
   } else if (parts[0] === "about") {
     out = aboutText;
   } else if (parts[0] === "mode" && ["notes", "intervals"].includes(parts[1])) {
@@ -227,7 +240,7 @@ const handleSubmit = (): void => {
     color = "#FF6B6B";
   }
 
-  pushHistory(raw, out, color);
+  pushHistory(raw, out, color, isHtml);
   input.value = "";
   renderSuggestion("");
 };
