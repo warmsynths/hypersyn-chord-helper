@@ -1,8 +1,17 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  build: { outDir: 'docs' },
-  base: "/hypersyn-chord-helper/", // Use relative paths for all assets
+  build: {
+    outDir: 'docs',
+    rollupOptions: {
+      output: {
+        entryFileNames: 'app.js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
+      },
+    },
+  },
+  base: "./",
   server: {
     port: 43303
   }
