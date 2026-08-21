@@ -226,24 +226,26 @@ export const convertChordsUI = (
     const idxLabel = String(i).padStart(2, "0");
     const notes = currentNotesFor(i);
     const hexBoxes = renderHexBoxes(notes, chord.midiRoot ?? 60);
-    const intId = chord.intervalId ?? "00";
 
     html += `
       <div class="chord-row-wrapper" id="chord-row-wrapper${i}" data-chord-idx="${i}" tabindex="0">
         <div class="chord-row" id="chord-row-${i}">
-          <div class="chord-meta">
-            <span class="chord-label">${idxLabel}</span>
-            <span class="chord-name-display">${chord.root}${chord.type}</span>
-            <span class="voicing-chip" id="voicingChip${i}">ROOT</span>
-            <span class="chord-root-hint" id="rootHint${i}" style="display:${isIntervalOnly ? "inline" : "none"};">${chord.root} ${intId}</span>
-            <span class="chord-arrow">-&gt; </span>
+          <div class="chord-row-main">
+            <span class="row-cue" id="rowCue${i}" title="Play chord">
+              <span class="row-idx">${idxLabel}</span>
+              <span class="row-play">&#9656;</span>
+            </span>
+            <span class="chord-name">${chord.root}${chord.type}</span>
+            <span class="voicing-badge voicing-chip" id="voicingChip${i}">ROOT</span>
+            <span class="chord-root-hint" id="rootHint${i}" style="display:${isIntervalOnly ? "inline" : "none"};">root ${chord.root}</span>
+            <span class="chord-arrow">-&gt;</span>
+            <div class="hex-boxes" id="hexBoxes${i}">${hexBoxes}</div>
           </div>
-          <div class="hex-boxes" id="hexBoxes${i}">${hexBoxes}</div>
         </div>
 
         <div class="voicing-drawer" id="voicing-drawer${i}" style="display:none;">
-          <div class="voicing-hint voicing-hint-desktop">&#8593;/&#8595; cycle voicing · plays on change</div>
-          <div class="voicing-hint voicing-hint-mobile">tap <span class="voicing-hint-label" id="voicingHintLabel${i}">ROOT</span> to cycle · plays on change</div>
+          <div class="voicing-hint voicing-hint-desktop">&#8593;/&#8595; cycle voicing &middot; plays on change</div>
+          <div class="voicing-hint voicing-hint-mobile">tap <span class="voicing-hint-label" id="voicingHintLabel${i}">ROOT</span> to cycle &middot; plays on change</div>
           <div class="voicing-diffs" id="voicingDiffs${i}"></div>
         </div>
       </div>`;
@@ -258,18 +260,36 @@ export const convertChordsUI = (
     listEl.addEventListener("click", (e: MouseEvent) => {
       const t = e.target as HTMLElement;
 
-      // Tapping/clicking the voicing badge cycles forward (works on any device).
-      const chip = t.closest(".voicing-chip") as HTMLElement;
-      if (chip) {
-        const wrapperEl = chip.closest(".chord-row-wrapper") as HTMLElement;
+      // Play cue tap
+      const cue = t.closest(".row-cue") as HTMLElement;
+      if (cue) {
+        const wrapperEl = cue.closest(".chord-row-wrapper") as HTMLElement;
         const idxStr = wrapperEl?.dataset.chordIdx;
-        if (idxStr) cycleVoicing(parseInt(idxStr, 10), 1);
+        if (idxStr !== undefined) {
+          const idx = parseInt(idxStr, 10);
+          playChordProgression([currentNotesFor(idx)]);
+        }
         return;
       }
 
-      if (t.classList.contains("hex-box") && t.dataset.copy) {
-        navigator.clipboard?.writeText(t.dataset.copy)
-          .then(() => showToast(`Copied ${t.dataset.copy}`, "info"))
+      // Tapping/clicking the voicing badge cycles forward
+      const chip = t.closest(".voicing-chip, .voicing-badge") as HTMLElement;
+      if (chip) {
+        const wrapperEl = chip.closest(".chord-row-wrapper") as HTMLElement;
+        const idxStr = wrapperEl?.dataset.chordIdx;
+        if (idxStr !== undefined) cycleVoicing(parseInt(idxStr, 10), 1);
+        return;
+      }
+
+      // Hex box click-to-copy
+      const hexBox = t.closest(".hex-box") as HTMLElement;
+      if (hexBox && hexBox.dataset.copy) {
+        const wrapperEl = hexBox.closest(".chord-row-wrapper") as HTMLElement;
+        const idxStr = wrapperEl?.dataset.chordIdx;
+        const chordName = idxStr !== undefined ? `${lastChordObjs[parseInt(idxStr, 10)].root}${lastChordObjs[parseInt(idxStr, 10)].type}` : "Chord";
+        const copyText = hexBox.dataset.copy;
+        navigator.clipboard?.writeText(copyText)
+          .then(() => showToast(`Copied ${chordName} hex: ${copyText}`, "info"))
           .catch(() => {});
         return;
       }
@@ -277,11 +297,11 @@ export const convertChordsUI = (
       // Clicking the expanded drawer's hint/diffs text shouldn't collapse the row.
       if (t.closest(".voicing-drawer")) return;
 
-      // Click a row (outside the tap buttons / hex box / drawer) → expand/collapse it.
+      // Click a row (outside play cue / badge / hex box / drawer) -> expand/collapse it.
       const wrapper = t.closest(".chord-row-wrapper") as HTMLElement;
       if (wrapper) {
         const idxStr = wrapper.dataset.chordIdx;
-        if (idxStr) setExpanded(parseInt(idxStr, 10));
+        if (idxStr !== undefined) setExpanded(parseInt(idxStr, 10));
       }
     });
 
@@ -305,3 +325,4 @@ export const getOutputModeLabel = (): string => (isIntervalOnly ? "INTERVALS" : 
 export const getOutputModeHint = (): string =>
   isIntervalOnly ? "(offsets from root — set root on device)" : "(literal note values)";
 export const isOutputIntervalOnly = (): boolean => isIntervalOnly;
+

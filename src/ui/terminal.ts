@@ -20,7 +20,12 @@ const THEMES: Record<string, string> = {
 };
 
 const THEME_STORAGE_KEY = "hypersynTerminalTheme";
+const CRT_STORAGE_KEY = "hypersynTerminalCrt";
+const SIZE_STORAGE_KEY = "hypersynTerminalSize";
+
 let currentTheme = "monokai";
+let currentCrt = "low";
+let currentSize = "normal";
 
 const applyTheme = (key: string): boolean => {
   if (!THEMES[key]) return false;
@@ -30,6 +35,31 @@ const applyTheme = (key: string): boolean => {
   localStorage.setItem(THEME_STORAGE_KEY, currentTheme);
   const chip = document.getElementById("themeChip");
   if (chip) chip.textContent = THEMES[currentTheme];
+  return true;
+};
+
+const applyCrt = (level: string): boolean => {
+  if (!["off", "low", "med", "high"].includes(level)) return false;
+  const crtBox = document.getElementById("crt-box");
+  if (crtBox) {
+    crtBox.classList.remove("crt-off", "crt-low", "crt-med", "crt-high");
+    crtBox.classList.add(`crt-${level}`);
+  }
+  currentCrt = level;
+  localStorage.setItem(CRT_STORAGE_KEY, currentCrt);
+  return true;
+};
+
+const applySize = (level: string): boolean => {
+  const sizeMap: Record<string, string> = { normal: "zoom-a", large: "zoom-b", huge: "zoom-c" };
+  if (!sizeMap[level]) return false;
+  const crtBox = document.getElementById("crt-box");
+  if (crtBox) {
+    crtBox.classList.remove("zoom-a", "zoom-b", "zoom-c");
+    crtBox.classList.add(sizeMap[level]);
+  }
+  currentSize = level;
+  localStorage.setItem(SIZE_STORAGE_KEY, currentSize);
   return true;
 };
 
@@ -43,11 +73,18 @@ const updateModeChips = (): void => {
 // ─── Command text ─────────────────────────────────────────────────────
 const helpText = [
   "help              show this list",
-  "status            show current mode and theme",
   "about             what this tool does",
+  "status            current mode, theme, crt, size",
+  "crt <level>       off | low | med | high  screen effect intensity",
+  "size <level>      normal | large | huge  text size",
   "mode notes        hex = literal note value (absolute pitch, for M8 entry as-is)",
   "mode intervals    hex = semitone offset from chord root (00-0B); set the root on the device",
   `theme <name>      ${Object.keys(THEMES).join(" | ")}`,
+  "projects          open project management dialog",
+  "save <name>       save current chord progression set",
+  "load <name>       load saved chord set by name",
+  "export            export chord sets to JSON",
+  "import            import chord sets from JSON file",
   "clear             clear this log",
 ].join("\n");
 
@@ -57,15 +94,29 @@ const aboutText = [
   "03  click a chord line      expands it — up/down cycles voicings, plays each one",
   "04  mode notes|intervals    notes = hex bakes in the root, paste straight into Hypersyn",
   "                            intervals = chord shape only — you set the root on the device",
+  "",
+  "source progressions from chroma chords — warmsynths.github.io/chroma-chords",
 ].join("\n");
 
 const commandList: { cmd: string; desc: string }[] = [
   { cmd: "help", desc: "show available commands" },
-  { cmd: "status", desc: "show current mode and theme" },
   { cmd: "about", desc: "what this tool does" },
+  { cmd: "status", desc: "show current mode, theme, crt, size" },
+  { cmd: "crt off", desc: "no scanlines or glow" },
+  { cmd: "crt low", desc: "subtle screen effect (default)" },
+  { cmd: "crt med", desc: "moderate screen effect" },
+  { cmd: "crt high", desc: "full CRT effect" },
+  { cmd: "size normal", desc: "default text size" },
+  { cmd: "size large", desc: "larger text for big displays" },
+  { cmd: "size huge", desc: "across-the-room text size" },
   { cmd: "mode notes", desc: "output literal note hex" },
   { cmd: "mode intervals", desc: "output semitone offsets from root" },
   ...Object.keys(THEMES).map((key) => ({ cmd: `theme ${key}`, desc: `switch to ${THEMES[key]}` })),
+  { cmd: "projects", desc: "open project manager modal" },
+  { cmd: "save", desc: "save current chord progression set" },
+  { cmd: "load", desc: "load saved chord set" },
+  { cmd: "export", desc: "export chord sets to JSON" },
+  { cmd: "import", desc: "import chord sets from JSON file" },
   { cmd: "clear", desc: "clear the command log" },
 ];
 
@@ -148,6 +199,7 @@ const runKonamiAnimation = (): void => {
   const track = document.getElementById("konamiTrack");
   const pac = document.getElementById("konamiPac");
   const done = document.getElementById("konamiDone");
+
   if (done) done.style.display = "none";
   if (track) track.style.display = "flex";
 
@@ -214,11 +266,24 @@ const handleSubmit = (): void => {
     const modeVal = escapeHtml(getOutputModeLabel());
     const modeHint = escapeHtml(getOutputModeHint());
     const themeVal = escapeHtml(THEMES[currentTheme]);
-    out = `MODE   <span style="color:var(--accent);">${modeVal}</span>  ${modeHint}\nTHEME  <span style="color:var(--accent);">${themeVal}</span>  type theme &lt;name&gt; to switch`;
+    out = [
+      `mode    <span style="color:var(--accent);">${modeVal}</span>  ${modeHint}`,
+      `theme   <span style="color:var(--accent);">${themeVal}</span>`,
+      `crt     <span style="color:var(--accent);">${currentCrt}</span>`,
+      `size    <span style="color:var(--accent);">${currentSize}</span>`,
+    ].join("\n");
     color = "var(--text-dim)";
     isHtml = true;
   } else if (parts[0] === "about") {
     out = aboutText;
+  } else if (parts[0] === "crt" && ["off", "low", "med", "high"].includes(parts[1])) {
+    applyCrt(parts[1]);
+    out = "crt -> " + parts[1];
+    color = "var(--accent-green, #7CFF6B)";
+  } else if (parts[0] === "size" && ["normal", "large", "huge"].includes(parts[1])) {
+    applySize(parts[1]);
+    out = "size -> " + parts[1];
+    color = "var(--accent-green, #7CFF6B)";
   } else if (parts[0] === "mode" && ["notes", "intervals"].includes(parts[1])) {
     const wantIntervals = parts[1] === "intervals";
     if (wantIntervals !== isOutputIntervalOnly()) toggleIntervalMode();
@@ -228,6 +293,36 @@ const handleSubmit = (): void => {
   } else if (parts[0] === "theme" && THEMES[parts[1]]) {
     applyTheme(parts[1]);
     out = "theme -> " + THEMES[parts[1]];
+    color = "var(--accent-green, #7CFF6B)";
+  } else if (parts[0] === "projects") {
+    const dialog = document.getElementById("diskModal") as HTMLDialogElement | null;
+    if (dialog) dialog.showModal();
+    out = "opened project manager";
+    color = "var(--accent-green, #7CFF6B)";
+  } else if (parts[0] === "save") {
+    const name = rawParts.slice(1).join(" ");
+    const nameInput = document.getElementById("chordSetNameInput") as HTMLInputElement | null;
+    if (nameInput && name) nameInput.value = name;
+    document.getElementById("saveChordSetBtn")?.click();
+    out = name ? `saved chord set "${name}"` : "triggered save chord set";
+    color = "var(--accent-green, #7CFF6B)";
+  } else if (parts[0] === "load") {
+    const name = rawParts.slice(1).join(" ");
+    const select = document.getElementById("savedChordSetsSelect") as HTMLSelectElement | null;
+    if (select && name) {
+      const opt = Array.from(select.options).find((o) => o.text.toLowerCase() === name.toLowerCase() || o.value === name);
+      if (opt) select.value = opt.value;
+    }
+    document.getElementById("loadChordSetBtn")?.click();
+    out = name ? `loaded chord set "${name}"` : "triggered load chord set";
+    color = "var(--accent-green, #7CFF6B)";
+  } else if (parts[0] === "export") {
+    document.getElementById("exportChordSetsBtn")?.click();
+    out = "exported chord sets JSON";
+    color = "var(--accent-green, #7CFF6B)";
+  } else if (parts[0] === "import") {
+    document.getElementById("importChordSetsInput")?.click();
+    out = "opened JSON import chooser";
     color = "var(--accent-green, #7CFF6B)";
   } else if (parts[0] === "clear") {
     cmdHistory = [];
@@ -246,8 +341,15 @@ const handleSubmit = (): void => {
 };
 
 export const initTerminal = (): void => {
-  const stored = localStorage.getItem(THEME_STORAGE_KEY);
-  applyTheme(stored && THEMES[stored] ? stored : "monokai");
+  const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+  applyTheme(storedTheme && THEMES[storedTheme] ? storedTheme : "monokai");
+
+  const storedCrt = localStorage.getItem(CRT_STORAGE_KEY);
+  applyCrt(storedCrt && ["off", "low", "med", "high"].includes(storedCrt) ? storedCrt : "low");
+
+  const storedSize = localStorage.getItem(SIZE_STORAGE_KEY);
+  applySize(storedSize && ["normal", "large", "huge"].includes(storedSize) ? storedSize : "normal");
+
   updateModeChips();
 
   const form = document.getElementById("cmdForm") as HTMLFormElement | null;
@@ -283,9 +385,7 @@ export const initTerminal = (): void => {
     }
   });
 
-  // Mobile easter-egg trigger — no arrow keys on mobile, so tapping the
-  // compact ">_ HYPERSYN" header 5 times within 1.2s runs the Pac-Man
-  // animation directly, bypassing the arrow/b/a sequence entirely.
+  // Mobile easter-egg trigger — tapping compact ">_ HYPERSYN" header 5 times runs Pac-Man sweep
   const asciiHdrSm = document.getElementById("asciiHdrSm");
   let mobileTapCount = 0;
   let mobileTapTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -315,3 +415,4 @@ export const initTerminal = (): void => {
     boot();
   }
 };
+

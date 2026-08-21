@@ -26,8 +26,8 @@ describe('terminal module', () => {
 
     expect(history.children.length).toBe(2);
     expect(history.children[0].textContent).toBe('> status');
-    expect(history.children[1].textContent).toContain('MODE   INTERVALS');
-    expect(history.children[1].textContent).toContain('THEME  Monokai');
+    expect(history.children[1].textContent).toContain('mode    INTERVALS');
+    expect(history.children[1].textContent).toContain('theme   Monokai');
     expect(history.children[1].innerHTML).toContain('<span style="color:var(--accent);">INTERVALS</span>');
     expect(history.children[1].innerHTML).toContain('<span style="color:var(--accent);">Monokai</span>');
   });

@@ -29,8 +29,8 @@ describe('chordCards module', () => {
     expect(output?.innerHTML).toContain('Cmaj7');
     expect(output?.innerHTML).toContain('Dm7');
     expect(output?.innerHTML).toContain('voicing-chip');
-    expect(output?.innerHTML).toContain('C 00');
-    expect(output?.innerHTML).toContain('D 01');
+    expect(output?.innerHTML).toContain('root C');
+    expect(output?.innerHTML).toContain('root D');
   });
 
   it('getCurrentProgressionNotes returns root-position notes by default', () => {
