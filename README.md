@@ -1,55 +1,96 @@
-
 # Hypersyn Chord Helper
 
 ![Hypersyn Chord Helper Screenshot](docs/assets/screenshot.png)
 
-Hypersyn Chord Helper is a web-based tool for musicians and synth enthusiasts to convert chord progressions into Hypersyn-compatible hex codes. It features a stylish synthwave interface, advanced voicing options, save/load chord sets, and modern toast notifications for all user feedback.
+**Hypersyn Chord Helper** is a retro CRT terminal-styled web application built for musicians, tracker producers, and synth enthusiasts. It converts chord progressions into M8 Tracker / Hypersyn-compatible hex codes with polyphonic synth previews, dynamic voicing cycling, interval numbering, customizable CRT scanlines, theme customization, and full project preset management.
+
+---
 
 ## Features
-- Convert chord names (e.g., Cmaj7, Dm7, G13) to Hypersyn hex codes
-- Supports a wide range of chord types and extensions
-- Advanced voicing options (closed, open triad, drop-2, drop-3, spread, octave doubling, inversions, shell, altered)
-- Displays both root-baked and interval-only hex codes
-- Unique chord type grouping and interval display
-- Save, load, and delete named chord sets (localStorage)
-- Synthwave-inspired UI with retro fonts and Dracula color palette
-- Play chord progressions and single chords with Web Audio API
-- Responsive design for desktop and mobile
-- Modern toast notifications for all user feedback
-- Toggle synthwave video background
+
+- **Redesigned CRT Terminal Surface**: Sleek retro aesthetic with ASCII banner, scanlines (`crt off|low|med|high`), and customizable text scaling (`size normal|large|huge`).
+- **Interactive Command Shell**: Enter progressions (`Am7 Dm9 G13 Cmaj7`) or terminal commands with inline command completion suggestions and command history.
+- **M8 Tracker Hex Output**:
+  - **Root-Baked Mode (`mode notes`)**: Generates absolute MIDI pitch hex values for direct entry into Hypersyn.
+  - **Interval Mode (`mode intervals`)**: Generates relative semitone offset hex codes (`00`-`0B`) so you can set the root note directly on the M8 Tracker.
+- **Numbered Unique Intervals**: Clearly numbers unique semitone intervals in interval mode for rapid identification of chord voice structures.
+- **Interactive Voicing Cycling**: Tap/click line cards or use `↑`/`↓` arrow keys to cycle through voicings (`ROOT`, `INV 1`, `INV 2`, `INV 3`, `DROP 2`, `SPREAD`) with instant audio playback on cycle.
+- **Web Audio Polyphonic Synthesizer**: Built-in sound generator with a Juno-60 styled FX bus (LFO chorus + plate reverb) for auditioning single chords and full progressions.
+- **8 Color Themes**: Instantly switch color schemes via `theme <name>` (`monokai`, `dracula`, `green`, `amber`, `ibm`, `solarized`, `nord`, `onedark`).
+- **Project & ChordSet Management**: Save, load, delete, export to `.json`, and import progression sets via `projects` dialog or command line.
+- **Modern Toast Notifications**: Sleek floating notifications for clipboard actions, storage updates, and error alerts.
+
+---
 
 ## Usage
 
-### Running Locally
-To run the app locally, ensure you have Node.js installed.
-1. Clone the repository and navigate into it.
-2. Install dependencies with `npm install`.
-3. Start the Vite development server with `npm run dev`.
-4. Open the displayed local URL in your browser (usually `http://localhost:5173`).
+### Terminal Commands
 
-### Using the App
-1. Paste or type your chord progression into the input box.
-2. Select a voicing type from the dropdown.
-3. Click **Convert** to see the hex codes for each chord.
-4. Preview and play your progression or single chords.
-5. Save, load, or delete named chord sets for quick recall.
-6. Use the output in Hypersyn, trackers, or other music tools.
-7. Toggle the video background for distraction-free mode.
+Type any of the following commands directly into the terminal prompt (`>`):
 
-## Chord Types & Voicings Supported
-- Major, minor, seventh, major seventh, minor seventh, minor ninth, thirteenth, half-diminished seventh, altered seventh, and more.
-- Voicing options: closed, open triad, drop-2, drop-3, spread, octave doubling, first/second/third inversion, shell dominant, altered dominant.
+| Command | Description |
+| :--- | :--- |
+| `Am7 Dm9 G13 Cmaj7` | Input a chord progression to convert into Hypersyn hex codes |
+| `help` | Display terminal command summary |
+| `about` | Overview of features and usage guide |
+| `status` | Show current mode, theme, CRT level, and font size |
+| `mode notes` / `mode intervals` | Switch between root-baked MIDI hex and relative interval hex |
+| `theme <name>` | Select color theme (`monokai`, `dracula`, `green`, `amber`, `ibm`, `solarized`, `nord`, `onedark`) |
+| `crt <off\|low\|med\|high>` | Adjust CRT screen scanline and phosphor glow intensity |
+| `size <normal\|large\|huge>` | Change display text size |
+| `projects` | Open project & chord set manager modal |
+| `save <name>` | Save current chord progression to local storage |
+| `load <name>` | Load a saved chord progression set by name |
+| `export` / `import` | Export chord sets to JSON or import from JSON file |
+| `clear` | Clear terminal output log |
+
+### Keyboard Shortcuts & Interaction
+
+- **Enter**: Execute typed chord progression or terminal command.
+- **Click / Tap Line**: Expand/collapse chord card detail view.
+- **Up / Down Arrow Keys**: Cycle voicings for the active/expanded chord line.
+- **Tab**: Auto-complete suggested command.
+
+---
 
 ## Development
-- The app uses **Vite** as a build tool and **TypeScript** for type safety.
-- All conversion, voicing, save/load, and toast logic are located in the `src/core/` directory, leveraging `@tonaljs` for music theory calculations.
-- UI and styling are in [`index.html`](index.html), using Tailwind CSS and the Share Tech Mono font.
-- To build for production, run `npm run build`. The optimized files will be output to the `dist` directory.
-- To run unit tests (powered by Jest), use `npm run test` or `npm run test:watch`.
+
+### Prerequisites
+- Node.js (v18+ recommended)
+- npm
+
+### Setup & Execution
+1. Clone the repository and install dependencies:
+   ```bash
+   npm install
+   ```
+2. Start the Vite development server:
+   ```bash
+   npm run dev
+   ```
+3. Open `http://localhost:5173` in your web browser.
+
+### Building & Testing
+- **Run Unit Tests**: `npm run test`
+- **Watch Mode Tests**: `npm run test:watch`
+- **Build for Production**: `npm run build` (outputs optimized assets to `dist/`)
+
+---
+
+## Technical Stack
+
+- **Framework & Runtime**: Vite + TypeScript
+- **Music Theory**: `@tonaljs/chord`, `@tonaljs/voicing`, `@tonaljs/midi`, `@tonaljs/interval`
+- **Audio Engine**: Web Audio API (polyphonic oscillators + Juno-60 delay/chorus bus)
+- **Styling**: Modern CSS3 custom properties, Share Tech Mono & JetBrains Mono typography, CRT scanline overlay filters
+
+---
 
 ## License
-GNU GPLv3
+
+GNU GPLv3 — See [LICENSE](LICENSE) for details.
 
 ## Credits
-- Inspired by the M8 Tracker and synthwave aesthetics.
-- Video background by [visualdon on Reddit](https://www.reddit.com/user/visualdon/)
+
+- Inspired by the **M8 Tracker** and synthwave aesthetics.
+- Progression sources & inspiration: [Chroma Chords](https://warmsynths.github.io/chroma-chords).
