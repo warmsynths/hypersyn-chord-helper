@@ -52,15 +52,6 @@ body {
   padding: 0;
   min-height: 100vh;
   overflow-x: hidden;
-  /* subtle scanline overlay */
-  background-image:
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0,0,0,0.18) 2px,
-      rgba(0,0,0,0.18) 4px
-    );
 }
 
 /* ---- Dark Theme Scrollbar ---- */
@@ -278,175 +269,12 @@ body {
   color: var(--text);
 }
 
-/* ---- Chord Rows (terminal log lines) ---- */
+/* ---- Legacy chord rows replaced by Phosphor CRT layout below ---- */
 #chord-list {
   display: flex;
   flex-direction: column;
   gap: 1px;
   margin-top: 6px;
-}
-
-.chord-row-wrapper {
-  outline: none;
-  cursor: pointer;
-}
-
-.chord-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 4px 6px;
-  margin: 1px 0;
-  background: transparent;
-  border-left: 2px solid transparent;
-  transition: background 0.12s, border-color 0.12s;
-}
-
-.chord-row-wrapper:hover .chord-row {
-  background: var(--row-hover);
-}
-
-.chord-row-wrapper.expanded .chord-row {
-  background: rgba(255, 122, 61, 0.08);
-  border-left-color: var(--accent);
-}
-
-/* Meta: chord number, name, voicing chip, play button */
-.chord-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: nowrap;
-  flex-shrink: 0;
-}
-
-.chord-label {
-  color: var(--text-dim);
-  font-size: 0.7rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  min-width: 22px;
-}
-
-.chord-name-display {
-  color: var(--text-bright);
-  font-weight: 700;
-  font-size: 0.85rem;
-  letter-spacing: 0.03em;
-  min-width: 52px;
-}
-
-.chord-root-hint {
-  color: var(--text-dim);
-  font-size: 0.68rem;
-}
-
-.chord-arrow {
-  color: var(--text-dim);
-}
-
-.voicing-chip {
-  display: none;
-  color: #000;
-  background: var(--accent);
-  font-weight: 700;
-  font-size: 0.65rem;
-  letter-spacing: 0.05em;
-  padding: 1px 6px;
-  border-radius: 2px;
-  touch-action: manipulation;
-}
-
-.chord-row-wrapper.expanded .voicing-chip {
-  display: inline-block;
-}
-
-/* Voicing drawer: hint + note diffs, shown while a row is expanded */
-.voicing-drawer {
-  margin: 0 0 4px 24px;
-  padding-left: 10px;
-  border-left: 1px dashed var(--border);
-}
-
-.voicing-hint {
-  color: var(--text-dim);
-  font-size: 0.68rem;
-  margin-bottom: 4px;
-}
-
-.voicing-hint-label {
-  color: var(--accent);
-}
-
-.voicing-hint-mobile {
-  display: none;
-}
-
-@media (max-width: 480px) {
-  .voicing-hint-desktop {
-    display: none;
-  }
-
-  .voicing-hint-mobile {
-    display: block;
-  }
-
-  .voicing-chip {
-    cursor: pointer;
-  }
-}
-
-.voicing-diff-row {
-  display: flex;
-  gap: 5px;
-  font-size: 0.72rem;
-}
-
-.voicing-diff-old {
-  color: #ff6b6b;
-}
-
-.voicing-diff-arrow {
-  color: var(--text-dim);
-}
-
-.voicing-diff-new {
-  color: var(--accent-green);
-}
-
-/* Hex output — inline log tokens, not boxed cells */
-.hex-boxes {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.hex-box {
-  color: var(--hex-text);
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  font-family: var(--label-font);
-  cursor: pointer;
-  text-shadow: 0 0 6px var(--accent-dim);
-  transition: opacity 0.12s;
-}
-
-.hex-box:hover {
-  opacity: 0.7;
-}
-
-.hex-box.interval-mode {
-  color: var(--accent-green);
-}
-
-.hex-box.dimmed {
-  opacity: 0.3;
-  cursor: default;
-  pointer-events: none;
 }
 
 
@@ -716,43 +544,43 @@ body {
 #terminal-shell {
   min-height: 100vh;
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   justify-content: center;
-  padding: clamp(16px, 4vw, 40px);
   box-sizing: border-box;
 }
 
 #terminal-column {
   width: 100%;
-  max-width: clamp(680px, 64vw, 1440px);
 }
 
 #crt-box {
   position: relative;
   width: 100%;
+  min-height: 100vh;
   background: var(--bg);
-  border: 1px solid #232327;
-  border-radius: 14px;
-  padding: clamp(12px, 3vw, 20px);
-  box-shadow: inset 0 0 60px 18px rgba(0, 0, 0, 0.6), inset 0 0 2px rgba(var(--glow-rgb, 50, 236, 255), 0.2);
-  overflow: hidden;
+  border: none;
+  border-radius: 0;
+  padding: clamp(14px, 2.4vw, 30px);
+  box-sizing: border-box;
   outline: none;
-  animation: crtFlicker 6s infinite;
+  display: flex;
+  flex-direction: column;
 }
 
 .crt-content {
   position: relative;
   z-index: 1;
   font-size: clamp(12px, 0.55vw + 9px, 22px) !important;
-  line-height: 1.7;
+  line-height: 1.75;
   display: flex;
   flex-direction: column;
+  flex: 1;
   color: var(--text);
   text-shadow: 0 0 6px rgba(var(--glow-rgb, 50, 236, 255), 0.25);
 }
 
 .ascii-hdr {
-  margin: 0 0 12px;
+  margin: 0 0 10px;
   color: var(--accent);
   font-size: 0.7em;
   line-height: 1.15;
@@ -822,6 +650,7 @@ body {
 
 .term-spacer {
   flex: 1;
+  min-height: 14px;
 }
 
 .cmd-history {
@@ -831,20 +660,30 @@ body {
 
 .cmd-history-line {
   white-space: pre-wrap;
-  margin-top: 4px;
+  margin-top: 3px;
   font-size: 1em;
+}
+
+/* CLI Sticky Bar mechanic */
+.cmd-sticky-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  margin-top: 6px;
+  padding-bottom: clamp(10px, 2vw, 20px);
+  background: linear-gradient(to bottom, transparent 0, var(--bg) 14px, var(--bg) 100%);
 }
 
 .cmd-input-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding-top: 8px;
-  margin-top: 6px;
-  border-top: 1px solid #17171a;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .cmd-prompt {
+  opacity: 0.7;
   color: var(--accent);
   font-size: 1em;
 }
@@ -854,7 +693,8 @@ body {
   background: transparent;
   border: none;
   outline: none;
-  color: var(--text);
+  color: inherit;
+  text-shadow: inherit;
   font-family: 'JetBrains Mono', monospace;
   font-size: 1em;
 }
@@ -864,9 +704,10 @@ body {
 }
 
 .cmd-suggestion {
-  color: var(--text-dim);
+  opacity: 0.45;
   font-size: 0.85em;
-  padding-left: 20px;
+  padding-left: 22px;
+  color: var(--text-dim);
 }
 
 .cmd-suggestion-full {
@@ -908,70 +749,51 @@ body {
   font-size: 0.92em;
   font-weight: 700;
   margin-top: 8px;
-  text-shadow: 0 0 8px rgba(var(--glow-rgb, 50, 236, 255), 0.6);
-}
-
-.crt-scanlines {
-  position: absolute;
-  inset: -8px 0 0 0;
-  z-index: 2;
-  pointer-events: none;
-  background: repeating-linear-gradient(rgba(0, 0, 0, 0) 0px, rgba(0, 0, 0, 0) 2px, rgba(0, 0, 0, 0.35) 3px, rgba(0, 0, 0, 0) 4px);
-  animation: scanlineMove 0.6s linear infinite;
-  will-change: transform;
+  text-shadow: 0 0 8px rgba(var(--glow-rgb, 50, 236, 255), 0.5);
 }
 
 .crt-vignette {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 3;
   pointer-events: none;
-  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.55) 100%);
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 58%, rgba(0, 0, 0, 0.5) 100%);
 }
 
-#crt-box.crt-off, #crt-box.crt-low {
+#crt-box.crt-off {
   animation: none !important;
 }
 
-.crt-off .crt-scanlines, .crt-off .crt-vignette {
+.crt-off .crt-vignette {
   display: none !important;
-}
-
-.crt-low .crt-scanlines {
-  opacity: 0.28;
 }
 
 .crt-low .crt-vignette {
   opacity: 0.35;
 }
 
-.crt-med .crt-scanlines {
-  opacity: 0.6;
-}
-
 .crt-med .crt-vignette {
-  opacity: 0.7;
-}
-
-.crt-high .crt-scanlines {
-  opacity: 0.9;
+  opacity: 0.65;
 }
 
 .crt-high .crt-vignette {
   opacity: 0.9;
 }
 
-.crt-off .crt-content,
-.crt-low .crt-content {
+.crt-off .crt-content {
   text-shadow: none !important;
 }
 
+.crt-low .crt-content {
+  text-shadow: 0 0 3px rgba(var(--glow-rgb, 50, 236, 255), 0.2);
+}
+
 .crt-med .crt-content {
-  text-shadow: 0 0 4px rgba(var(--glow-rgb, 50, 236, 255), 0.25);
+  text-shadow: 0 0 6px rgba(var(--glow-rgb, 50, 236, 255), 0.35);
 }
 
 .crt-high .crt-content {
-  text-shadow: 0 0 8px rgba(var(--glow-rgb, 50, 236, 255), 0.5);
+  text-shadow: 0 0 10px rgba(var(--glow-rgb, 50, 236, 255), 0.6), 0 0 22px rgba(var(--glow-rgb, 50, 236, 255), 0.25);
 }
 
 /* Sizing clamps for text zoom levels */
@@ -987,22 +809,20 @@ body {
   font-size: clamp(18px, 0.9vw + 13px, 34px) !important;
 }
 
-/* Chord row redesign styles — transparent background, glow wash on expand */
+/* Chord row styles — transparent background, glow wash on expand */
 .chord-row-wrapper {
   margin: 1px 0;
   outline: none;
 }
 
 .chord-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
+  padding: 3px 8px;
+  margin: 1px 0;
   background: transparent;
-  border-left: 2px solid transparent;
   cursor: pointer;
   outline: none;
-  transition: background 0.15s ease, border-left-color 0.15s ease;
+  transition: background 140ms linear;
+  color: inherit;
 }
 
 .chord-row:hover {
@@ -1010,14 +830,13 @@ body {
 }
 
 .chord-row-wrapper.expanded .chord-row {
-  border-left-color: var(--accent);
-  background: rgba(var(--glow-rgb, 50, 236, 255), 0.08);
+  background: rgba(var(--glow-rgb, 50, 236, 255), 0.09);
 }
 
 .chord-row-main {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: nowrap;
   font-size: 1em;
 }
@@ -1025,9 +844,13 @@ body {
 .row-cue {
   display: inline-block;
   min-width: 16px;
-  color: var(--text-dim);
+  opacity: 0.95;
   touch-action: manipulation;
   cursor: pointer;
+}
+
+.row-idx {
+  color: var(--text-dim);
 }
 
 .row-play {
@@ -1046,71 +869,97 @@ body {
 }
 
 .chord-name {
-  color: #f2f2f4;
+  color: var(--accent);
   font-weight: 700;
-  min-width: 52px;
+  min-width: 56px;
 }
 
+/* Voicing badge: outlined button visible only when expanded */
 .voicing-badge {
-  color: #000;
-  background: var(--accent);
+  display: none;
   font-weight: 700;
-  font-size: 0.85em;
+  font-size: 0.8em;
   padding: 1px 6px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
   cursor: pointer;
-  user-select: none;
   touch-action: manipulation;
+  user-select: none;
+}
+
+.chord-row-wrapper.expanded .voicing-badge {
+  display: inline-block;
 }
 
 .chord-root-hint {
-  color: var(--text-dim);
+  color: var(--accent);
+  opacity: 0.85;
   font-size: 0.85em;
+  font-weight: 700;
 }
 
 .chord-arrow {
   color: var(--text-dim);
+  opacity: 0.65;
 }
 
 .hex-boxes {
   display: flex;
-  gap: 6px;
+  gap: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
 }
 
 .hex-box {
-  color: var(--accent);
-  text-shadow: 0 0 6px rgba(var(--glow-rgb, 50, 236, 255), 0.6);
   cursor: pointer;
   user-select: none;
-  font-weight: 700;
+  color: var(--hex-text, var(--accent));
+  transition: opacity 0.12s;
 }
 
 .hex-box:hover {
-  text-decoration: underline;
+  opacity: 0.7;
 }
 
 .voicing-drawer {
-  margin-top: 6px;
-  padding-left: 10px;
-  border-left: 1px dashed #2a2a2e;
-  font-size: 0.9em;
+  margin-top: 5px;
+  padding-left: 12px;
+  border-left: 1px dashed var(--accent-dim, var(--border-hi));
+}
+
+.voicing-hint {
+  color: var(--text-dim);
+  opacity: 0.7;
+  font-size: 0.85em;
+  margin-bottom: 3px;
+}
+
+.voicing-diffs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .voicing-diff-row {
   display: flex;
-  gap: 4px;
-  font-size: 0.92em;
+  gap: 6px;
+  font-size: 0.9em;
 }
 
 .voicing-diff-old {
-  color: #FF6B6B;
+  color: var(--text-dim);
+  opacity: 0.55;
 }
 
 .voicing-diff-arrow {
   color: var(--text-dim);
+  opacity: 0.4;
 }
 
 .voicing-diff-new {
-  color: var(--accent-green, #7CFF6B);
+  color: var(--accent);
+  opacity: 1;
 }
 
 .voicing-hint-desktop {
@@ -1127,10 +976,16 @@ body {
   }
   .row-play {
     display: inline;
-    opacity: 0.75;
+    opacity: 0.8;
   }
-  .row-cue {
-    padding: 6px 8px 6px 0;
+  .chord-row {
+    padding: 6px 4px !important;
+  }
+  .chord-row-main {
+    gap: 5px !important;
+  }
+  .chord-name {
+    min-width: 44px !important;
   }
   .voicing-hint-desktop {
     display: none !important;
@@ -1138,31 +993,138 @@ body {
   .voicing-hint-mobile {
     display: block !important;
   }
-  .voicing-badge {
-    cursor: pointer;
+}
+
+/* footer removed — full-screen terminal */
+
+/* ============================================================
+   PHOSPHOR ANIMATIONS
+   ============================================================ */
+
+/* CRT warm-up: vertical stretch + brightness bloom on page load */
+@keyframes warmup {
+  0%   { opacity: 0; transform: scaleY(0.35); filter: brightness(2.6) blur(1.5px); }
+  28%  { opacity: 1; transform: scaleY(1.04); filter: brightness(1.7) blur(0.4px); }
+  58%  { transform: scaleY(0.99); filter: brightness(1.15) blur(0); }
+  100% { opacity: 1; transform: scaleY(1); filter: brightness(1) blur(0); }
+}
+
+/* Subtle ambient brightness oscillation */
+@keyframes breathe {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.016); }
+}
+
+/* Row ghost-in during reveal */
+@keyframes ghostRise {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* HDR bloom on the ASCII header */
+@keyframes hdrBloom {
+  0%, 100% { filter: brightness(0.97) blur(0); }
+  44%      { filter: brightness(1.22) blur(0.32px); }
+  62%      { filter: brightness(1.1) blur(0.14px); }
+}
+
+/* ---- Warmup on ASCII header ---- */
+.hdr-warmup {
+  animation: warmup 800ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both,
+             hdrBloom 8.6s ease-in-out 800ms infinite;
+  transform-origin: center bottom;
+  will-change: transform, filter, opacity;
+}
+
+/* ---- Breathing on CRT content ---- */
+.crt-breathe {
+  animation: breathe 7.5s ease-in-out infinite;
+  will-change: filter;
+}
+
+/* ---- Boot POST overlay ---- */
+.boot-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: var(--bg);
+  padding: clamp(12px, 2vw, 26px);
+  box-sizing: border-box;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  pointer-events: none;
+  color: rgba(var(--glow-rgb, 50, 236, 255), 0.72);
+  text-shadow: 0 0 6px rgba(var(--glow-rgb, 50, 236, 255), 0.22);
+  font-size: clamp(9px, 0.4vw + 7.5px, 14px);
+  line-height: 1.55;
+}
+
+.boot-post-line {
+  white-space: pre;
+  letter-spacing: 0.4px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ---- Boot row reveal ---- */
+.boot-hidden {
+  opacity: 0 !important;
+  transform: translateY(4px);
+}
+
+.boot-revealed {
+  animation: ghostRise 420ms ease-out both;
+}
+
+/* ---- Phosphor glow on all terminal elements ---- */
+.ascii-hdr,
+.ascii-hdr-sm,
+.boot-text,
+.term-hint,
+.cmd-prompt,
+.cmd-input,
+.cmd-input-row,
+.cmd-history-line,
+.chord-row-wrapper {
+  transition: text-shadow 140ms linear, filter 140ms linear, border-color 140ms linear, color 140ms linear;
+}
+
+/* ---- Reduced motion ---- */
+@media (prefers-reduced-motion: reduce) {
+  .hdr-warmup {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+
+  .crt-breathe {
+    animation: none !important;
+  }
+
+  .boot-hidden {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .boot-revealed {
+    animation: none !important;
+  }
+
+  .ascii-hdr,
+  .ascii-hdr-sm,
+  .boot-text,
+  .term-hint,
+  .cmd-prompt,
+  .cmd-input,
+  .cmd-input-row,
+  .cmd-history-line,
+  .chord-row-wrapper {
+    transition: none !important;
   }
 }
 
-.terminal-footer {
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 10px;
-  letter-spacing: 1px;
-  margin-top: 12px;
-}
-
-@keyframes crtFlicker {
-  0%, 100% { opacity: 1; }
-  42% { opacity: 0.985; }
-  43% { opacity: 1; }
-  71% { opacity: 0.99; }
-  72% { opacity: 1; }
-}
-
-@keyframes scanlineMove {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(8px); }
-}
 
 /* ============================================================
    TERMINAL COLOR THEMES

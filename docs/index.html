@@ -28,7 +28,7 @@
     }
   </style>
   <script type="module" crossorigin src="./app.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-yOxa2eU3.css">
+  <link rel="stylesheet" crossorigin href="./assets/index-C1QmBTUq.css">
 </head>
 
 <body class="theme-monokai">
@@ -39,8 +39,11 @@
   <div id="terminal-shell">
    <div id="terminal-column">
     <div id="crt-box" tabindex="0">
-      <div class="crt-content">
-        <pre class="ascii-hdr"> __ __  __ __  ____   ___  ____    _____ __ __  ____
+      <!-- Boot POST overlay -->
+      <div id="bootOverlay" class="boot-overlay" style="display:none;"></div>
+
+      <div class="crt-content crt-breathe">
+        <pre class="ascii-hdr hdr-warmup"> __ __  __ __  ____   ___  ____    _____ __ __  ____
 |  |  ||  |  ||    \ /  _]|    \  / ___/|  |  ||    \
 |  |  ||  |  ||  o  )  [_ |  D  )(   \_ |  |  ||  _  |
 |  _  ||  ~  ||   _/    _]|    /  \__  ||  ~  ||  |  |
@@ -59,27 +62,27 @@
           <div id="output" aria-live="polite"></div>
         </div>
 
-        <div class="term-spacer"></div>
+        <div class="term-spacer" style="height:14px;"></div>
 
         <div id="cmdHistory" class="cmd-history"></div>
 
-        <form id="cmdForm" class="cmd-input-row" autocomplete="off">
-          <span class="cmd-prompt">&gt;</span>
-          <input id="cmdInput" class="cmd-input" type="text"
-            placeholder="type a chord progression or a command (try help)" autocomplete="off" />
-        </form>
-        <div id="cmdSuggestion" class="cmd-suggestion" style="display:none;"></div>
+        <div class="cmd-sticky-bar">
+          <form id="cmdForm" class="cmd-input-row" autocomplete="off">
+            <span class="cmd-prompt">&gt;</span>
+            <input id="cmdInput" class="cmd-input" type="text"
+              placeholder="chord progression, or a command (try help)" autocomplete="off" />
+          </form>
+          <div id="cmdSuggestion" class="cmd-suggestion" style="display:none;"></div>
+        </div>
 
         <div id="konamiTrack" class="konami-track" style="display:none;">
           <div id="konamiDots" class="konami-dots"></div>
           <div id="konamiPac" class="konami-pac"></div>
         </div>
         <div id="konamiDone" class="konami-done" style="display:none;">WAKA WAKA WAKA</div>
-      </div>
-      <div class="crt-scanlines"></div>
+    </div>
       <div class="crt-vignette"></div>
     </div>
-    <div class="terminal-footer">HYPERSYN CHORD HELPER &mdash; M8 HEX EXPORT</div>
    </div>
   </div>
 

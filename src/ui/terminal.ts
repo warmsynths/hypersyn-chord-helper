@@ -6,6 +6,14 @@ import {
   isOutputIntervalOnly,
 } from "./chordCards";
 import { updateSingleChordDropdownFromInput } from "./events";
+import {
+  initPhosphor,
+  setPersistence,
+  getPersistLabel,
+  getPersistMs,
+  PERSIST_PRESETS,
+} from "./phosphor";
+import { runBoot, cleanupBoot } from "./boot";
 
 // ─── Themes (from the Hypersyn Redesign) ─────────────────────────────
 const THEMES: Record<string, string> = {
@@ -74,12 +82,14 @@ const updateModeChips = (): void => {
 const helpText = [
   "help              show this list",
   "about             what this tool does",
-  "status            current mode, theme, crt, size",
-  "crt <level>       off | low | med | high  screen effect intensity",
+  "status            current mode, theme, crt, size, persistence",
+  "crt <level>       off | low | med | high  CRT bloom intensity",
   "size <level>      normal | large | huge  text size",
   "mode notes        hex = literal note value (absolute pitch, for M8 entry as-is)",
   "mode intervals    hex = semitone offset from chord root (00-0B); set the root on the device",
   `theme <name>      ${Object.keys(THEMES).join(" | ")}`,
+  "persist <level>   short | normal | long | off  how long the phosphor glow holds",
+  "boot              replay the CRT power-on sequence",
   "projects          open project management dialog",
   "save <name>       save current chord progression set",
   "load <name>       load saved chord set by name",
@@ -102,16 +112,21 @@ const commandList: { cmd: string; desc: string }[] = [
   { cmd: "help", desc: "show available commands" },
   { cmd: "about", desc: "what this tool does" },
   { cmd: "status", desc: "show current mode, theme, crt, size" },
-  { cmd: "crt off", desc: "no scanlines or glow" },
-  { cmd: "crt low", desc: "subtle screen effect (default)" },
-  { cmd: "crt med", desc: "moderate screen effect" },
-  { cmd: "crt high", desc: "full CRT effect" },
+  { cmd: "crt off", desc: "no bloom or screen effects" },
+  { cmd: "crt low", desc: "subtle CRT bloom (default)" },
+  { cmd: "crt med", desc: "moderate CRT bloom" },
+  { cmd: "crt high", desc: "rich CRT bloom and glow" },
   { cmd: "size normal", desc: "default text size" },
   { cmd: "size large", desc: "larger text for big displays" },
   { cmd: "size huge", desc: "across-the-room text size" },
   { cmd: "mode notes", desc: "output literal note hex" },
   { cmd: "mode intervals", desc: "output semitone offsets from root" },
   ...Object.keys(THEMES).map((key) => ({ cmd: `theme ${key}`, desc: `switch to ${THEMES[key]}` })),
+  { cmd: "persist short", desc: "phosphor holds ~1.2s" },
+  { cmd: "persist normal", desc: "phosphor holds ~2.4s (default)" },
+  { cmd: "persist long", desc: "phosphor holds ~5s" },
+  { cmd: "persist off", desc: "no phosphor persistence" },
+  { cmd: "boot", desc: "replay CRT power-on sequence" },
   { cmd: "projects", desc: "open project manager modal" },
   { cmd: "save", desc: "save current chord progression set" },
   { cmd: "load", desc: "load saved chord set" },
@@ -271,6 +286,7 @@ const handleSubmit = (): void => {
       `theme   <span style="color:var(--accent);">${themeVal}</span>`,
       `crt     <span style="color:var(--accent);">${currentCrt}</span>`,
       `size    <span style="color:var(--accent);">${currentSize}</span>`,
+      `persist <span style="color:var(--accent);">${escapeHtml(getPersistLabel())}</span>  (${getPersistMs()}ms)`,
     ].join("\n");
     color = "var(--text-dim)";
     isHtml = true;
@@ -294,6 +310,18 @@ const handleSubmit = (): void => {
     applyTheme(parts[1]);
     out = "theme -> " + THEMES[parts[1]];
     color = "var(--accent-green, #7CFF6B)";
+  } else if (parts[0] === "persist" && PERSIST_PRESETS[parts[1]]) {
+    setPersistence(parts[1]);
+    out = "persist -> " + parts[1] + " (" + PERSIST_PRESETS[parts[1]] + "ms)";
+    color = "var(--accent-green, #7CFF6B)";
+  } else if (parts[0] === "boot") {
+    cmdHistory = [];
+    renderHistory();
+    input.value = "";
+    renderSuggestion("");
+    const count = document.querySelectorAll(".chord-row-wrapper").length;
+    runBoot(count || 8);
+    return;
   } else if (parts[0] === "projects") {
     const dialog = document.getElementById("diskModal") as HTMLDialogElement | null;
     if (dialog) dialog.showModal();
@@ -350,6 +378,7 @@ export const initTerminal = (): void => {
   const storedSize = localStorage.getItem(SIZE_STORAGE_KEY);
   applySize(storedSize && ["normal", "large", "huge"].includes(storedSize) ? storedSize : "normal");
 
+  initPhosphor();
   updateModeChips();
 
   const form = document.getElementById("cmdForm") as HTMLFormElement | null;
@@ -408,6 +437,11 @@ export const initTerminal = (): void => {
     if (initInput && initInput.value.trim()) {
       loadProgression(initInput.value.trim());
     }
+    // Run boot POST animation after chords are loaded
+    setTimeout(() => {
+      const count = document.querySelectorAll(".chord-row-wrapper").length;
+      runBoot(count || 8);
+    }, 50);
   };
 
   const params = new URLSearchParams(window.location.search);

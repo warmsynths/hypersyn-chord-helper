@@ -2,6 +2,7 @@ import * as Midi from "@tonaljs/midi";
 import { semitoneToHex, getMidiRoot } from "../core/chords";
 import { playChordProgression } from "../core/audio";
 import { showToast } from "./toast";
+import { charge, setGlowCallback, applyGlowToRow, dispatchGlowUpdate } from "./phosphor";
 
 // ─── Module state ────────────────────────────────────────────────────
 let lastChordObjs: any[] = [];
@@ -14,7 +15,7 @@ let baseNotesByChord: number[][] = [];
 let voicingIdxByChord: number[] = [];
 
 /** Note-diffs from the last voicing change per chord, for the expanded log view. */
-let diffsByChord: Record<number, { label: string; oldHex: string; newHex: string }[]> = {};
+let diffsByChord: Record<number, { oldNote: string; oldHex: string; newNote: string; newHex: string }[]> = {};
 
 /** Which chord row is currently expanded (only one at a time), or null. */
 let expandedIdx: number | null = null;
@@ -78,7 +79,7 @@ function renderRow(idx: number): void {
   if (rootHintEl) {
     rootHintEl.style.display = isIntervalOnly ? "inline" : "none";
     const intId = chord.intervalId ?? "00";
-    rootHintEl.textContent = `${chord.root} ${intId}`;
+    rootHintEl.textContent = `R${chord.root}${intId}`;
   }
 
   const diffEl = document.getElementById("voicingDiffs" + idx);
@@ -87,7 +88,7 @@ function renderRow(idx: number): void {
     diffEl.innerHTML = diffs
       .map(
         (d) =>
-          `<div class="voicing-diff-row"><span class="voicing-diff-old">~ ${d.label} <s>${d.oldHex}</s></span><span class="voicing-diff-arrow">-&gt; </span><span class="voicing-diff-new">${d.newHex}</span></div>`
+          `<div class="voicing-diff-row"><span class="voicing-diff-old"><s>${d.oldNote} ${d.oldHex}</s></span><span class="voicing-diff-arrow">-&gt;</span><span class="voicing-diff-new">${d.newNote} ${d.newHex}</span></div>`
       )
       .join("");
   }
@@ -104,14 +105,15 @@ function cycleVoicing(idx: number, delta: number): void {
   const oldNotes = VOICINGS[curIdx].fn(base);
   const newNotes = VOICINGS[nextIdx].fn(base);
 
-  const diffs: { label: string; oldHex: string; newHex: string }[] = [];
+  const diffs: { oldNote: string; oldHex: string; newNote: string; newHex: string }[] = [];
   const midiRoot = lastChordObjs[idx]?.midiRoot ?? 60;
   newNotes.forEach((midi, i) => {
     const old = oldNotes[i];
     if (old !== midi) {
       diffs.push({
-        label: Midi.midiToNoteName(old),
+        oldNote: Midi.midiToNoteName(old),
         oldHex: hexForMidi(old, midiRoot).hex,
+        newNote: Midi.midiToNoteName(midi),
         newHex: hexForMidi(midi, midiRoot).hex,
       });
     }
@@ -121,6 +123,7 @@ function cycleVoicing(idx: number, delta: number): void {
   diffsByChord[idx] = diffs;
   renderRow(idx);
   playChordProgression([newNotes]);
+  charge(idx, 1);
 }
 
 function setExpanded(idx: number | null): void {
@@ -236,17 +239,17 @@ export const convertChordsUI = (
               <span class="row-play">&#9656;</span>
             </span>
             <span class="chord-name">${chord.root}${chord.type}</span>
-            <span class="voicing-badge voicing-chip" id="voicingChip${i}">ROOT</span>
-            <span class="chord-root-hint" id="rootHint${i}" style="display:${isIntervalOnly ? "inline" : "none"};">root ${chord.root}</span>
+            <span class="voicing-badge" id="voicingChip${i}">ROOT</span>
+            <span class="chord-root-hint" id="rootHint${i}" style="display:${isIntervalOnly ? "inline" : "none"};">R${chord.root}${chord.intervalId ?? "00"}</span>
             <span class="chord-arrow">-&gt;</span>
             <div class="hex-boxes" id="hexBoxes${i}">${hexBoxes}</div>
           </div>
-        </div>
 
-        <div class="voicing-drawer" id="voicing-drawer${i}" style="display:none;">
-          <div class="voicing-hint voicing-hint-desktop">&#8593;/&#8595; cycle voicing &middot; plays on change</div>
-          <div class="voicing-hint voicing-hint-mobile">tap <span class="voicing-hint-label" id="voicingHintLabel${i}">ROOT</span> to cycle &middot; plays on change</div>
-          <div class="voicing-diffs" id="voicingDiffs${i}"></div>
+          <div class="voicing-drawer" id="voicing-drawer${i}" style="display:none;">
+            <div class="voicing-hint voicing-hint-desktop">&#8593;/&#8595; cycle voicing &middot; &#9656; replays</div>
+            <div class="voicing-hint voicing-hint-mobile">tap <span class="voicing-hint-label" id="voicingHintLabel${i}">ROOT</span> to cycle</div>
+            <div class="voicing-diffs" id="voicingDiffs${i}"></div>
+          </div>
         </div>
       </div>`;
   });
@@ -268,6 +271,7 @@ export const convertChordsUI = (
         if (idxStr !== undefined) {
           const idx = parseInt(idxStr, 10);
           playChordProgression([currentNotesFor(idx)]);
+          charge(idx, 1);
         }
         return;
       }
@@ -315,6 +319,9 @@ export const convertChordsUI = (
       cycleVoicing(parseInt(idxStr, 10), e.key === "ArrowUp" ? 1 : -1);
     });
   }
+
+  // Wire phosphor glow callback to full terminal dispatcher
+  setGlowCallback(dispatchGlowUpdate);
 };
 
 export const getCurrentProgressionNotes = (): number[][] => {
