@@ -14,6 +14,14 @@ import {
   PERSIST_PRESETS,
 } from "./phosphor";
 import { runBoot, cleanupBoot } from "./boot";
+import { trackerStore } from "./trackerStore";
+import {
+  buildHypersynthPatch,
+  serializeM8Instrument,
+  serializeM8Song,
+  downloadM8File,
+  extractUniqueChordIntervals,
+} from "../core/m8Serializer";
 
 // ─── Themes (from the Hypersyn Redesign) ─────────────────────────────
 const THEMES: Record<string, string> = {
@@ -93,6 +101,10 @@ const helpText = [
   "projects          open project management dialog",
   "save <name>       save current chord progression set",
   "load <name>       load saved chord set by name",
+  "export song [name] export arranged Dirtywave M8 song file (.m8s)",
+  "export m8s [name]  alias for export song (.m8s)",
+  "export instr [name] export standalone M8 Hypersynth instrument (.m8i)",
+  "export m8i [name]  alias for export instr (.m8i)",
   "export            export chord sets to JSON",
   "import            import chord sets from JSON file",
   "clear             clear this log",
@@ -104,6 +116,7 @@ const aboutText = [
   "03  click a chord line      expands it — up/down cycles voicings, plays each one",
   "04  mode notes|intervals    notes = hex bakes in the root, paste straight into Hypersyn",
   "                            intervals = chord shape only — you set the root on the device",
+  "05  export song|instr       download ready-to-load M8 song (.m8s) or Hypersynth patch (.m8i)",
   "",
   "source progressions from chroma chords — warmsynths.github.io/chroma-chords",
 ].join("\n");
@@ -130,6 +143,10 @@ const commandList: { cmd: string; desc: string }[] = [
   { cmd: "projects", desc: "open project manager modal" },
   { cmd: "save", desc: "save current chord progression set" },
   { cmd: "load", desc: "load saved chord set" },
+  { cmd: "export song", desc: "export arranged Dirtywave M8 song (.m8s)" },
+  { cmd: "export m8s", desc: "export arranged Dirtywave M8 song (.m8s)" },
+  { cmd: "export instr", desc: "export standalone M8 Hypersynth instrument (.m8i)" },
+  { cmd: "export m8i", desc: "export standalone M8 Hypersynth instrument (.m8i)" },
   { cmd: "export", desc: "export chord sets to JSON" },
   { cmd: "import", desc: "import chord sets from JSON file" },
   { cmd: "clear", desc: "clear the command log" },
@@ -344,6 +361,44 @@ const handleSubmit = (): void => {
     document.getElementById("loadChordSetBtn")?.click();
     out = name ? `loaded chord set "${name}"` : "triggered load chord set";
     color = "var(--accent-green, #7CFF6B)";
+  } else if (parts[0] === "export" && (parts[1] === "song" || parts[1] === "m8s")) {
+    const rawName = rawParts.slice(2).join(" ").trim();
+    const sets = trackerStore.getSetsData();
+    const hasAnyChords = sets.some((s) => s.trim().length > 0);
+    if (!hasAnyChords) {
+      out = "cannot export song: no chords in active progression";
+      color = "#FF6B6B";
+    } else {
+      const songName = rawName || "HYPERSYN";
+      const { bytes, warnings, chainCount, phraseCount } = serializeM8Song(sets, songName);
+      const filename = rawName ? `${songName.toLowerCase().replace(/[^a-z0-9_-]/g, "")}.m8s` : "hypersyn-song.m8s";
+      downloadM8File(bytes, filename);
+      out = `[ok] exported M8 song '${filename}' (${chainCount} chain(s), ${phraseCount} phrase(s))`;
+      if (warnings.length > 0) {
+        out += `\n[warn] ${warnings.join("\n[warn] ")}`;
+      }
+      color = "var(--accent-green, #7CFF6B)";
+    }
+  } else if (parts[0] === "export" && (parts[1] === "instr" || parts[1] === "m8i" || parts[1] === "instrument")) {
+    const rawName = rawParts.slice(2).join(" ").trim();
+    const sets = trackerStore.getSetsData();
+    const hasAnyChords = sets.some((s) => s.trim().length > 0);
+    if (!hasAnyChords) {
+      out = "cannot export instrument: no chords in active progression";
+      color = "#FF6B6B";
+    } else {
+      const patchName = rawName || "HYPERSYN";
+      const patch = buildHypersynthPatch(sets, patchName);
+      const bytes = serializeM8Instrument(patch);
+      const filename = rawName ? `${patchName.toLowerCase().replace(/[^a-z0-9_-]/g, "")}.m8i` : "hypersyn-chords.m8i";
+      downloadM8File(bytes, filename);
+      const { chordBanks, warnings } = extractUniqueChordIntervals(sets);
+      out = `[ok] exported M8 instrument '${filename}' (${chordBanks.length} chord banks)`;
+      if (warnings.length > 0) {
+        out += `\n[warn] ${warnings.join("\n[warn] ")}`;
+      }
+      color = "var(--accent-green, #7CFF6B)";
+    }
   } else if (parts[0] === "export") {
     document.getElementById("exportChordSetsBtn")?.click();
     out = "exported chord sets JSON";
@@ -368,7 +423,13 @@ const handleSubmit = (): void => {
   renderSuggestion("");
 };
 
+export const clearTerminalHistory = (): void => {
+  cmdHistory = [];
+  renderHistory();
+};
+
 export const initTerminal = (): void => {
+  clearTerminalHistory();
   const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
   applyTheme(storedTheme && THEMES[storedTheme] ? storedTheme : "monokai");
 
