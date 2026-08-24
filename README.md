@@ -41,6 +41,8 @@ Type any of the following commands directly into the terminal prompt (`>`):
 | `projects` | Open project & chord set manager modal |
 | `save <name>` | Save current chord progression to local storage |
 | `load <name>` | Load a saved chord progression set by name |
+| `export song [name]` | Export complete arranged Dirtywave M8 Song (`.m8s`) file |
+| `export instr [name]` | Export standalone M8 Hypersynth Instrument (`.m8i`) patch |
 | `export` / `import` | Export chord sets to JSON or import from JSON file |
 | `clear` | Clear terminal output log |
 
