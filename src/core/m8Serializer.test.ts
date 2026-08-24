@@ -1,6 +1,7 @@
 import {
   extractUniqueChordIntervals,
   buildHypersynthPatch,
+  serializeHypersynthBody,
   serializeM8Instrument,
   serializeM8Song,
   buildM8Phrases,
@@ -54,22 +55,76 @@ describe("M8 Serializer — Hypersynth Instrument (.m8i)", () => {
     });
   });
 
-  describe("buildHypersynthPatch", () => {
-    it("builds a patch with Lush Pad default parameters and progression chord banks", () => {
+  describe("serializeHypersynthBody & serializeM8Instrument", () => {
+    it("serializes Hypersynth body to exactly 215 bytes with valid M8 firmware layout", () => {
       const patch = buildHypersynthPatch(["Am7 Dm9 G13 Cmaj7"], "TESTPAD");
-      expect(patch.name).toBe("TESTPAD");
-      expect(patch.volume).toBe(0xE0);
-      expect(patch.chordBanks.length).toBe(16);
-      expect(patch.filter.type).toBe(0x00); // Lowpass
-      expect(patch.filter.cutoff).toBe(0xB8);
-      expect(patch.mixer.cho).toBeGreaterThan(0x00);
-      expect(patch.mixer.rev).toBeGreaterThan(0x00);
+      const body = serializeHypersynthBody(patch);
+
+      expect(body).toHaveLength(215);
+
+      // Index 0x00: Kind = 0x05 (Hypersynth)
+      expect(body[0]).toBe(0x05);
+
+      // Index 0x01..0x0C: Name (12 bytes)
+      const nameStr = String.fromCharCode(...body.slice(1, 8));
+      expect(nameStr).toBe("TESTPAD");
+
+      // Index 0x0D: Transpose
+      expect(body[0x0D]).toBe(0x01);
+
+      // Index 0x0E: TableTick
+      expect(body[0x0E]).toBe(0x01);
+
+      // Index 0x0F: Volume
+      expect(body[0x0F]).toBe(0xE0);
+
+      // Index 0x12..0x18: Default Chord (7 bytes: mask 0x01 + 6 offsets 0x00)
+      expect(body.slice(0x12, 0x19)).toEqual([0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+
+      // Index 0x19..0x1D: Engine params (scale, shift, swarm, width, subosc)
+      expect(body[0x19]).toBe(0x00); // scale
+      expect(body[0x1A]).toBe(0x00); // shift
+      expect(body[0x1B]).toBe(0x00); // swarm (0x00 clean)
+      expect(body[0x1C]).toBe(0x80); // width
+      expect(body[0x1D]).toBe(0x00); // subosc
+
+      // Index 0x1E..0x27: Common Synth Params (Filter, Amp, Mixer)
+      expect(body[0x1E]).toBe(0x01); // filter type: 0x01 (LOWPASS)
+      expect(body[0x1F]).toBe(0xB8); // filter cutoff
+      expect(body[0x23]).toBe(0x80); // mixer pan (center)
+      expect(body[0x24]).toBe(0xC0); // mixer dry
+
+      // Index 0x28..0x3E: MOD_OFFSET gap (23 bytes)
+      expect(body[0x2B]).toBe(0x00); // shape (Saw)
+      expect(body[0x3E]).toBe(0x80); // associated_eq
+
+      // Index 0x3F..0x56: 4 Modulators (24 bytes)
+      expect(body[0x3F]).toBe(0x01); // Env 1 dest: Volume
+      expect(body[0x45]).toBe(0x07); // Env 2 dest: Cutoff
+      expect(body[0x4B]).toBe(0x3A); // LFO 1 dest: Pan ((3 << 4) | 0x0A)
+      expect(body[0x51]).toBe(0x30); // LFO 2 dest: Off ((3 << 4) | 0x00)
+
+      // Index 0x57..0x5D: Chord Bank 0 (Am7 -> [0, 3, 7, 10])
+      // 1 byte mask (0x0F = 4 active voices) + 6 offset bytes [0, 3, 7, 10, 0, 0]
+      expect(body[0x57]).toBe(0x0F); // mask for 4 voices
+      expect(body.slice(0x58, 0x5E)).toEqual([0x00, 0x03, 0x07, 0x0A, 0x00, 0x00]); // offsets
     });
 
-    it("sanitizes patch name to max 12 characters", () => {
-      const patch = buildHypersynthPatch(["Cmaj7"], "VERYLONGSYNTHPATCHNAME");
-      expect(patch.name.length).toBeLessThanOrEqual(12);
-      expect(patch.name).toBe("VERYLONGSYNT");
+    it("serializes standalone .m8i instrument file to exactly 357 bytes", () => {
+      const patch = buildHypersynthPatch(["Am7"], "MYPAD");
+      const fileBytes = serializeM8Instrument(patch);
+
+      expect(fileBytes).toBeInstanceOf(Uint8Array);
+      // 14 bytes (header) + 215 bytes (body) + 128 bytes (table) = 357 bytes
+      expect(fileBytes.length).toBe(357);
+
+      // Header verification
+      const magic = String.fromCharCode(...fileBytes.slice(0, 9));
+      expect(magic).toBe("M8VERSION");
+      expect(fileBytes[13]).toBe(FILE_TYPE_INSTRUMENT); // 0x10
+
+      // Instrument body starts at offset 14
+      expect(fileBytes[14]).toBe(0x05); // kind Hypersynth
     });
   });
 
@@ -148,6 +203,19 @@ describe("M8 Serializer — Hypersynth Instrument (.m8i)", () => {
       expect(steps[0].tracks[0]).toBe(0); // Step 0 -> Chain 0
       expect(steps[1].tracks[0]).toBe(1); // Step 1 -> Chain 1
       expect(steps[2].tracks[0]).toBe(2); // Step 2 -> Chain 2
+    });
+
+    it("respects custom voiced intervals when provided", () => {
+      // User voiced Am7 as [0x0A, 0x02, 0x03, 0x07]
+      const custom = [[10, 2, 3, 7]];
+      const patch = buildHypersynthPatch(["Am7"], "VOICED", custom);
+      expect(patch.chordBanks[0]).toEqual([10, 2, 3, 7]);
+
+      const body = serializeHypersynthBody(patch);
+      // Byte 0x57: mask 0x0F
+      expect(body[0x57]).toBe(0x0F);
+      // Bytes 0x58..0x5D: [0x0A, 0x02, 0x03, 0x07, 0x00, 0x00]
+      expect(body.slice(0x58, 0x5E)).toEqual([0x0A, 0x02, 0x03, 0x07, 0x00, 0x00]);
     });
 
     it("includes warning in serializeM8Song output when total unique chord shapes exceed 16", () => {

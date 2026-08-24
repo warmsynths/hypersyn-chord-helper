@@ -76,7 +76,10 @@ export interface M8HypersynthPatch {
  * Extracts unique semitone interval patterns across all chord sets.
  * Clamps to 16 unique banks with a warning if exceeded.
  */
-export function extractUniqueChordIntervals(chordSetsData: string[]): {
+export function extractUniqueChordIntervals(
+  chordSetsData: string[],
+  customIntervals?: number[][]
+): {
   chordBanks: number[][];
   warnings: string[];
   chordToBankMap: Map<string, number>;
@@ -86,15 +89,21 @@ export function extractUniqueChordIntervals(chordSetsData: string[]): {
   const chordBanks: number[][] = [];
   const chordToBankMap = new Map<string, number>();
 
+  let chordCounter = 0;
   chordSetsData.forEach((setStr) => {
     if (!setStr || typeof setStr !== "string") return;
     const tokens = setStr.split(/[\s,]+/).filter(Boolean);
 
     tokens.forEach((token) => {
       const parsed = parseChordName(token);
-      if (!parsed || !Array.isArray(parsed.intervalOnly)) return;
+      if (!parsed) return;
 
-      const intervals = parsed.intervalOnly.slice(0, MAX_INTERVALS_PER_BANK);
+      const intervals =
+        customIntervals && customIntervals[chordCounter] && customIntervals[chordCounter].length > 0
+          ? customIntervals[chordCounter].slice(0, MAX_INTERVALS_PER_BANK)
+          : (parsed.intervalOnly || []).slice(0, MAX_INTERVALS_PER_BANK);
+      chordCounter++;
+
       const key = intervals.join("-");
 
       let bankIdx = uniqueKeys.indexOf(key);
@@ -136,10 +145,11 @@ export function extractUniqueChordIntervals(chordSetsData: string[]): {
  */
 export function buildHypersynthPatch(
   chordSetsData: string[],
-  patchName: string = "HYPERSYN"
+  patchName: string = "HYPERSYN",
+  customIntervals?: number[][]
 ): M8HypersynthPatch {
   const sanitizedName = patchName.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 12).toUpperCase() || "HYPERSYN";
-  const { chordBanks } = extractUniqueChordIntervals(chordSetsData);
+  const { chordBanks } = extractUniqueChordIntervals(chordSetsData, customIntervals);
 
   // Fill up to 16 banks
   const fullBanks: number[][] = [];
@@ -162,14 +172,14 @@ export function buildHypersynthPatch(
       scale: 0x00,
       chord: 0x00,
       shift: 0x00,
-      swarm: 0x30,
-      width: 0xC0,
+      swarm: 0x00,
+      width: 0x80,
       subOsc: 0x00,
       chordBanks: fullBanks,
     },
     chordBanks: fullBanks,
     filter: {
-      type: 0x00, // Lowpass
+      type: 0x01, // 0x01 = LOWPASS in M8 firmware
       cutoff: 0xB8,
       res: 0x20,
     },
@@ -248,79 +258,144 @@ export function buildM8Header(fileType: number): number[] {
 }
 
 /**
- * Serializes a Hypersynth patch to an M8 Instrument byte array.
+ * Serializes a Hypersynth patch to an M8 Instrument byte array (215 bytes fixed).
+ *
+ * M8 Hypersynth Byte Structure (Firmware 3.0+ / 4.0+ / 6.0+):
+ * - 0x00: kind (1 byte: 0x05)
+ * - 0x01..0x0C: name (12 bytes, ASCII null-padded)
+ * - 0x0D: transpose / eq (1 byte)
+ * - 0x0E: tableTick (1 byte)
+ * - 0x0F: volume (1 byte)
+ * - 0x10: pitch (1 byte)
+ * - 0x11: fineTune (1 byte)
+ * - 0x12..0x18: default_chord (7 bytes: 1 byte mask + 6 bytes offsets)
+ * - 0x19: scale (1 byte)
+ * - 0x1A: shift (1 byte)
+ * - 0x1B: swarm (1 byte)
+ * - 0x1C: width (1 byte)
+ * - 0x1D: subosc (1 byte)
+ * - 0x1E..0x27: filter, amp, mixer (10 bytes)
+ * - 0x28..0x3E: MOD_OFFSET gap (23 bytes: shape at +3, associated_eq at +22)
+ * - 0x3F..0x56: 4 modulators (24 bytes: 2 AHD envelopes + 2 LFOs)
+ * - 0x57..0xC6: 16 chord banks * 7 bytes (112 bytes: 1 byte mask + 6 bytes offsets)
+ * - 0xC7..0xD6: padding (16 bytes: 0x00)
+ * Total: 215 bytes
  */
 export function serializeHypersynthBody(patch: M8HypersynthPatch): number[] {
   const bytes: number[] = [];
 
-  bytes.push(INSTRUMENT_KIND_HYPERSYNTH); // kind: 0x05
-  bytes.push(...stringToBytes(patch.name, 12, 0x00));
-  bytes.push(patch.transpose ? 0x01 : 0x00);
-  bytes.push(patch.tableTick & 0xFF);
-  bytes.push(patch.volume & 0xFF);
-  bytes.push(patch.pitch & 0xFF);
-  bytes.push(patch.fineTune & 0xFF);
+  // 1. Header (18 bytes: 0x00..0x11)
+  bytes.push(INSTRUMENT_KIND_HYPERSYNTH); // kind: 0x05 (1 byte)
+  bytes.push(...stringToBytes(patch.name, 12, 0x00)); // name: 12 bytes
+  bytes.push(patch.transpose ? 0x01 : 0x00); // transpose: 1 byte
+  bytes.push(patch.tableTick & 0xFF); // tableTick: 1 byte
+  bytes.push(patch.volume & 0xFF); // volume: 1 byte
+  bytes.push(patch.pitch & 0xFF); // pitch: 1 byte
+  bytes.push(patch.fineTune & 0xFF); // fineTune: 1 byte
 
-  // Hypersynth specific parameters
+  // 2. Default Chord (7 bytes: 0x12..0x18)
+  // 1 byte mask (0x01 = voice 0 enabled) + 6 bytes interval offsets
+  bytes.push(0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
+
+  // 3. Hypersynth Engine Params (5 bytes: 0x19..0x1D)
   bytes.push(patch.hypersynthParams.scale & 0xFF);
-  bytes.push(patch.hypersynthParams.chord & 0xFF);
   bytes.push(patch.hypersynthParams.shift & 0xFF);
   bytes.push(patch.hypersynthParams.swarm & 0xFF);
   bytes.push(patch.hypersynthParams.width & 0xFF);
   bytes.push(patch.hypersynthParams.subOsc & 0xFF);
 
-  // 16 Chord Banks (each with 6 semitone bytes)
-  for (let b = 0; b < MAX_CHORD_BANKS; b++) {
-    const bank = patch.chordBanks[b] || [0];
-    for (let s = 0; s < MAX_INTERVALS_PER_BANK; s++) {
-      if (s < bank.length && typeof bank[s] === "number") {
-        bytes.push(bank[s] & 0xFF);
-      } else {
-        bytes.push(EMPTY_BYTE);
-      }
-    }
-  }
-
-  // Filter params
+  // 4. Synth Common Params — Filter, Amp, Mixer (10 bytes: 0x1E..0x27)
   bytes.push(patch.filter.type & 0xFF);
   bytes.push(patch.filter.cutoff & 0xFF);
   bytes.push(patch.filter.res & 0xFF);
 
-  // Amp params
   bytes.push(patch.amp.amp & 0xFF);
   bytes.push(patch.amp.limit & 0xFF);
 
-  // Mixer params
   bytes.push(patch.mixer.pan & 0xFF);
   bytes.push(patch.mixer.dry & 0xFF);
   bytes.push(patch.mixer.cho & 0xFF);
   bytes.push(patch.mixer.del & 0xFF);
   bytes.push(patch.mixer.rev & 0xFF);
 
-  // Envelopes (2 envelopes)
-  for (let i = 0; i < 2; i++) {
-    const env = patch.envelopes[i] || { dest: 0xFF, amount: 0xFF, attack: 0xFF, hold: 0xFF, decay: 0xFF, retrigger: 0xFF };
-    bytes.push(env.dest & 0xFF);
-    bytes.push(env.amount & 0xFF);
-    bytes.push(env.attack & 0xFF);
-    bytes.push(env.hold & 0xFF);
-    bytes.push(env.decay & 0xFF);
-    bytes.push(env.retrigger & 0xFF);
+  // 5. MOD_OFFSET Gap (23 bytes: 0x28..0x3E)
+  // Firmware 4.0/5.0/6.0+ places modulators at offset 23 from mixer params.
+  bytes.push(0x00, 0x00, 0x00); // 0x28..0x2A (3 bytes)
+  bytes.push(0x00); // 0x2B: shape (Saw default)
+  bytes.push(...Array(18).fill(0x00)); // 0x2C..0x3D (18 bytes)
+  bytes.push(0x80); // 0x3E: associated_eq (default 0x80)
+
+  // 6. 4 Modulators (24 bytes: 0x3F..0x56)
+  // Env 1: AHDEnv (type 0) -> Volume (dest 0x01)
+  const env1 = patch.envelopes[0] || { dest: 0x01, amount: 0xFF, attack: 0x10, hold: 0x00, decay: 0x90, retrigger: 0x00 };
+  bytes.push(
+    (0 << 4) | (env1.dest & 0x0F),
+    env1.amount & 0xFF,
+    env1.attack & 0xFF,
+    env1.hold & 0xFF,
+    env1.decay & 0xFF,
+    0x00
+  );
+
+  // Env 2: AHDEnv (type 0) -> Cutoff (dest 0x07)
+  const env2 = patch.envelopes[1] || { dest: 0x07, amount: 0x30, attack: 0x18, hold: 0x00, decay: 0x60, retrigger: 0x00 };
+  bytes.push(
+    (0 << 4) | (env2.dest & 0x0F),
+    env2.amount & 0xFF,
+    env2.attack & 0xFF,
+    env2.hold & 0xFF,
+    env2.decay & 0xFF,
+    0x00
+  );
+
+  // LFO 1: LFO (type 3) -> Pan (dest 0x0A)
+  const lfo1 = patch.lfos[0] || { shape: 0x00, dest: 0x0A, triggerMode: 0x00, freq: 0x20, amount: 0x15, retrigger: 0x00 };
+  bytes.push(
+    (3 << 4) | (lfo1.dest & 0x0F),
+    lfo1.amount & 0xFF,
+    lfo1.shape & 0xFF,
+    lfo1.triggerMode & 0xFF,
+    lfo1.freq & 0xFF,
+    lfo1.retrigger & 0xFF
+  );
+
+  // LFO 2: LFO (type 3) -> Off (dest 0x00)
+  const lfo2 = patch.lfos[1] || { shape: 0x00, dest: 0x00, triggerMode: 0x00, freq: 0x00, amount: 0x00, retrigger: 0x00 };
+  bytes.push(
+    (3 << 4) | (lfo2.dest & 0x0F),
+    lfo2.amount & 0xFF,
+    lfo2.shape & 0xFF,
+    lfo2.triggerMode & 0xFF,
+    lfo2.freq & 0xFF,
+    lfo2.retrigger & 0xFF
+  );
+
+  // 7. 16 Chord Banks (16 * 7 bytes = 112 bytes: 0x57..0xC6)
+  for (let b = 0; b < MAX_CHORD_BANKS; b++) {
+    const bank = patch.chordBanks[b] || [0];
+    const activeCount = Math.min(bank.length, MAX_INTERVALS_PER_BANK);
+    
+    // Mask: bitmask of active voices (e.g. 4 voices -> (1 << 4) - 1 = 0x0F)
+    const mask = activeCount > 0 ? (1 << activeCount) - 1 : 0x01;
+    bytes.push(mask & 0xFF);
+
+    // 6 offset bytes
+    for (let s = 0; s < MAX_INTERVALS_PER_BANK; s++) {
+      if (s < activeCount && typeof bank[s] === "number") {
+        bytes.push(bank[s] & 0xFF);
+      } else {
+        bytes.push(0x00);
+      }
+    }
   }
 
-  // LFOs (2 LFOs)
-  for (let i = 0; i < 2; i++) {
-    const lfo = patch.lfos[i] || { shape: 0xFF, dest: 0xFF, triggerMode: 0xFF, freq: 0xFF, amount: 0xFF, retrigger: 0xFF };
-    bytes.push(lfo.shape & 0xFF);
-    bytes.push(lfo.dest & 0xFF);
-    bytes.push(lfo.triggerMode & 0xFF);
-    bytes.push(lfo.freq & 0xFF);
-    bytes.push(lfo.amount & 0xFF);
-    bytes.push(lfo.retrigger & 0xFF);
-  }
+  // 8. Padding (16 bytes: 0xC7..0xD6)
+  bytes.push(...Array(16).fill(0x00));
 
-  // Sample path (128 bytes of 0x00)
-  bytes.push(...Array(128).fill(0x00));
+  // Sanity check: Ensure total length is exactly 215 bytes
+  if (bytes.length !== 215) {
+    throw new Error(`serializeHypersynthBody internal length mismatch: expected 215, got ${bytes.length}`);
+  }
 
   return bytes;
 }
@@ -380,12 +455,15 @@ function emptySongStep(): M8SongStep {
   };
 }
 
-export function buildM8Phrases(chordSetsData: string[]): {
+export function buildM8Phrases(
+  chordSetsData: string[],
+  customIntervals?: number[][]
+): {
   phrases: M8Phrase[];
   phraseCount: number;
   warnings: string[];
 } {
-  const { warnings, chordToBankMap } = extractUniqueChordIntervals(chordSetsData);
+  const { warnings, chordToBankMap } = extractUniqueChordIntervals(chordSetsData, customIntervals);
   const phrases: M8Phrase[] = Array.from({ length: 255 }, () => emptyPhrase());
   let phraseIndex = 0;
 
@@ -484,7 +562,8 @@ function buildDefaultScale(name: string): number[] {
 export function serializeM8Song(
   chordSetsData: string[],
   songName: string = "HYPERSYN",
-  tempo: number = 120
+  tempo: number = 120,
+  customIntervals?: number[][]
 ): {
   bytes: Uint8Array;
   warnings: string[];
@@ -492,8 +571,8 @@ export function serializeM8Song(
   phraseCount: number;
 } {
   const sanitizedName = songName.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 12).toUpperCase() || "HYPERSYN";
-  const patch = buildHypersynthPatch(chordSetsData, sanitizedName);
-  const { phrases, phraseCount, warnings } = buildM8Phrases(chordSetsData);
+  const patch = buildHypersynthPatch(chordSetsData, sanitizedName, customIntervals);
+  const { phrases, phraseCount, warnings } = buildM8Phrases(chordSetsData, customIntervals);
   const { chains, steps, chainCount } = buildM8ChainsAndSteps(chordSetsData);
 
   const bytes: number[] = [];

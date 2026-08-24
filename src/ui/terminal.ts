@@ -15,6 +15,7 @@ import {
 } from "./phosphor";
 import { runBoot, cleanupBoot } from "./boot";
 import { trackerStore } from "./trackerStore";
+import { getCurrentProgressionIntervals } from "./chordCards";
 import {
   buildHypersynthPatch,
   serializeM8Instrument,
@@ -367,7 +368,13 @@ const handleSubmit = (): void => {
       color = "#FF6B6B";
     } else {
       const songName = rawName || "HYPERSYN";
-      const { bytes, warnings, chainCount, phraseCount } = serializeM8Song(sets, songName);
+      const activeIntervals = getCurrentProgressionIntervals();
+      const { bytes, warnings, chainCount, phraseCount } = serializeM8Song(
+        sets,
+        songName,
+        120,
+        activeIntervals && activeIntervals.length > 0 ? activeIntervals : undefined
+      );
       const filename = rawName ? `${songName.toLowerCase().replace(/[^a-z0-9_-]/g, "")}.m8s` : "hypersyn-song.m8s";
       downloadM8File(bytes, filename);
       out = `[ok] exported M8 song '${filename}' (${chainCount} chain(s), ${phraseCount} phrase(s))`;
@@ -385,11 +392,19 @@ const handleSubmit = (): void => {
       color = "#FF6B6B";
     } else {
       const patchName = rawName || "HYPERSYN";
-      const patch = buildHypersynthPatch(sets, patchName);
+      const activeIntervals = getCurrentProgressionIntervals();
+      const patch = buildHypersynthPatch(
+        sets,
+        patchName,
+        activeIntervals && activeIntervals.length > 0 ? activeIntervals : undefined
+      );
       const bytes = serializeM8Instrument(patch);
       const filename = rawName ? `${patchName.toLowerCase().replace(/[^a-z0-9_-]/g, "")}.m8i` : "hypersyn-chords.m8i";
       downloadM8File(bytes, filename);
-      const { chordBanks, warnings } = extractUniqueChordIntervals(sets);
+      const { chordBanks, warnings } = extractUniqueChordIntervals(
+        sets,
+        activeIntervals && activeIntervals.length > 0 ? activeIntervals : undefined
+      );
       out = `[ok] exported M8 instrument '${filename}' (${chordBanks.length} chord banks)`;
       if (warnings.length > 0) {
         out += `\n[warn] ${warnings.join("\n[warn] ")}`;

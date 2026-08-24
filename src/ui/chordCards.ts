@@ -328,6 +328,14 @@ export const getCurrentProgressionNotes = (): number[][] => {
   return lastChordObjs.map((_, idx) => currentNotesFor(idx));
 };
 
+export const getCurrentProgressionIntervals = (): number[][] => {
+  return lastChordObjs.map((chord, idx) => {
+    const notes = currentNotesFor(idx);
+    const midiRoot = chord.midiRoot ?? getMidiRoot(chord.root);
+    return notes.map((m) => ((m - midiRoot) % 12 + 12) % 12);
+  });
+};
+
 export const getOutputModeLabel = (): string => (isIntervalOnly ? "INTERVALS" : "NOTES");
 export const getOutputModeHint = (): string =>
   isIntervalOnly ? "(offsets from root — set root on device)" : "(literal note values)";
