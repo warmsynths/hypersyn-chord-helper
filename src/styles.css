@@ -1130,7 +1130,7 @@ body {
    TERMINAL COLOR THEMES
    Switch via the THEME chip or the `theme <name>` command.
    ============================================================ */
-body.theme-green {
+html.theme-green, body.theme-green {
   --bg: #020302;
   --panel: #111211;
   --panel-alt: #1e1f1e;
@@ -1157,7 +1157,7 @@ body.theme-green {
   --key-active-glow: rgba(51,255,102,0.40);
 }
 
-body.theme-amber {
+html.theme-amber, body.theme-amber {
   --bg: #0a0500;
   --panel: #19140f;
   --panel-alt: #25211c;
@@ -1184,7 +1184,7 @@ body.theme-amber {
   --key-active-glow: rgba(255,176,0,0.40);
 }
 
-body.theme-ibm {
+html.theme-ibm, body.theme-ibm {
   --bg: #000000;
   --panel: #0f0f0f;
   --panel-alt: #1c1c1c;
@@ -1211,7 +1211,7 @@ body.theme-ibm {
   --key-active-glow: rgba(0,255,255,0.40);
 }
 
-body.theme-monokai {
+html.theme-monokai, body.theme-monokai {
   --bg: #272822;
   --panel: #34352f;
   --panel-alt: #3f403a;
@@ -1238,7 +1238,7 @@ body.theme-monokai {
   --key-active-glow: rgba(249,38,114,0.40);
 }
 
-body.theme-dracula {
+html.theme-dracula, body.theme-dracula {
   --bg: #282A36;
   --panel: #353742;
   --panel-alt: #40414c;
@@ -1265,7 +1265,7 @@ body.theme-dracula {
   --key-active-glow: rgba(255,121,198,0.40);
 }
 
-body.theme-solarized {
+html.theme-solarized, body.theme-solarized {
   --bg: #002B36;
   --panel: #0f3842;
   --panel-alt: #1c424c;
@@ -1292,7 +1292,7 @@ body.theme-solarized {
   --key-active-glow: rgba(181,137,0,0.40);
 }
 
-body.theme-nord {
+html.theme-nord, body.theme-nord {
   --bg: #2E3440;
   --panel: #3b404b;
   --panel-alt: #454a55;
@@ -1319,7 +1319,7 @@ body.theme-nord {
   --key-active-glow: rgba(136,192,208,0.40);
 }
 
-body.theme-onedark {
+html.theme-onedark, body.theme-onedark {
   --bg: #282C34;
   --panel: #353940;
   --panel-alt: #40434a;

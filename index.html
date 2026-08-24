@@ -28,6 +28,14 @@
       display: none !important;
     }
   </style>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("hypersynTerminalTheme") || "monokai";
+        document.documentElement.className = "theme-" + t;
+      } catch (e) {}
+    })();
+  </script>
 </head>
 
 <body class="theme-monokai">
@@ -38,10 +46,10 @@
   <div id="terminal-shell">
    <div id="terminal-column">
     <div id="crt-box" tabindex="0">
-      <!-- Boot POST overlay -->
-      <div id="bootOverlay" class="boot-overlay" style="display:none;"></div>
+      <!-- Boot POST overlay (active on initial load) -->
+      <div id="bootOverlay" class="boot-overlay"></div>
 
-      <div class="crt-content crt-breathe">
+      <div class="crt-content crt-breathe" style="opacity: 0;">
         <pre class="ascii-hdr hdr-warmup"> __ __  __ __  ____   ___  ____    _____ __ __  ____
 |  |  ||  |  ||    \ /  _]|    \  / ___/|  |  ||    \
 |  |  ||  |  ||  o  )  [_ |  D  )(   \_ |  |  ||  _  |

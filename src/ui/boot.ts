@@ -213,6 +213,7 @@ export const runBoot = (chordCount: number): void => {
 
   if (reducedMotion()) {
     isBooting = false;
+    hideOverlay();
     showAllChordRows();
     chargeEverything(chordCount, 0.5);
     return;

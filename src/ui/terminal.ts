@@ -46,8 +46,10 @@ let currentSize = "normal";
 const applyTheme = (key: string): boolean => {
   if (!THEMES[key]) return false;
   document.body.classList.remove(`theme-${currentTheme}`);
+  document.documentElement.classList.remove(`theme-${currentTheme}`);
   currentTheme = key;
   document.body.classList.add(`theme-${currentTheme}`);
+  document.documentElement.classList.add(`theme-${currentTheme}`);
   localStorage.setItem(THEME_STORAGE_KEY, currentTheme);
   const chip = document.getElementById("themeChip");
   if (chip) chip.textContent = THEMES[currentTheme];
@@ -493,16 +495,18 @@ export const initTerminal = (): void => {
     if (initInput && initInput.value.trim()) {
       loadProgression(initInput.value.trim());
     }
-    // Run boot POST animation after chords are loaded
-    setTimeout(() => {
-      const count = document.querySelectorAll(".chord-row-wrapper").length;
-      runBoot(count || 8);
-    }, 50);
+    const count = document.querySelectorAll(".chord-row-wrapper").length;
+    runBoot(count || 8);
   };
 
   const params = new URLSearchParams(window.location.search);
   if (params.getAll("p").length === 0 && params.getAll("progression").length === 0) {
     boot();
+  } else {
+    const overlay = document.getElementById("bootOverlay");
+    if (overlay) overlay.style.display = "none";
+    const content = document.querySelector(".crt-content") as HTMLElement | null;
+    if (content) content.style.opacity = "1";
   }
 };
 
