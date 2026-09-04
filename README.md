@@ -12,7 +12,7 @@
 - **Interactive Command Shell**: Enter progressions (`Am7 Dm9 G13 Cmaj7`) or terminal commands with inline command completion suggestions and command history.
 - **M8 Tracker Hex Output**:
   - **Root-Baked Mode (`mode notes`)**: Generates absolute MIDI pitch hex values for direct entry into Hypersyn.
-  - **Interval Mode (`mode intervals`)**: Generates relative semitone offset hex codes (`00`-`0B`) so you can set the root note directly on the M8 Tracker.
+  - **Interval Mode (`mode intervals`)**: Generates relative semitone offset hex codes (including extended chord offsets like `0E`, `11`, `15`) so you can set the root note directly on the M8 Tracker.
 - **Numbered Unique Intervals**: Clearly numbers unique semitone intervals in interval mode for rapid identification of chord voice structures.
 - **Interactive Voicing Cycling**: Tap/click line cards or use `↑`/`↓` arrow keys to cycle through voicings (`ROOT`, `INV 1`, `INV 2`, `INV 3`, `DROP 2`, `SPREAD`) with instant audio playback on cycle.
 - **Web Audio Polyphonic Synthesizer**: Built-in sound generator with a Juno-60 styled FX bus (LFO chorus + plate reverb) for auditioning single chords and full progressions.

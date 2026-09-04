@@ -38,7 +38,11 @@ describe('chords module', () => {
   it('semitoneToHex returns hex string', () => {
     expect(semitoneToHex(0)).toBe('00');
     expect(semitoneToHex(11)).toBe('0B');
-    expect(semitoneToHex(12)).toBe('00');
+    expect(semitoneToHex(12)).toBe('0C');
+    expect(semitoneToHex(14)).toBe('0E');
+    expect(semitoneToHex(17)).toBe('11');
+    expect(semitoneToHex(21)).toBe('15');
+    expect(semitoneToHex(-12)).toBe('F4');
   });
 
   it('parseChordName parses valid chord', () => {
@@ -99,5 +103,23 @@ describe('chords module', () => {
     expect(result.chords[3].intervalId).toBe('00');
     expect(result.uniqueGroups[0].intervalId).toBe('00');
     expect(result.uniqueGroups[1].intervalId).toBe('01');
+  });
+
+  it('preserves compound intervals (9th, 11th, 13th) in intervalOnlyHex without modulo-12 truncation', () => {
+    const dm9 = parseChordName('Dm9');
+    expect(dm9).toBeTruthy();
+    expect(dm9?.intervalOnly).toEqual([0, 3, 7, 10, 14]);
+    // 14 semitones should be '0E', NOT '02'
+    expect(dm9?.intervalOnlyHex).toEqual(['00', '03', '07', '0A', '0E']);
+
+    const g13 = parseChordName('G13');
+    expect(g13).toBeTruthy();
+    expect(g13?.intervalOnly).toEqual([0, 4, 7, 10, 14, 21]);
+    // 14 -> '0E', 21 -> '15', NOT '02' and '09'
+    expect(g13?.intervalOnlyHex).toEqual(['00', '04', '07', '0A', '0E', '15']);
+
+    const converted = convertChords('Dm9 G13', 'closed');
+    expect(converted.chords[0].intervalOnlyHex).toEqual(['00', '03', '07', '0A', '0E']);
+    expect(converted.chords[1].intervalOnlyHex).toEqual(['00', '04', '07', '0A', '0E', '15']);
   });
 });

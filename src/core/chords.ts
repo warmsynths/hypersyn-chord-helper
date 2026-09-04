@@ -279,14 +279,16 @@ export const applyVoicing = (intervals: number[], voicing: string, chordMeta: an
  * @returns {string} The hex string.
  */
 /**
- * Converts a semitone value to a 2-digit hexadecimal string (modulo 12).
+ * Converts a semitone value to a 2-digit hexadecimal string.
+ * Supports compound intervals >= 12 (octaves, 9ths, 11ths, 13ths) and negative
+ * offsets (inversions/spreads) formatted as 8-bit two's complement hex for Dirtywave M8 Hypersynth.
  *
  * @param {number} semitone - The semitone value.
- * @returns {string} The hex string (00-0B).
+ * @returns {string} The hex string (e.g. 00-7F for positive, F0-FF for negative).
  */
 export const semitoneToHex = (semitone) => {
   if (typeof semitone !== "number" || isNaN(semitone)) return "--";
-  const val = ((semitone % 12) + 12) % 12; // ensure positive mod
+  const val = (semitone & 0xFF) >>> 0;
   return val.toString(16).toUpperCase().padStart(2, "0");
 }
 

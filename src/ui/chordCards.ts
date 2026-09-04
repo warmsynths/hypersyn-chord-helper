@@ -332,7 +332,7 @@ export const getCurrentProgressionIntervals = (): number[][] => {
   return lastChordObjs.map((chord, idx) => {
     const notes = currentNotesFor(idx);
     const midiRoot = chord.midiRoot ?? getMidiRoot(chord.root);
-    return notes.map((m) => ((m - midiRoot) % 12 + 12) % 12);
+    return notes.map((m) => m - midiRoot);
   });
 };
 

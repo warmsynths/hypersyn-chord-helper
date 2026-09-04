@@ -1,4 +1,4 @@
-import { convertChordsUI, getCurrentProgressionNotes } from './chordCards';
+import { convertChordsUI, getCurrentProgressionNotes, getCurrentProgressionIntervals } from './chordCards';
 
 describe('chordCards module', () => {
   beforeEach(() => {
@@ -42,5 +42,29 @@ describe('chordCards module', () => {
     });
     convertChordsUI(mockConvertChords, () => 'closed', () => {});
     expect(getCurrentProgressionNotes()).toEqual([[60, 64, 67, 71]]);
+  });
+
+  it('renders true compound interval hex (0E for 9th) in hex boxes and returns true offsets in getCurrentProgressionIntervals', () => {
+    const mockConvertChords = () => ({
+      chords: [
+        {
+          root: 'D',
+          type: 'm9',
+          chordName: 'Dm9',
+          intervalOnly: [0, 3, 7, 10, 14],
+          intervalOnlyHex: ['00', '03', '07', '0A', '0E'],
+        },
+      ],
+      uniqueGroups: [{ chords: ['Dm9'], intervalOnlyHex: ['00', '03', '07', '0A', '0E'] }],
+    });
+    convertChordsUI(mockConvertChords, () => 'closed', () => {});
+
+    // Output should contain 0E (not 02!)
+    const output = document.getElementById('output');
+    expect(output?.innerHTML).toContain('data-copy="0E"');
+    expect(output?.innerHTML).toContain('>0E<');
+
+    // Progression intervals must retain true offset 14 (not wrapped to 2)
+    expect(getCurrentProgressionIntervals()).toEqual([[0, 3, 7, 10, 14]]);
   });
 });
