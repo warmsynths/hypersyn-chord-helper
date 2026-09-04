@@ -33,11 +33,13 @@ Type any of the following commands directly into the terminal prompt (`>`):
 | `Am7 Dm9 G13 Cmaj7` | Input a chord progression to convert into Hypersyn hex codes |
 | `help` | Display terminal command summary |
 | `about` | Overview of features and usage guide |
-| `status` | Show current mode, theme, CRT level, and font size |
+| `status` | Show current mode, theme, CRT level, font size, persistence, and boot setting |
 | `mode notes` / `mode intervals` | Switch between root-baked MIDI hex and relative interval hex |
 | `theme <name>` | Select color theme (`monokai`, `dracula`, `green`, `amber`, `ibm`, `solarized`, `nord`, `onedark`) |
 | `crt <off\|low\|med\|high>` | Adjust CRT screen scanline and phosphor glow intensity |
 | `size <normal\|large\|huge>` | Change display text size |
+| `persist <short\|normal\|long\|off>` | Adjust phosphor glow persistence duration |
+| `boot [on\|off\|replay]` | Toggle or set CRT boot sequence on startup, or replay immediately |
 | `projects` | Open project & chord set manager modal |
 | `save <name>` | Save current chord progression to local storage |
 | `load <name>` | Load a saved chord progression set by name |

@@ -21,6 +21,14 @@
       transition: opacity 0.3s ease;
     }
 
+    /* Fast-load boot override when boot is toggled off */
+    html.boot-off #bootOverlay {
+      display: none !important;
+    }
+    html.boot-off .crt-content {
+      opacity: 1 !important;
+    }
+
     /* Legacy controls stay in the DOM (wired functionality kept for later)
        but are not part of the terminal-redesign surface. */
     #tracker-nav,
@@ -33,6 +41,10 @@
       try {
         var t = localStorage.getItem("hypersynTerminalTheme") || "monokai";
         document.documentElement.className = "theme-" + t;
+        var b = localStorage.getItem("hypersynTerminalBoot");
+        if (b === "off") {
+          document.documentElement.classList.add("boot-off");
+        }
       } catch (e) {}
     })();
   </script>

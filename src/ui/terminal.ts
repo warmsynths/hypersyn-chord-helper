@@ -13,7 +13,14 @@ import {
   getPersistMs,
   PERSIST_PRESETS,
 } from "./phosphor";
-import { runBoot, cleanupBoot } from "./boot";
+import {
+  runBoot,
+  cleanupBoot,
+  isBootEnabled,
+  setBootEnabled,
+  toggleBootEnabled,
+  shouldRunStartupBoot,
+} from "./boot";
 import { trackerStore } from "./trackerStore";
 import {
   exportM8Song,
@@ -95,13 +102,13 @@ const updateModeChips = (): void => {
 const helpText = [
   "help              show this list",
   "about             what this tool does",
-  "status            current mode, theme, crt, size, persistence",
+  "status            current mode, theme, crt, size, persistence, boot",
   "crt <level>       off | low | med | high  CRT bloom intensity",
   "size <level>      normal | large | huge  text size",
   "mode <type>       notes | intervals  notes (absolute pitch) | intervals (semitone offsets)",
   `theme <name>      ${Object.keys(THEMES).join(" | ")}`,
   "persist <level>   short | normal | long | off  how long the phosphor glow holds",
-  "boot              replay the CRT power-on sequence",
+  "boot [on|off]     on | off | replay  toggle or set CRT boot sequence on startup (or replay)",
   "projects          open project management dialog",
   "save <name>       save current chord progression set",
   "load <name>       load saved chord set by name",
@@ -141,7 +148,10 @@ const commandList: { cmd: string; desc: string }[] = [
   { cmd: "persist normal", desc: "phosphor holds ~2.4s (default)" },
   { cmd: "persist long", desc: "phosphor holds ~5s" },
   { cmd: "persist off", desc: "no phosphor persistence" },
-  { cmd: "boot", desc: "replay CRT power-on sequence" },
+  { cmd: "boot", desc: "toggle CRT boot sequence on startup" },
+  { cmd: "boot on", desc: "enable CRT boot sequence on startup" },
+  { cmd: "boot off", desc: "disable CRT boot sequence on startup" },
+  { cmd: "boot replay", desc: "replay CRT power-on sequence now" },
   { cmd: "projects", desc: "open project manager modal" },
   { cmd: "save", desc: "save current chord progression set" },
   { cmd: "load", desc: "load saved chord set" },
@@ -298,12 +308,14 @@ const handleSubmit = (): void => {
     const modeVal = escapeHtml(getOutputModeLabel());
     const modeHint = escapeHtml(getOutputModeHint());
     const themeVal = escapeHtml(THEMES[currentTheme]);
+    const bootVal = isBootEnabled() ? "on" : "off";
     out = [
       `mode    <span style="color:var(--accent);">${modeVal}</span>  ${modeHint}`,
       `theme   <span style="color:var(--accent);">${themeVal}</span>`,
       `crt     <span style="color:var(--accent);">${currentCrt}</span>`,
       `size    <span style="color:var(--accent);">${currentSize}</span>`,
       `persist <span style="color:var(--accent);">${escapeHtml(getPersistLabel())}</span>  (${getPersistMs()}ms)`,
+      `boot    <span style="color:var(--accent);">${bootVal}</span>`,
     ].join("\n");
     color = "var(--text-dim)";
     isHtml = true;
@@ -332,13 +344,30 @@ const handleSubmit = (): void => {
     out = "persist -> " + parts[1] + " (" + PERSIST_PRESETS[parts[1]] + "ms)";
     color = "var(--accent-green, #7CFF6B)";
   } else if (parts[0] === "boot") {
-    cmdHistory = [];
-    renderHistory();
-    input.value = "";
-    renderSuggestion("");
-    const count = document.querySelectorAll(".chord-row-wrapper").length;
-    runBoot(count || 8);
-    return;
+    if (parts[1] === "replay" || parts[1] === "run" || parts[1] === "now") {
+      cmdHistory = [];
+      renderHistory();
+      input.value = "";
+      renderSuggestion("");
+      const count = document.querySelectorAll(".chord-row-wrapper").length;
+      runBoot(count || 8);
+      return;
+    } else if (parts[1] === "on") {
+      setBootEnabled(true);
+      out = "boot -> on (CRT boot sequence enabled on startup)";
+      color = "var(--accent-green, #7CFF6B)";
+    } else if (parts[1] === "off") {
+      setBootEnabled(false);
+      out = "boot -> off (CRT boot sequence disabled on startup)";
+      color = "var(--accent-green, #7CFF6B)";
+    } else if (!parts[1] || parts[1] === "toggle") {
+      const next = toggleBootEnabled();
+      out = `boot -> ${next ? "on" : "off"} (CRT boot sequence ${next ? "enabled" : "disabled"} on startup; type 'boot replay' to run now)`;
+      color = "var(--accent-green, #7CFF6B)";
+    } else {
+      out = "usage: boot [on | off | replay]";
+      color = "#FF6B6B";
+    }
   } else if (parts[0] === "projects") {
     const dialog = document.getElementById("diskModal") as HTMLDialogElement | null;
     if (dialog) dialog.showModal();
@@ -501,23 +530,37 @@ export const initTerminal = (): void => {
     }, 1200);
   });
 
-  const boot = () => {
+  const loadInitialProgression = () => {
     const initInput = document.getElementById("chordsInput") as HTMLInputElement | null;
     if (initInput && initInput.value.trim()) {
       loadProgression(initInput.value.trim());
     }
+  };
+
+  const boot = () => {
+    loadInitialProgression();
     const count = document.querySelectorAll(".chord-row-wrapper").length;
     runBoot(count || 8);
   };
 
-  const params = new URLSearchParams(window.location.search);
-  if (params.getAll("p").length === 0 && params.getAll("progression").length === 0) {
-    boot();
-  } else {
+  const bypassBoot = () => {
     const overlay = document.getElementById("bootOverlay");
     if (overlay) overlay.style.display = "none";
     const content = document.querySelector(".crt-content") as HTMLElement | null;
     if (content) content.style.opacity = "1";
+    document.documentElement.classList.add("boot-off");
+  };
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.getAll("p").length === 0 && params.getAll("progression").length === 0) {
+    if (shouldRunStartupBoot()) {
+      boot();
+    } else {
+      loadInitialProgression();
+      bypassBoot();
+    }
+  } else {
+    bypassBoot();
   }
 };
 

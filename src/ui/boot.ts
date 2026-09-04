@@ -11,6 +11,60 @@
 
 import { chargeEverything, reducedMotion } from "./phosphor";
 
+// ─── Boot configuration & persistence ────────────────────────────────
+export const BOOT_STORAGE_KEY = "hypersynTerminalBoot";
+
+export const isBootEnabled = (): boolean => {
+  try {
+    const val = localStorage.getItem(BOOT_STORAGE_KEY);
+    if (val === null) {
+      return true;
+    }
+    return val === "on";
+  } catch {
+    return true;
+  }
+};
+
+export const setBootEnabled = (enabled: boolean): void => {
+  try {
+    localStorage.setItem(BOOT_STORAGE_KEY, enabled ? "on" : "off");
+    if (enabled) {
+      document.documentElement.classList.remove("boot-off");
+    } else {
+      document.documentElement.classList.add("boot-off");
+    }
+  } catch {}
+};
+
+export const toggleBootEnabled = (): boolean => {
+  const next = !isBootEnabled();
+  setBootEnabled(next);
+  return next;
+};
+
+/**
+ * Checks whether the startup boot sequence should run.
+ * Logic:
+ * 1. If never run before (no key in localStorage), runs once on initial visit,
+ *    and immediately toggles off by default so subsequent reloads bypass boot.
+ * 2. If stored as "on", returns true.
+ * 3. If stored as "off", returns false.
+ */
+export const shouldRunStartupBoot = (): boolean => {
+  try {
+    const val = localStorage.getItem(BOOT_STORAGE_KEY);
+    if (val === null) {
+      // First-time visit: play once and toggle off by default
+      localStorage.setItem(BOOT_STORAGE_KEY, "off");
+      return true;
+    }
+    return val === "on";
+  } catch {
+    return false;
+  }
+};
+
 // ─── Boot state ──────────────────────────────────────────────────────
 let bootTimers: ReturnType<typeof setTimeout>[] = [];
 let bootArmed = false;
@@ -112,6 +166,7 @@ function getCrtContent(): HTMLElement | null {
 }
 
 function showOverlay(): void {
+  document.documentElement.classList.remove("boot-off");
   const overlay = getOverlay();
   if (overlay) {
     overlay.style.display = "flex";
@@ -130,6 +185,9 @@ function hideOverlay(): void {
   }
   const content = getCrtContent();
   if (content) content.style.opacity = "1";
+  if (!isBootEnabled()) {
+    document.documentElement.classList.add("boot-off");
+  }
 }
 
 function appendPostLine(text: string): void {
@@ -191,6 +249,9 @@ function endBoot(instant?: boolean): void {
   const count = document.querySelectorAll(".chord-row-wrapper").length;
   revealAndGlow(count, () => {
     showAllChordRows();
+    if (!isBootEnabled()) {
+      document.documentElement.classList.add("boot-off");
+    }
   });
 
   // Remove skip listener
@@ -205,6 +266,7 @@ function skipHandler(e: KeyboardEvent): void {
 
 // ─── Run boot ────────────────────────────────────────────────────────
 export const runBoot = (chordCount: number): void => {
+  document.documentElement.classList.remove("boot-off");
   // Clean up any previous boot
   bootTimers.forEach(clearTimeout);
   bootTimers = [];
@@ -256,6 +318,9 @@ export const runBoot = (chordCount: number): void => {
         isBooting = false;
         bootArmed = false;
         window.removeEventListener("keydown", skipHandler);
+        if (!isBootEnabled()) {
+          document.documentElement.classList.add("boot-off");
+        }
       });
     }, t + 250)
   );

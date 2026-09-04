@@ -1042,6 +1042,15 @@ body {
   will-change: filter;
 }
 
+/* ---- Boot bypass (when boot option is off) ---- */
+html.boot-off .boot-overlay {
+  display: none !important;
+}
+
+html.boot-off .crt-content {
+  opacity: 1 !important;
+}
+
 /* ---- Boot POST overlay ---- */
 .boot-overlay {
   position: absolute;

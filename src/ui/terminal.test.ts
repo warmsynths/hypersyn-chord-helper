@@ -141,4 +141,56 @@ describe('terminal module', () => {
     expect(suggestion.style.display).toBe('block');
     expect(suggestion.textContent).toContain('export song');
   });
+
+  it('handles boot commands to toggle on, off, and bare boot', () => {
+    initTerminal();
+
+    const form = document.getElementById('cmdForm') as HTMLFormElement;
+    const input = document.getElementById('cmdInput') as HTMLInputElement;
+    const history = document.getElementById('cmdHistory') as HTMLElement;
+
+    // boot on
+    input.value = 'boot on';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    expect(history.children[history.children.length - 1].textContent).toContain('boot -> on');
+
+    // status should show boot on
+    input.value = 'status';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    expect(history.children[history.children.length - 1].innerHTML).toContain('boot    <span style="color:var(--accent);">on</span>');
+
+    // boot off
+    input.value = 'boot off';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    expect(history.children[history.children.length - 1].textContent).toContain('boot -> off');
+
+    // status should show boot off
+    input.value = 'status';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    expect(history.children[history.children.length - 1].innerHTML).toContain('boot    <span style="color:var(--accent);">off</span>');
+
+    // bare boot toggles to on
+    input.value = 'boot';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    expect(history.children[history.children.length - 1].textContent).toContain('boot -> on');
+
+    // bare boot toggles back to off
+    input.value = 'boot';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    expect(history.children[history.children.length - 1].textContent).toContain('boot -> off');
+  });
+
+  it('renders tab suggestions for boot commands', () => {
+    initTerminal();
+
+    const input = document.getElementById('cmdInput') as HTMLInputElement;
+    const suggestion = document.getElementById('cmdSuggestion') as HTMLElement;
+
+    input.value = 'boot ';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    expect(suggestion.style.display).toBe('block');
+    expect(suggestion.textContent).toContain('boot on');
+  });
 });
+
