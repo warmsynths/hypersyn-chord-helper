@@ -7,6 +7,11 @@ const mockNode = {
   detune: { value: 0, setValueAtTime: () => {}, linearRampToValueAtTime: () => {} },
   delayTime: { value: 0, setValueAtTime: () => {}, linearRampToValueAtTime: () => {} },
   gain: { value: 0, setValueAtTime: () => {}, linearRampToValueAtTime: () => {} },
+  threshold: { value: 0 },
+  knee: { value: 0 },
+  ratio: { value: 0 },
+  attack: { value: 0 },
+  release: { value: 0 },
   Q: { value: 0 },
   buffer: null,
   disconnect: () => {},
@@ -22,6 +27,9 @@ beforeAll(() => {
     createDelay() { return Object.create(mockNode); }
     createBiquadFilter() { return Object.create(mockNode); }
     createConvolver() { return Object.create(mockNode); }
+    createChannelMerger() { return Object.create(mockNode); }
+    createChannelSplitter() { return Object.create(mockNode); }
+    createDynamicsCompressor() { return Object.create(mockNode); }
     createBuffer() { return { getChannelData: () => new Float32Array(10) }; }
     get currentTime() { return 0; }
     get sampleRate() { return 44100; }

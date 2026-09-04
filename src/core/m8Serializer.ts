@@ -141,7 +141,7 @@ export function extractUniqueChordIntervals(
 }
 
 /**
- * Builds a default Lush Synth Pad / Keys patch populated with progression chord banks.
+ * Builds a default Lush Juno-style Pad patch populated with progression chord banks.
  */
 export function buildHypersynthPatch(
   chordSetsData: string[],
@@ -164,7 +164,7 @@ export function buildHypersynthPatch(
   return {
     name: sanitizedName,
     transpose: true,
-    tableTick: 0x01,
+    tableTick: 0x00, // 0x00 = Table disabled (eliminates 1-tick table ratcheting bug)
     volume: 0xE0,
     pitch: 0x00,
     fineTune: 0x80,
@@ -172,16 +172,16 @@ export function buildHypersynthPatch(
       scale: 0x00,
       chord: 0x00,
       shift: 0x00,
-      swarm: 0x00,
-      width: 0x80,
-      subOsc: 0x00,
+      swarm: 0x0C, // Minimal swarm (eliminates metallic flanging comb-filtering while keeping gentle analog drift)
+      width: 0xC0, // Wide, immersive stereo spread
+      subOsc: 0xA0, // Square sub-oscillator 1 octave below root for fat, warm foundation
       chordBanks: fullBanks,
     },
     chordBanks: fullBanks,
     filter: {
       type: 0x01, // 0x01 = LOWPASS in M8 firmware
-      cutoff: 0xB8,
-      res: 0x20,
+      cutoff: 0x50, // Warm, creamy static cutoff (eliminates harsh piercing/metallic highs)
+      res: 0x20, // Sweet musical analog resonance
     },
     amp: {
       amp: 0x00,
@@ -190,40 +190,40 @@ export function buildHypersynthPatch(
     mixer: {
       pan: 0x80, // Center
       dry: 0xC0,
-      cho: 0x40, // Subtle Chorus
-      del: 0x20,
-      rev: 0x40, // Subtle Reverb
+      cho: 0x90, // Rich Roland Juno stereo BBD chorus
+      del: 0x20, // Subtle stereo delay
+      rev: 0x60, // Lush diffuse reverb wash
     },
     envelopes: [
       {
         dest: 0x01, // Volume
         amount: 0xFF,
-        attack: 0x10,
+        attack: 0x14, // Responsive soft pad attack (~50ms: removes click without sluggish swell)
         hold: 0x00,
-        decay: 0x90,
+        decay: 0xD0, // Long, sustained warm pad decay
         retrigger: 0x00,
       },
       {
-        dest: 0x07, // Cutoff
-        amount: 0x30,
-        attack: 0x18,
+        dest: 0x00, // Off (static warm filter without sweep)
+        amount: 0x00,
+        attack: 0x00,
         hold: 0x00,
-        decay: 0x60,
+        decay: 0x00,
         retrigger: 0x00,
       },
     ],
     lfos: [
       {
-        shape: 0x00, // Triangle
-        dest: 0x0A, // Pan
+        shape: 0x00,
+        dest: 0x00, // Off
         triggerMode: 0x00,
-        freq: 0x20,
-        amount: 0x15,
+        freq: 0x00,
+        amount: 0x00,
         retrigger: 0x00,
       },
       {
         shape: 0x00,
-        dest: 0x00,
+        dest: 0x00, // Off
         triggerMode: 0x00,
         freq: 0x00,
         amount: 0x00,
@@ -663,8 +663,8 @@ export function serializeM8Song(
     }
   }
 
-  // Tables (256 tables * 128 bytes = 32768 bytes)
-  bytes.push(...Array(256 * 128).fill(EMPTY_BYTE));
+  // Tables (256 tables * 128 bytes = 32768 bytes, initialized clean with 0x00)
+  bytes.push(...Array(256 * 128).fill(0x00));
 
   // Instruments (128 instruments * 215 bytes = 27520 bytes)
   // Instrument 00: Hypersynth patch body
@@ -676,7 +676,7 @@ export function serializeM8Song(
     bytes.push(EMPTY_BYTE); // kind: None
     bytes.push(...Array(12).fill(EMPTY_BYTE)); // name
     bytes.push(0x00); // transpose
-    bytes.push(0x01); // tableTick
+    bytes.push(0x00); // tableTick: 0x00 (disabled)
     bytes.push(0x00, 0x00, 0x00); // volume, pitch, fineTune
     // Remaining empty parameters to 0x57 (71 bytes)
     bytes.push(...Array(71).fill(EMPTY_BYTE));
@@ -720,8 +720,8 @@ export function serializeM8Instrument(patch: M8HypersynthPatch): Uint8Array {
   bytes.push(...buildM8Header(FILE_TYPE_INSTRUMENT));
   bytes.push(...serializeHypersynthBody(patch));
 
-  // Table data for standalone .m8i (16 steps * 8 bytes = 128 bytes, filled with 0xFF)
-  bytes.push(...Array(128).fill(EMPTY_BYTE));
+  // Table data for standalone .m8i (16 steps * 8 bytes = 128 bytes, initialized clean with 0x00)
+  bytes.push(...Array(128).fill(0x00));
 
   return new Uint8Array(bytes);
 }

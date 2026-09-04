@@ -73,7 +73,7 @@ describe("M8 Serializer — Hypersynth Instrument (.m8i)", () => {
       expect(body[0x0D]).toBe(0x01);
 
       // Index 0x0E: TableTick
-      expect(body[0x0E]).toBe(0x01);
+      expect(body[0x0E]).toBe(0x00);
 
       // Index 0x0F: Volume
       expect(body[0x0F]).toBe(0xE0);
@@ -84,13 +84,13 @@ describe("M8 Serializer — Hypersynth Instrument (.m8i)", () => {
       // Index 0x19..0x1D: Engine params (scale, shift, swarm, width, subosc)
       expect(body[0x19]).toBe(0x00); // scale
       expect(body[0x1A]).toBe(0x00); // shift
-      expect(body[0x1B]).toBe(0x00); // swarm (0x00 clean)
-      expect(body[0x1C]).toBe(0x80); // width
-      expect(body[0x1D]).toBe(0x00); // subosc
+      expect(body[0x1B]).toBe(0x0C); // swarm (minimal swarm)
+      expect(body[0x1C]).toBe(0xC0); // width (wide stereo spread)
+      expect(body[0x1D]).toBe(0xA0); // subosc (1 octave down square)
 
       // Index 0x1E..0x27: Common Synth Params (Filter, Amp, Mixer)
       expect(body[0x1E]).toBe(0x01); // filter type: 0x01 (LOWPASS)
-      expect(body[0x1F]).toBe(0xB8); // filter cutoff
+      expect(body[0x1F]).toBe(0x50); // filter cutoff (warm creamy cutoff)
       expect(body[0x23]).toBe(0x80); // mixer pan (center)
       expect(body[0x24]).toBe(0xC0); // mixer dry
 
@@ -100,8 +100,8 @@ describe("M8 Serializer — Hypersynth Instrument (.m8i)", () => {
 
       // Index 0x3F..0x56: 4 Modulators (24 bytes)
       expect(body[0x3F]).toBe(0x01); // Env 1 dest: Volume
-      expect(body[0x45]).toBe(0x07); // Env 2 dest: Cutoff
-      expect(body[0x4B]).toBe(0x3A); // LFO 1 dest: Pan ((3 << 4) | 0x0A)
+      expect(body[0x45]).toBe(0x00); // Env 2 dest: Off
+      expect(body[0x4B]).toBe(0x30); // LFO 1 dest: Off ((3 << 4) | 0x00)
       expect(body[0x51]).toBe(0x30); // LFO 2 dest: Off ((3 << 4) | 0x00)
 
       // Index 0x57..0x5D: Chord Bank 0 (Am7 -> [0, 3, 7, 10])
