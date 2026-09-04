@@ -165,7 +165,7 @@ export function buildHypersynthPatch(
     name: sanitizedName,
     transpose: true,
     tableTick: 0x00, // 0x00 = Table disabled (eliminates 1-tick table ratcheting bug)
-    volume: 0xE0,
+    volume: 0xFF,
     pitch: 0x00,
     fineTune: 0x80,
     hypersynthParams: {
@@ -184,12 +184,12 @@ export function buildHypersynthPatch(
       res: 0x20, // Sweet musical analog resonance
     },
     amp: {
-      amp: 0x00,
+      amp: 0x48, // Pre-gain boost to compensate for warm lowpass filter attenuation
       limit: 0x00,
     },
     mixer: {
       pan: 0x80, // Center
-      dry: 0xC0,
+      dry: 0xE8, // Full dry presence into mixer
       cho: 0x90, // Rich Roland Juno stereo BBD chorus
       del: 0x20, // Subtle stereo delay
       rev: 0x60, // Lush diffuse reverb wash
@@ -199,7 +199,7 @@ export function buildHypersynthPatch(
         dest: 0x01, // Volume
         amount: 0xFF,
         attack: 0x14, // Responsive soft pad attack (~50ms: removes click without sluggish swell)
-        hold: 0x00,
+        hold: 0x60, // Holds full volume across chord phrase before decay
         decay: 0xD0, // Long, sustained warm pad decay
         retrigger: 0x00,
       },

@@ -76,7 +76,7 @@ describe("M8 Serializer — Hypersynth Instrument (.m8i)", () => {
       expect(body[0x0E]).toBe(0x00);
 
       // Index 0x0F: Volume
-      expect(body[0x0F]).toBe(0xE0);
+      expect(body[0x0F]).toBe(0xFF);
 
       // Index 0x12..0x18: Default Chord (7 bytes: mask 0x01 + 6 offsets 0x00)
       expect(body.slice(0x12, 0x19)).toEqual([0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
@@ -92,7 +92,7 @@ describe("M8 Serializer — Hypersynth Instrument (.m8i)", () => {
       expect(body[0x1E]).toBe(0x01); // filter type: 0x01 (LOWPASS)
       expect(body[0x1F]).toBe(0x50); // filter cutoff (warm creamy cutoff)
       expect(body[0x23]).toBe(0x80); // mixer pan (center)
-      expect(body[0x24]).toBe(0xC0); // mixer dry
+      expect(body[0x24]).toBe(0xE8); // mixer dry
 
       // Index 0x28..0x3E: MOD_OFFSET gap (23 bytes)
       expect(body[0x2B]).toBe(0x00); // shape (Saw)
