@@ -55,10 +55,39 @@ export const getMidiRoot = (root) => {
     B: 71,
   };
   return midiRootMap[root] || 60;
+};
+
+export interface CanonicalVoicing {
+  id: string;
+  label: string;
+  fn: (notes: number[]) => number[];
 }
+
+export const CANONICAL_VOICINGS: CanonicalVoicing[] = [
+  { id: "root", label: "ROOT", fn: (n) => n.slice() },
+  { id: "inv1", label: "INV 1", fn: (n) => n.map((v, i) => (i === 0 ? v + 12 : v)) },
+  { id: "inv2", label: "INV 2", fn: (n) => n.map((v, i) => (i <= 1 ? v + 12 : v)) },
+  { id: "inv3", label: "INV 3", fn: (n) => n.map((v, i) => (i <= 2 ? v + 12 : v)) },
+  { id: "drop2", label: "DROP 2", fn: (n) => n.map((v, i) => (i === n.length - 2 ? v - 12 : v)) },
+  { id: "spread", label: "SPREAD", fn: (n) => n.map((v, i) => (i === 0 ? v - 12 : i === n.length - 1 ? v + 12 : v)) },
+];
+
+export const getCanonicalVoicings = (): CanonicalVoicing[] => CANONICAL_VOICINGS;
+
+export const getCanonicalVoicingByIndex = (index: number): CanonicalVoicing => {
+  const total = CANONICAL_VOICINGS.length;
+  const idx = ((index % total) + total) % total;
+  return CANONICAL_VOICINGS[idx] || CANONICAL_VOICINGS[0];
+};
+
+export const applyCanonicalVoicingByIndex = (notes: number[], index: number): number[] => {
+  const voicing = getCanonicalVoicingByIndex(index);
+  return voicing.fn(notes);
+};
 
 /**
  * Returns an array of valid voicing option objects for a given interval array.
+
  *
  * @param {number[]} intervals - The chord intervals.
  * @returns {Array<{value: string, label: string}>} Array of valid voicing options for the chord.

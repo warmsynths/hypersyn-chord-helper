@@ -8,7 +8,10 @@ import {
   buildM8ChainsAndSteps,
   M8_MAGIC,
   FILE_TYPE_INSTRUMENT,
+  exportM8Song,
+  exportM8Instrument,
 } from "./m8Serializer";
+import { buildProgressionStep } from "./trackerStore";
 
 describe("M8 Serializer — Hypersynth Instrument (.m8i)", () => {
   describe("extractUniqueChordIntervals", () => {
@@ -230,4 +233,74 @@ describe("M8 Serializer — Hypersynth Instrument (.m8i)", () => {
       expect(warnings[0]).toContain("exceeds the 16 chord bank limit");
     });
   });
+
+  describe("Deep Exporter Interface (exportM8Song & exportM8Instrument)", () => {
+    it("exportM8Song returns a complete ExportResult for string inputs", () => {
+      const result = exportM8Song({
+        steps: ["Am7 Dm9 G13 Cmaj7"],
+        name: "Chill Session",
+        tempo: 128,
+      });
+
+      expect(result.filename).toBe("chillsession.m8s");
+      expect(result.bytes).toBeInstanceOf(Uint8Array);
+      expect(result.bytes.length).toBe(108914); // standard M8 song byte length
+      expect(result.warnings).toHaveLength(0);
+      expect(result.stats.chainCount).toBe(1);
+      expect(result.stats.phraseCount).toBe(4);
+      expect(result.stats.chordBankCount).toBeGreaterThanOrEqual(1);
+    });
+
+    it("exportM8Song works directly with ProgressionStep domain models", () => {
+      const step1 = buildProgressionStep("Am7 Dm9", [1, 4]); // custom voicings
+      const step2 = buildProgressionStep("G13 Cmaj7");
+
+      const result = exportM8Song({
+        steps: [step1, step2],
+        name: "VoicedSong",
+      });
+
+      expect(result.filename).toBe("voicedsong.m8s");
+      expect(result.stats.chainCount).toBe(2);
+      expect(result.stats.phraseCount).toBe(4);
+    });
+
+    it("exportM8Song throws when progression contains no valid chords", () => {
+      expect(() => {
+        exportM8Song({ steps: ["", "   ", "xyz"] });
+      }).toThrow(/Cannot export M8 song/);
+    });
+
+    it("exportM8Instrument returns a complete ExportResult for standalone patch", () => {
+      const result = exportM8Instrument({
+        steps: ["Am7 Dm9 G13 Cmaj7"],
+        name: "LushJuno",
+      });
+
+      expect(result.filename).toBe("lushjuno.m8i");
+      expect(result.bytes).toBeInstanceOf(Uint8Array);
+      expect(result.bytes.length).toBe(357); // standard M8 instrument length
+      expect(result.stats.chordBankCount).toBe(4);
+    });
+
+    it("exportM8Instrument throws on empty input", () => {
+      expect(() => {
+        exportM8Instrument({ steps: [] });
+      }).toThrow(/Cannot export M8 instrument/);
+    });
+
+    it("exportM8Instrument respects patchOverrides", () => {
+      const result = exportM8Instrument({
+        steps: ["Cmaj7"],
+        patchOverrides: {
+          volume: 0xC0,
+        },
+      });
+
+      // Header is 14 bytes. Hypersynth body volume is at offset 15 (0x0F) in body -> 14 + 15 = 29
+      expect(result.bytes[29]).toBe(0xC0);
+    });
+  });
 });
+
+

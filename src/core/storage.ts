@@ -5,6 +5,7 @@ export interface ChordSet {
   name: string;
   chords?: string;
   chordSets: string[];
+  voicings?: number[][];
 }
 
 /**
@@ -46,7 +47,8 @@ export const setSavedChordSets = (sets: ChordSet[]): void => {
  */
 export const saveChordSetByName = (
   name: string,
-  chordSetsData: string[]
+  chordSetsData: string[],
+  voicingsData?: number[][]
 ): { sets: ChordSet[]; savedSet: ChordSet } => {
   const trimmedName = name.trim();
   if (!trimmedName) {
@@ -59,6 +61,9 @@ export const saveChordSetByName = (
   if (idx >= 0) {
     sets[idx].chords = chordSetsData[0] || ""; // legacy field
     sets[idx].chordSets = [...chordSetsData];
+    if (voicingsData) {
+      sets[idx].voicings = [...voicingsData];
+    }
     savedSet = sets[idx];
   } else {
     savedSet = {
@@ -66,6 +71,7 @@ export const saveChordSetByName = (
       name: trimmedName,
       chords: chordSetsData[0] || "",
       chordSets: [...chordSetsData],
+      ...(voicingsData ? { voicings: [...voicingsData] } : {}),
     };
     sets.push(savedSet);
   }

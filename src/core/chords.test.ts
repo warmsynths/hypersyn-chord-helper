@@ -4,7 +4,11 @@ import {
   applyVoicing,
   semitoneToHex,
   parseChordName,
-  convertChords
+  convertChords,
+  CANONICAL_VOICINGS,
+  getCanonicalVoicings,
+  getCanonicalVoicingByIndex,
+  applyCanonicalVoicingByIndex,
 } from './chords';
 
 describe('chords module', () => {
@@ -122,4 +126,51 @@ describe('chords module', () => {
     expect(converted.chords[0].intervalOnlyHex).toEqual(['00', '03', '07', '0A', '0E']);
     expect(converted.chords[1].intervalOnlyHex).toEqual(['00', '04', '07', '0A', '0E', '15']);
   });
+
+  describe('canonical voicings', () => {
+    const cmaj7 = [60, 64, 67, 71]; // C4, E4, G4, B4
+
+    it('exposes exactly 6 canonical voicings', () => {
+      expect(getCanonicalVoicings().length).toBe(6);
+      expect(CANONICAL_VOICINGS.map((v) => v.label)).toEqual([
+        'ROOT',
+        'INV 1',
+        'INV 2',
+        'INV 3',
+        'DROP 2',
+        'SPREAD',
+      ]);
+    });
+
+    it('applies ROOT voicing without change', () => {
+      expect(applyCanonicalVoicingByIndex(cmaj7, 0)).toEqual([60, 64, 67, 71]);
+    });
+
+    it('applies INV 1 by raising first note an octave', () => {
+      expect(applyCanonicalVoicingByIndex(cmaj7, 1)).toEqual([72, 64, 67, 71]);
+    });
+
+    it('applies INV 2 by raising first two notes an octave', () => {
+      expect(applyCanonicalVoicingByIndex(cmaj7, 2)).toEqual([72, 76, 67, 71]);
+    });
+
+    it('applies INV 3 by raising first three notes an octave', () => {
+      expect(applyCanonicalVoicingByIndex(cmaj7, 3)).toEqual([72, 76, 79, 71]);
+    });
+
+    it('applies DROP 2 by lowering second highest note an octave', () => {
+      // second highest note in [60, 64, 67, 71] is 67 (index length - 2 = 2)
+      expect(applyCanonicalVoicingByIndex(cmaj7, 4)).toEqual([60, 64, 55, 71]);
+    });
+
+    it('applies SPREAD by dropping lowest note and raising highest note', () => {
+      expect(applyCanonicalVoicingByIndex(cmaj7, 5)).toEqual([48, 64, 67, 83]);
+    });
+
+    it('gracefully wraps negative and out-of-bound indices', () => {
+      expect(getCanonicalVoicingByIndex(-1).label).toBe('SPREAD');
+      expect(getCanonicalVoicingByIndex(6).label).toBe('ROOT');
+    });
+  });
 });
+

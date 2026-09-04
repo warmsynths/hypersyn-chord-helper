@@ -14,6 +14,12 @@ describe('core module facade', () => {
     expect(typeof core.parseChordName).toBe('function');
     expect(typeof core.convertChords).toBe('function');
     expect(typeof core.playSingleChordGlobal).toBe('function');
+    expect(typeof core.exportM8Song).toBe('function');
+    expect(typeof core.exportM8Instrument).toBe('function');
+    expect(typeof core.saveProject).toBe('function');
+    expect(typeof core.loadProject).toBe('function');
+    expect(typeof core.trackerStore).toBe('object');
+    expect(typeof core.getCanonicalVoicings).toBe('function');
   });
 
   it('re-exported getMidiRoot returns correct MIDI pitch', () => {

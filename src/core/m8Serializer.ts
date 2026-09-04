@@ -1,4 +1,5 @@
 import { convertChords, parseChordName, getMidiRoot } from "./chords";
+import type { ProgressionStep } from "./trackerStore";
 
 export const M8_MAGIC = [0x4D, 0x38, 0x56, 0x45, 0x52, 0x53, 0x49, 0x4F, 0x4E]; // "M8VERSION"
 export const FILE_TYPE_SONG = 0x00;
@@ -741,3 +742,159 @@ export function downloadM8File(bytes: Uint8Array, filename: string): void {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+// ─── Deep M8 Exporter Interface ──────────────────────────────────────
+
+export interface ExportResult {
+  filename: string;
+  bytes: Uint8Array;
+  warnings: string[];
+  stats: {
+    chordBankCount: number;
+    chainCount?: number;
+    phraseCount?: number;
+  };
+}
+
+export interface SongExportOptions {
+  steps: (string | ProgressionStep | any)[];
+  name?: string;
+  tempo?: number;
+  patchOverrides?: Partial<M8HypersynthPatch>;
+}
+
+export interface InstrumentExportOptions {
+  steps: (string | ProgressionStep | any)[];
+  name?: string;
+  patchOverrides?: Partial<M8HypersynthPatch>;
+}
+
+interface NormalizedExportInput {
+  sets: string[];
+  intervals?: number[][];
+  hasAnyChords: boolean;
+}
+
+function normalizeExportSteps(steps: (string | ProgressionStep | any)[]): NormalizedExportInput {
+  const sets: string[] = [];
+  const intervals: number[][] = [];
+  let hasAnyChords = false;
+  let hasExplicitIntervals = false;
+
+  steps.forEach((item) => {
+    if (typeof item === "string") {
+      sets.push(item);
+      const tokens = item.trim().split(/[\s,]+/).filter(Boolean);
+      tokens.forEach((t) => {
+        const parsed = parseChordName(t);
+        if (parsed) {
+          hasAnyChords = true;
+          intervals.push(parsed.intervalOnly || [0]);
+        }
+      });
+    } else if (item && Array.isArray(item.chords)) {
+      // Structured ProgressionStep domain model
+      sets.push(item.rawText || item.chords.map((c: any) => c.name).join(" "));
+      item.chords.forEach((c: any) => {
+        hasAnyChords = true;
+        hasExplicitIntervals = true;
+        intervals.push(c.intervals || c.baseIntervals || [0]);
+      });
+    } else if (item && item.rawText !== undefined) {
+      sets.push(item.rawText);
+      const tokens = (item.rawText || "").trim().split(/[\s,]+/).filter(Boolean);
+      tokens.forEach((t) => {
+        const parsed = parseChordName(t);
+        if (parsed) {
+          hasAnyChords = true;
+          intervals.push(parsed.intervalOnly || [0]);
+        }
+      });
+    }
+  });
+
+  return {
+    sets,
+    intervals: hasExplicitIntervals || intervals.length > 0 ? intervals : undefined,
+    hasAnyChords,
+  };
+}
+
+/**
+ * Deep exporter for arranged Dirtywave M8 Song (.m8s) files.
+ * Absorbs interval resolution, bank clamping, phrase layout, and binary compilation.
+ */
+export function exportM8Song(options: SongExportOptions): ExportResult {
+  const { steps, name = "HYPERSYN", tempo = 120 } = options;
+  const { sets, intervals, hasAnyChords } = normalizeExportSteps(steps || []);
+
+  if (!hasAnyChords) {
+    throw new Error("Cannot export M8 song: progression contains no valid chords.");
+  }
+
+  const songName = name ? name.trim() : "HYPERSYN";
+  const { bytes, warnings, chainCount, phraseCount } = serializeM8Song(
+    sets,
+    songName,
+    tempo,
+    intervals
+  );
+
+  const { chordBanks } = extractUniqueChordIntervals(sets, intervals);
+  const filename = name && name.trim()
+    ? `${name.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "")}.m8s`
+    : "hypersyn-song.m8s";
+
+  return {
+    filename,
+    bytes,
+    warnings,
+    stats: {
+      chordBankCount: chordBanks.length,
+      chainCount,
+      phraseCount,
+    },
+  };
+}
+
+/**
+ * Deep exporter for standalone Dirtywave M8 Hypersynth Instrument (.m8i) files.
+ * Absorbs patch voice configuration, bank allocation, and binary compilation.
+ */
+export function exportM8Instrument(options: InstrumentExportOptions): ExportResult {
+  const { steps, name = "", patchOverrides } = options;
+  const { sets, intervals, hasAnyChords } = normalizeExportSteps(steps || []);
+
+  if (!hasAnyChords) {
+    throw new Error("Cannot export M8 instrument: progression contains no valid chords.");
+  }
+
+  const patchName = name && name.trim() ? name.trim() : "HYPERSYN";
+  const patch = buildHypersynthPatch(sets, patchName, intervals);
+  if (patchOverrides) {
+    Object.assign(patch, patchOverrides);
+  }
+
+  const bytes = serializeM8Instrument(patch);
+  const { chordBanks, warnings } = extractUniqueChordIntervals(sets, intervals);
+  const filename = name && name.trim()
+    ? `${name.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "")}.m8i`
+    : "hypersyn-chords.m8i";
+
+  return {
+    filename,
+    bytes,
+    warnings,
+    stats: {
+      chordBankCount: chordBanks.length,
+    },
+  };
+}
+
+/**
+ * Triggers a file download using an ExportResult payload.
+ */
+export function triggerExportDownload(result: ExportResult): void {
+  downloadM8File(result.bytes, result.filename);
+}
+

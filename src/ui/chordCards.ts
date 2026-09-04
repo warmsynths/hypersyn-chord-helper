@@ -1,8 +1,9 @@
 import * as Midi from "@tonaljs/midi";
-import { semitoneToHex, getMidiRoot } from "../core/chords";
+import { semitoneToHex, getMidiRoot, CANONICAL_VOICINGS } from "../core/chords";
 import { playChordProgression } from "../core/audio";
 import { showToast } from "./toast";
 import { charge, setGlowCallback, applyGlowToRow, dispatchGlowUpdate } from "./phosphor";
+import { trackerStore } from "./trackerStore";
 
 // ─── Module state ────────────────────────────────────────────────────
 let lastChordObjs: any[] = [];
@@ -19,18 +20,6 @@ let diffsByChord: Record<number, { oldNote: string; oldHex: string; newNote: str
 
 /** Which chord row is currently expanded (only one at a time), or null. */
 let expandedIdx: number | null = null;
-
-// ─── Fixed voicing set ────────────────────────────────────────────────
-// A small, common set of voicings applied as octave shifts over the
-// chord's base note stack — no drag/window interaction, just ↑/↓ to cycle.
-const VOICINGS: { label: string; fn: (notes: number[]) => number[] }[] = [
-  { label: "ROOT", fn: (n) => n.slice() },
-  { label: "INV 1", fn: (n) => n.map((v, i) => (i === 0 ? v + 12 : v)) },
-  { label: "INV 2", fn: (n) => n.map((v, i) => (i <= 1 ? v + 12 : v)) },
-  { label: "INV 3", fn: (n) => n.map((v, i) => (i <= 2 ? v + 12 : v)) },
-  { label: "DROP 2", fn: (n) => n.map((v, i) => (i === n.length - 2 ? v - 12 : v)) },
-  { label: "SPREAD", fn: (n) => n.map((v, i) => (i === 0 ? v - 12 : i === n.length - 1 ? v + 12 : v)) },
-];
 
 function hexForMidi(midi: number, midiRoot: number): { hex: string; tooltip: string } {
   if (isIntervalOnly) {
@@ -55,7 +44,7 @@ function renderHexBoxes(notes: number[], midiRoot: number): string {
 function currentNotesFor(idx: number): number[] {
   const base = baseNotesByChord[idx];
   if (!base) return [];
-  const voicing = VOICINGS[voicingIdxByChord[idx] ?? 0] ?? VOICINGS[0];
+  const voicing = CANONICAL_VOICINGS[voicingIdxByChord[idx] ?? 0] ?? CANONICAL_VOICINGS[0];
   return voicing.fn(base);
 }
 
@@ -68,7 +57,7 @@ function renderRow(idx: number): void {
   const hexEl = document.getElementById("hexBoxes" + idx);
   if (hexEl) hexEl.innerHTML = renderHexBoxes(notes, chord.midiRoot ?? 60);
 
-  const label = VOICINGS[voicingIdxByChord[idx] ?? 0]?.label ?? "ROOT";
+  const label = CANONICAL_VOICINGS[voicingIdxByChord[idx] ?? 0]?.label ?? "ROOT";
   const chipEl = document.getElementById("voicingChip" + idx);
   if (chipEl) chipEl.textContent = label;
 
@@ -98,12 +87,12 @@ function renderRow(idx: number): void {
 function cycleVoicing(idx: number, delta: number): void {
   const base = baseNotesByChord[idx];
   if (!base) return;
-  const total = VOICINGS.length;
+  const total = CANONICAL_VOICINGS.length;
   const curIdx = voicingIdxByChord[idx] ?? 0;
   const nextIdx = ((curIdx + delta) % total + total) % total;
 
-  const oldNotes = VOICINGS[curIdx].fn(base);
-  const newNotes = VOICINGS[nextIdx].fn(base);
+  const oldNotes = CANONICAL_VOICINGS[curIdx].fn(base);
+  const newNotes = CANONICAL_VOICINGS[nextIdx].fn(base);
 
   const diffs: { oldNote: string; oldHex: string; newNote: string; newHex: string }[] = [];
   const midiRoot = lastChordObjs[idx]?.midiRoot ?? 60;
@@ -121,6 +110,10 @@ function cycleVoicing(idx: number, delta: number): void {
 
   voicingIdxByChord[idx] = nextIdx;
   diffsByChord[idx] = diffs;
+
+  // Persist voicing to trackerStore domain model
+  trackerStore.setChordVoicing(trackerStore.getActiveIndex(), idx, nextIdx);
+
   renderRow(idx);
   playChordProgression([newNotes]);
   charge(idx, 1);
@@ -200,7 +193,10 @@ export const convertChordsUI = (
   if (intContainer) intContainer.style.display = "flex";
 
   lastChordObjs = result.chords;
-  voicingIdxByChord = result.chords.map(() => 0);
+  const activeStep = trackerStore.getActiveStep();
+  voicingIdxByChord = result.chords.map((_, i) => {
+    return activeStep.chords[i] !== undefined ? activeStep.chords[i].voicingIndex : 0;
+  });
   diffsByChord = {};
   expandedIdx = null;
   baseNotesByChord = [];

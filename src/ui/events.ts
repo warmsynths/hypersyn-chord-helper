@@ -4,13 +4,13 @@ import {
   playSingleChordGlobal,
 } from "../core/audio";
 import {
-  getSavedChordSets,
-  setSavedChordSets,
-  saveChordSetByName,
-  deleteChordSetByIndex,
-  exportChordSetsJson,
-  importChordSetsJson,
-} from "../core/storage";
+  saveProject,
+  loadProject,
+  deleteProject,
+  exportProjectJson,
+  importProjectJson,
+  listProjects,
+} from "../core/projectActions";
 import { convertChords, parseChordName } from "../core/chords";
 import {
   convertChordsUI,
@@ -132,12 +132,12 @@ export const saveChordSet = (): void => {
   const nameInput = document.getElementById("chordSetNameInput") as HTMLInputElement | null;
   const name = nameInput?.value.trim() || "";
 
-  try {
-    const { savedSet } = saveChordSetByName(name, trackerStore.getSetsData());
+  const res = saveProject(name);
+  if (res.ok) {
     updateSavedChordSetsDropdown();
-    showToast(`Chord set saved as '${savedSet.name}'.`, "success");
-  } catch (err: any) {
-    showToast(err.message || "Please enter a name for the chord set.", "error");
+    showToast(res.message, "success");
+  } else {
+    showToast(res.message, "error");
   }
 };
 
@@ -148,13 +148,16 @@ export const loadChordSet = (): void => {
     showToast("Please select a saved chord set to load.", "error");
     return;
   }
-  const sets = getSavedChordSets();
-  const set = sets[parseInt(idxStr, 10)];
-  if (set) {
-    loadSetsData(set.chordSets);
-    showToast(`Chord set '${set.name}' loaded!`, "success");
+  const res = loadProject(parseInt(idxStr, 10));
+  if (res.ok && res.data) {
+    const input = document.getElementById("chordsInput") as HTMLInputElement;
+    if (input) input.value = trackerStore.getActiveSet();
+    updateSingleChordDropdownFromInput();
+    renderStepStrip();
+    document.getElementById("convertChordsBtn")?.click();
+    showToast(res.message, "success");
   } else {
-    showToast("Chord set not found.", "error");
+    showToast(res.message, "error");
   }
 };
 
@@ -165,20 +168,19 @@ export const deleteChordSet = (): void => {
     showToast("Please select a saved chord set to delete.", "error");
     return;
   }
-  const idx = parseInt(idxStr, 10);
-  const { deletedSet } = deleteChordSetByIndex(idx);
-  if (deletedSet) {
+  const res = deleteProject(parseInt(idxStr, 10));
+  if (res.ok) {
     updateSavedChordSetsDropdown();
-    showToast("Chord set deleted.", "success");
+    showToast(res.message, "success");
   } else {
-    showToast("Chord set not found.", "error");
+    showToast(res.message, "error");
   }
 };
 
 export const updateSavedChordSetsDropdown = (): void => {
   const select = document.getElementById("savedChordSetsSelect") as HTMLSelectElement | null;
   if (!select) return;
-  const sets = getSavedChordSets();
+  const sets = listProjects();
   select.innerHTML = '<option value="">Load saved set...</option>';
   sets.forEach((set, idx) => {
     select.innerHTML += `<option value="${idx}">${set.name}</option>`;
@@ -186,21 +188,24 @@ export const updateSavedChordSetsDropdown = (): void => {
 };
 
 export const exportChordSets = (): void => {
-  const sets = getSavedChordSets();
   const select = document.getElementById("savedChordSetsSelect") as HTMLSelectElement | null;
   const selectedIdx = select && select.value && !isNaN(Number(select.value)) ? parseInt(select.value, 10) : undefined;
   
-  const { filename, json } = exportChordSetsJson(sets, selectedIdx);
-  const blob = new Blob([json], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast(`Chord sets exported as ${filename}.`, "success");
+  const res = exportProjectJson(selectedIdx);
+  if (res.ok && res.data) {
+    const blob = new Blob([res.data.json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = res.data.filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(res.message, "success");
+  } else {
+    showToast(res.message, "error");
+  }
 };
 
 export const importChordSets = (e: Event): void => {
@@ -212,17 +217,13 @@ export const importChordSets = (e: Event): void => {
   const file = fileInput.files[0];
   const reader = new FileReader();
   reader.onload = function (event) {
-    try {
-      const resultStr = typeof event.target?.result === "string" ? event.target.result : "";
-      const { addedCount } = importChordSetsJson(resultStr);
-      updateSavedChordSetsDropdown();
-      if (addedCount > 0) {
-        showToast(`Imported ${addedCount} new chord set(s).`, "success");
-      } else {
-        showToast("No new chord sets to import.", "info");
-      }
-    } catch {
-      showToast("Failed to import chord sets.", "error");
+    const resultStr = typeof event.target?.result === "string" ? event.target.result : "";
+    const res = importProjectJson(resultStr);
+    updateSavedChordSetsDropdown();
+    if (res.ok) {
+      showToast(res.message, res.data && res.data.addedCount > 0 ? "success" : "info");
+    } else {
+      showToast(res.message, "error");
     }
     fileInput.value = "";
   };

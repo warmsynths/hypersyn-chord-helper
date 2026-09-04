@@ -15,14 +15,16 @@ import {
 } from "./phosphor";
 import { runBoot, cleanupBoot } from "./boot";
 import { trackerStore } from "./trackerStore";
-import { getCurrentProgressionIntervals } from "./chordCards";
 import {
-  buildHypersynthPatch,
-  serializeM8Instrument,
-  serializeM8Song,
-  downloadM8File,
-  extractUniqueChordIntervals,
+  exportM8Song,
+  exportM8Instrument,
+  triggerExportDownload,
 } from "../core/m8Serializer";
+import {
+  saveProject,
+  loadProject,
+  exportProjectJson,
+} from "../core/projectActions";
 
 // ─── Themes (from the Hypersyn Redesign) ─────────────────────────────
 const THEMES: Record<string, string> = {
@@ -343,78 +345,72 @@ const handleSubmit = (): void => {
     out = "opened project manager";
     color = "var(--accent-green, #7CFF6B)";
   } else if (parts[0] === "save") {
-    const name = rawParts.slice(1).join(" ");
-    const nameInput = document.getElementById("chordSetNameInput") as HTMLInputElement | null;
-    if (nameInput && name) nameInput.value = name;
-    document.getElementById("saveChordSetBtn")?.click();
-    out = name ? `saved chord set "${name}"` : "triggered save chord set";
-    color = "var(--accent-green, #7CFF6B)";
+    const name = rawParts.slice(1).join(" ").trim();
+    const res = saveProject(name);
+    out = res.message;
+    color = res.ok ? "var(--accent-green, #7CFF6B)" : "#FF6B6B";
   } else if (parts[0] === "load") {
-    const name = rawParts.slice(1).join(" ");
-    const select = document.getElementById("savedChordSetsSelect") as HTMLSelectElement | null;
-    if (select && name) {
-      const opt = Array.from(select.options).find((o) => o.text.toLowerCase() === name.toLowerCase() || o.value === name);
-      if (opt) select.value = opt.value;
+    const name = rawParts.slice(1).join(" ").trim();
+    const res = loadProject(name);
+    if (res.ok) {
+      const input = document.getElementById("chordsInput") as HTMLInputElement | null;
+      if (input) input.value = trackerStore.getActiveSet();
+      document.getElementById("convertChordsBtn")?.click();
     }
-    document.getElementById("loadChordSetBtn")?.click();
-    out = name ? `loaded chord set "${name}"` : "triggered load chord set";
-    color = "var(--accent-green, #7CFF6B)";
+    out = res.message;
+    color = res.ok ? "var(--accent-green, #7CFF6B)" : "#FF6B6B";
   } else if (parts[0] === "export" && (parts[1] === "song" || parts[1] === "m8s")) {
     const rawName = rawParts.slice(2).join(" ").trim();
-    const sets = trackerStore.getSetsData();
-    const hasAnyChords = sets.some((s) => s.trim().length > 0);
-    if (!hasAnyChords) {
-      out = "cannot export song: no chords in active progression";
-      color = "#FF6B6B";
-    } else {
-      const songName = rawName || "HYPERSYN";
-      const activeIntervals = getCurrentProgressionIntervals();
-      const { bytes, warnings, chainCount, phraseCount } = serializeM8Song(
-        sets,
-        songName,
-        120,
-        activeIntervals && activeIntervals.length > 0 ? activeIntervals : undefined
-      );
-      const filename = rawName ? `${songName.toLowerCase().replace(/[^a-z0-9_-]/g, "")}.m8s` : "hypersyn-song.m8s";
-      downloadM8File(bytes, filename);
-      out = `[ok] exported M8 song '${filename}' (${chainCount} chain(s), ${phraseCount} phrase(s))`;
-      if (warnings.length > 0) {
-        out += `\n[warn] ${warnings.join("\n[warn] ")}`;
+    try {
+      const res = exportM8Song({
+        steps: trackerStore.getSteps(),
+        name: rawName,
+      });
+      triggerExportDownload(res);
+      out = `[ok] exported M8 song '${res.filename}' (${res.stats.chainCount || 0} chain(s), ${res.stats.phraseCount || 0} phrase(s))`;
+      if (res.warnings.length > 0) {
+        out += `\n[warn] ${res.warnings.join("\n[warn] ")}`;
       }
       color = "var(--accent-green, #7CFF6B)";
+    } catch (err: any) {
+      out = err.message || "cannot export song: no chords in active progression";
+      color = "#FF6B6B";
     }
   } else if (parts[0] === "export" && (parts[1] === "instr" || parts[1] === "m8i" || parts[1] === "instrument")) {
     const rawName = rawParts.slice(2).join(" ").trim();
-    const sets = trackerStore.getSetsData();
-    const hasAnyChords = sets.some((s) => s.trim().length > 0);
-    if (!hasAnyChords) {
-      out = "cannot export instrument: no chords in active progression";
-      color = "#FF6B6B";
-    } else {
-      const patchName = rawName || "HYPERSYN";
-      const activeIntervals = getCurrentProgressionIntervals();
-      const patch = buildHypersynthPatch(
-        sets,
-        patchName,
-        activeIntervals && activeIntervals.length > 0 ? activeIntervals : undefined
-      );
-      const bytes = serializeM8Instrument(patch);
-      const filename = rawName ? `${patchName.toLowerCase().replace(/[^a-z0-9_-]/g, "")}.m8i` : "hypersyn-chords.m8i";
-      downloadM8File(bytes, filename);
-      const { chordBanks, warnings } = extractUniqueChordIntervals(
-        sets,
-        activeIntervals && activeIntervals.length > 0 ? activeIntervals : undefined
-      );
-      out = `[ok] exported M8 instrument '${filename}' (${chordBanks.length} chord banks)`;
-      if (warnings.length > 0) {
-        out += `\n[warn] ${warnings.join("\n[warn] ")}`;
+    try {
+      const res = exportM8Instrument({
+        steps: trackerStore.getSteps(),
+        name: rawName,
+      });
+      triggerExportDownload(res);
+      out = `[ok] exported M8 instrument '${res.filename}' (${res.stats.chordBankCount} chord banks)`;
+      if (res.warnings.length > 0) {
+        out += `\n[warn] ${res.warnings.join("\n[warn] ")}`;
       }
       color = "var(--accent-green, #7CFF6B)";
+    } catch (err: any) {
+      out = err.message || "cannot export instrument: no chords in active progression";
+      color = "#FF6B6B";
     }
   } else if (parts[0] === "export") {
-    document.getElementById("exportChordSetsBtn")?.click();
-    out = "exported chord sets JSON";
-    color = "var(--accent-green, #7CFF6B)";
+    const res = exportProjectJson();
+    if (res.ok && res.data) {
+      const blob = new Blob([res.data.json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = res.data.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      out = res.message;
+      color = "var(--accent-green, #7CFF6B)";
+    } else {
+      out = res.message;
+      color = "#FF6B6B";
+    }
   } else if (parts[0] === "import") {
     document.getElementById("importChordSetsInput")?.click();
     out = "opened JSON import chooser";
